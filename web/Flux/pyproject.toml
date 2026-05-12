@@ -1,0 +1,43 @@
+[project]
+name = "flux"
+version = "0.1.0"
+description = "Read-optimized Django companion UI for Ignition runtime data"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "dj-database-url>=2.2",
+    "django>=5.0,<6.0",
+    "django-environ>=0.11",
+    "django-htmx>=1.18",
+    "fluxy",
+    "psycopg[binary]>=3.2",
+    "whitenoise>=6.7",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-django>=4.8",
+    "ruff>=0.6",
+]
+linux = [
+    "gunicorn>=23.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+fluxy = { path = "../../fluxy", editable = true }
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "flux.settings"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+pythonpath = ["src"]
+markers = [
+    "integration: tests that require live Ignition/OPC services",
+]

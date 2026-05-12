@@ -1,0 +1,57 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Flux{% endblock %}</title>
+  <script>
+    try {
+      document.documentElement.dataset.theme = localStorage.getItem("flux-theme") || "green";
+    } catch {
+      document.documentElement.dataset.theme = "green";
+    }
+  </script>
+  <link rel="stylesheet" href="{% static 'flux/site.css' %}">
+  <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+  <script src="{% static 'flux/site.js' %}" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="{% url 'dashboard:home' %}">
+      <span>Flux</span>
+      <small>Ignition Companion</small>
+    </a>
+    <nav>
+      <a href="{% url 'dashboard:home' %}">Dashboard</a>
+      <a href="{% url 'live:index' %}">Live</a>
+      <a href="{% url 'trace:index' %}">Trace</a>
+      <a href="{% url 'opt:index' %}">Opt</a>
+      <a href="{% url 'sim:index' %}">Sim</a>
+      <a href="{% url 'field:index' %}">Field</a>
+      <a href="{% url 'serve:index' %}">Serve</a>
+      <a href="{% url 'admin:index' %}">Admin</a>
+    </nav>
+    <div class="theme-picker" aria-label="Primary color theme" data-theme-picker>
+      <button type="button" class="theme-swatch theme-current" data-theme-toggle aria-label="Choose color theme" aria-expanded="false">█</button>
+      <div class="theme-options" data-theme-options hidden>
+        <button type="button" class="theme-swatch theme-swatch-green" data-theme-choice="green" aria-label="Use green theme">█</button>
+        <button type="button" class="theme-swatch theme-swatch-blue" data-theme-choice="blue" aria-label="Use blue theme">█</button>
+        <button type="button" class="theme-swatch theme-swatch-coral" data-theme-choice="coral" aria-label="Use coral theme">█</button>
+        <button type="button" class="theme-swatch theme-swatch-purple" data-theme-choice="purple" aria-label="Use purple theme">█</button>
+        <button type="button" class="theme-swatch theme-swatch-orange" data-theme-choice="orange" aria-label="Use orange theme">█</button>
+        <button type="button" class="theme-swatch theme-swatch-black" data-theme-choice="black" aria-label="Use black theme">█</button>
+        <button type="button" class="theme-swatch theme-swatch-white" data-theme-choice="white" aria-label="Use white theme">█</button>
+      </div>
+    </div>
+  </header>
+  <main class="page">
+    {% if messages %}
+      <section class="messages">
+        {% for message in messages %}<p>{{ message }}</p>{% endfor %}
+      </section>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

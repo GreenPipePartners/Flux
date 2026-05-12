@@ -1,0 +1,77 @@
+{% extends "flux/base.html" %}
+
+{% block title %}Flux Serve{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">flux.serve</p>
+      <h1>Service Platform</h1>
+    </div>
+    <span class="status-pill">wrapper boundary</span>
+  </div>
+  <p>Flux Serve coordinates Windows service wrappers, Linux systemd units, worker heartbeats, and approved service commands.</p>
+</section>
+
+<section class="stage-grid">
+  <article class="stage-card">
+    <span>WIN</span>
+    <h2>.NET 10</h2>
+    <p>Windows service wrapper supervises the Python Flux worker and reports health.</p>
+  </article>
+  <article class="stage-card">
+    <span>LIN</span>
+    <h2>systemd</h2>
+    <p>Linux deployments use native unit files for web and worker lifecycles.</p>
+  </article>
+  <article class="stage-card">
+    <span>DB</span>
+    <h2>Commands</h2>
+    <p>Management actions flow through auditable command rows, not arbitrary shell execution.</p>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel-header"><h1>Heartbeats</h1></div>
+  {% if heartbeats %}
+    <table>
+      <thead><tr><th>Service</th><th>Instance</th><th>Platform</th><th>Status</th><th>Last Seen</th></tr></thead>
+      <tbody>
+        {% for heartbeat in heartbeats %}
+          <tr>
+            <td>{{ heartbeat.service_name }}</td>
+            <td>{{ heartbeat.instance_id }}</td>
+            <td>{{ heartbeat.platform }}</td>
+            <td><span class="status-pill">{{ heartbeat.status }}</span></td>
+            <td>{{ heartbeat.last_seen_at }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No worker heartbeats recorded yet.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <div class="panel-header"><h1>Recent Commands</h1></div>
+  {% if commands %}
+    <table>
+      <thead><tr><th>Command</th><th>Status</th><th>Requested By</th><th>Requested</th></tr></thead>
+      <tbody>
+        {% for command in commands %}
+          <tr>
+            <td>{{ command.command }}</td>
+            <td>{{ command.status }}</td>
+            <td>{{ command.requested_by|default:"system" }}</td>
+            <td>{{ command.requested_at }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No service commands requested yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

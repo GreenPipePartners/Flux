@@ -1,0 +1,66 @@
+{
+  "name": "",
+  "tagType": "Provider",
+  "tags": [
+    {
+      "name": "WY",
+      "tagType": "Folder",
+      "tags": [
+        {
+          "name": "AL",
+          "tagType": "Folder",
+          "tags": [
+            {
+              "name": "PADS",
+              "tagType": "Folder",
+              "tags": [
+                {
+                  "name": "AL01-16",
+                  "tagType": "Folder",
+                  "tags": [
+                    {
+                      "name": "AL01-16_RTU_35",
+                      "tagType": "Folder",
+                      "tags": [
+                        {
+                          "name": "WELL",
+                          "tagType": "Folder",
+                          "tags": [
+                            {
+                              "name": "Well_01",
+                              "tagType": "Folder",
+                              "tags": [
+                                {
+                                  "name": "CYCLE_DATA",
+                                  "tagType": "Folder",
+                                  "tags": [
+                                    {
+                                      "dataType": "Float4",
+                                      "defaultValue": 1,
+                                      "name": "LOAD_FACTOR",
+                                      "tagType": "AtomicTag",
+                                      "value": 1,
+                                      "valueSource": "memory"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "_types_",
+      "tagType": "Folder"
+    }
+  ]
+}

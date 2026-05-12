@@ -1,0 +1,116 @@
+{% extends "flux/base.html" %}
+
+{% block title %}Flux Runtime Dashboard{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div>
+    <p class="eyebrow">Ignition companion server</p>
+    <h1>Bulk-read once. Render fast.</h1>
+    <p>
+      Flux displays database-backed runtime snapshots from Ignition tag reads, keeping control workflows in Perspective while reducing live UI traffic.
+    </p>
+    <div class="actions">
+      <a class="button" href="{% url 'admin:runtime_runtimetag_changelist' %}">Configure tags</a>
+      <a class="button button-secondary" href="{% url 'admin:runtime_tagschedule_changelist' %}">Schedules</a>
+    </div>
+  </div>
+  <pre class="ascii-pipe" aria-label="Flux data path">
+      IGNITION
+         || readBlocking
+         \/
+      POSTGRES
+         || latest values
+         \/
+        FLUX
+  </pre>
+</section>
+
+<section class="terminal-strip" aria-label="Flux bridge summary">
+  <span>&gt; source=postgres.latest_tag_value</span>
+  <span>&gt; stale_after={{ stale_after_seconds }}s</span>
+  <span class="terminal-ok">&gt; online={{ online_count }}</span>
+  <span>&gt; stale={{ stale_count }}</span>
+  <span>&gt; bad_quality={{ bad_quality_count }}</span>
+</section>
+
+<section class="stage-grid" aria-label="Runtime principles">
+  <article class="stage-card">
+    <span>01</span>
+    <h2>Bulk</h2>
+    <p>Ignition reads configured tag paths in schedule buckets instead of per-component bindings.</p>
+  </article>
+  <article class="stage-card">
+    <span>02</span>
+    <h2>Cache</h2>
+    <p>Latest values preserve value, quality, source timestamp, and read timestamp.</p>
+  </article>
+  <article class="stage-card">
+    <span>03</span>
+    <h2>Signal</h2>
+    <p>Every displayed value can be marked online, stale, bad quality, or missing.</p>
+  </article>
+  <article class="stage-card">
+    <span>04</span>
+    <h2>Control</h2>
+    <p>Control/write workflows stay in Perspective until Flux explicitly grows that boundary.</p>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">Runtime values</p>
+      <h1>Latest Tag Snapshots</h1>
+    </div>
+    <span class="status-pill">DB-backed</span>
+  </div>
+  {% if tags %}
+    <table>
+      <thead>
+        <tr>
+          <th>Asset</th>
+          <th>Tag</th>
+          <th>Value</th>
+          <th>Quality</th>
+          <th>Read At</th>
+          <th>Schedule</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tag in tags %}
+          <tr>
+            <td>{{ tag.asset_name|default:"-" }}</td>
+            <td><span title="{{ tag.full_path }}">{{ tag.display_name }}</span></td>
+            <td>
+              {% if tag.latest_value %}
+                {{ tag.latest_value.value }} {{ tag.engineering_units }}
+              {% else %}
+                <span class="status-missing">missing</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if tag.latest_value %}
+                <span class="status-pill">{{ tag.latest_value.quality_code }}</span>
+              {% else %}
+                <span class="status-pill status-missing">No read</span>
+              {% endif %}
+            </td>
+            <td>{% if tag.latest_value %}{{ tag.latest_value.read_at }}{% else %}-{% endif %}</td>
+            <td>{{ tag.schedule.name }} / {{ tag.schedule.interval_seconds }}s</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty-state">
+      <h2>No tags configured yet</h2>
+      <p>Add schedules and runtime tags in admin to populate the first Flux dashboard.</p>
+      <div class="actions">
+        <a class="button" href="{% url 'admin:runtime_tagschedule_add' %}">Add schedule</a>
+        <a class="button button-secondary" href="{% url 'admin:runtime_runtimetag_add' %}">Add tag</a>
+      </div>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

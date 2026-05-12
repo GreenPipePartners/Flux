@@ -1,0 +1,23 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+db.sqlite3
+*.sqlite3
+media/
+staticfiles/
+node_modules/
+.opencode/node_modules/
+.opencode/
+
+# .NET build and local OPC UA certificate state
+bin/
+obj/
+pki/
+
+# Local/generated project data
+dev_tag_builder/out/
+local_source_exports/

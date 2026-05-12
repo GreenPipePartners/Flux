@@ -1,0 +1,127 @@
+{% extends "flux/base.html" %}
+
+{% block title %}Flux Field{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">flux.field</p>
+      <h1>Field Device Platform</h1>
+    </div>
+    <span class="status-pill">OPC UA boundary</span>
+  </div>
+  <p>Flux Field maps simulated values into a field-device interface. The first implementation target is a .NET OPC UA server that can run under Windows Service or systemd.</p>
+</section>
+
+<section class="panel">
+  <div class="panel-header"><h1>Endpoints</h1></div>
+  {% if endpoints %}
+    <table>
+      <thead><tr><th>Name</th><th>Endpoint</th><th>Security</th><th>Status</th><th>Nodes</th></tr></thead>
+      <tbody>
+        {% for endpoint in endpoints %}
+          <tr>
+            <td>{{ endpoint.name }}</td>
+            <td>{{ endpoint.endpoint_url }}</td>
+            <td>{{ endpoint.security_policy }}</td>
+            <td><span class="status-pill">{{ endpoint.status }}</span></td>
+            <td>{{ endpoint.nodes.count }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No Flux Field endpoints configured yet.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <div class="panel-header"><h1>Devices</h1></div>
+  {% if devices %}
+    <table>
+      <thead><tr><th>Device</th><th>Endpoint</th><th>Type</th><th>Tags</th><th>Enabled</th></tr></thead>
+      <tbody>
+        {% for device in devices %}
+          <tr>
+            <td>{{ device.name }}</td>
+            <td>{{ device.endpoint.name }}</td>
+            <td>{{ device.device_type }}</td>
+            <td>{{ device.tags.count }}</td>
+            <td>{{ device.enabled }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No simulated field devices configured yet.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <div class="panel-header"><h1>Simulated Device Tags</h1></div>
+  {% if field_tags %}
+    <table>
+      <thead><tr><th>Device</th><th>Tag</th><th>Type</th><th>Update</th><th>Simulation</th><th>Range</th></tr></thead>
+      <tbody>
+        {% for tag in field_tags %}
+          <tr>
+            <td>{{ tag.device.name }}</td>
+            <td>{{ tag.name }}</td>
+            <td>{{ tag.data_type }}</td>
+            <td>{{ tag.update_rate_ms }}ms</td>
+            <td>{{ tag.simulation_type }}</td>
+            <td>{{ tag.min_value|default:"-" }} to {{ tag.max_value|default:"-" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No simulated device tags configured yet.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <div class="panel-header"><h1>OPC Nodes</h1></div>
+  {% if nodes %}
+    <table>
+      <thead><tr><th>Node ID</th><th>Browse Name</th><th>Sim Tag</th><th>Schedule</th><th>Enabled</th></tr></thead>
+      <tbody>
+        {% for node in nodes %}
+          <tr>
+            <td>{{ node.node_id }}</td>
+            <td>{{ node.browse_name }}</td>
+            <td>{{ node.field_tag|default:"-" }}</td>
+            <td>{% if node.field_tag %}{{ node.field_tag.update_rate_ms }}ms{% else %}-{% endif %}</td>
+            <td>{{ node.enabled }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No OPC node mappings configured yet.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <div class="panel-header"><h1>Agent Heartbeats</h1></div>
+  {% if heartbeats %}
+    <table>
+      <thead><tr><th>Endpoint</th><th>Instance</th><th>PID</th><th>Nodes</th><th>Last Seen</th></tr></thead>
+      <tbody>
+        {% for heartbeat in heartbeats %}
+          <tr>
+            <td>{{ heartbeat.endpoint }}</td>
+            <td>{{ heartbeat.instance_id }}</td>
+            <td>{{ heartbeat.process_id|default:"-" }}</td>
+            <td>{{ heartbeat.current_node_count }}</td>
+            <td>{{ heartbeat.last_seen_at }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No Flux Field agent heartbeats recorded yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

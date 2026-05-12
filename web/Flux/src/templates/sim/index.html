@@ -1,0 +1,77 @@
+{% extends "flux/base.html" %}
+
+{% block title %}Flux Sim{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">flux.sim</p>
+      <h1>Simulation Platform</h1>
+    </div>
+    <span class="status-pill">scheduled values</span>
+  </div>
+  <p>Flux Sim configures simulated Ignition memory tags, writes values on schedules, and can backfill historian data.</p>
+</section>
+
+<section class="stage-grid">
+  {% for schedule in schedules %}
+    <article class="stage-card">
+      <span>{{ schedule.interval_seconds }}s</span>
+      <h2>{{ schedule.name }}</h2>
+      <p>{{ schedule.tags.count }} simulated tags assigned.</p>
+    </article>
+  {% empty %}
+    <article class="stage-card">
+      <span>SIM</span>
+      <h2>No Schedules</h2>
+      <p>Run migrations to seed 1s, 5s, and 10s simulation schedules.</p>
+    </article>
+  {% endfor %}
+</section>
+
+<section class="panel">
+  <div class="panel-header"><h1>Simulated Tags</h1></div>
+  {% if tags %}
+    <table>
+      <thead><tr><th>Path</th><th>Type</th><th>Pattern</th><th>Schedule</th><th>Last Value</th><th>Next Write</th></tr></thead>
+      <tbody>
+        {% for tag in tags %}
+          <tr>
+            <td>{{ tag.tag_path }}</td>
+            <td>{{ tag.data_type }}</td>
+            <td>{{ tag.pattern }}</td>
+            <td>{{ tag.schedule.interval_seconds }}s</td>
+            <td>{{ tag.last_value|default:"-" }}</td>
+            <td>{{ tag.next_write_at }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No simulated tags configured yet.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <div class="panel-header"><h1>History Backfills</h1></div>
+  {% if backfills %}
+    <table>
+      <thead><tr><th>Name</th><th>Status</th><th>Start</th><th>Duration</th><th>Interval</th></tr></thead>
+      <tbody>
+        {% for backfill in backfills %}
+          <tr>
+            <td>{{ backfill.name }}</td>
+            <td><span class="status-pill">{{ backfill.status }}</span></td>
+            <td>{{ backfill.start_at }}</td>
+            <td>{{ backfill.duration_days }} days</td>
+            <td>{{ backfill.interval_seconds }}s</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No history backfill jobs configured yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

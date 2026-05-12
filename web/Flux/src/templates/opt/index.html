@@ -1,0 +1,44 @@
+{% extends "flux/base.html" %}
+
+{% block title %}Flux Opt{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">flux.opt</p>
+      <h1>Optimization Platform</h1>
+    </div>
+    <span class="status-pill">scheduler scaffold</span>
+  </div>
+  <p>Flux Opt owns refresh lanes, browse discovery, leases, and lazy cold-spot work.</p>
+</section>
+
+<section class="terminal-strip">
+  <span>&gt; optimized_paths={{ tag_path_count }}</span>
+  <span>&gt; browse_nodes={{ browse_node_count }}</span>
+  <span>&gt; active_leases={{ active_lease_count }}</span>
+</section>
+
+<section class="panel">
+  <div class="panel-header"><h1>Refresh Lanes</h1></div>
+  {% if lanes %}
+    <table>
+      <thead><tr><th>Lane</th><th>Interval</th><th>Priority</th><th>Batch</th><th>Enabled</th></tr></thead>
+      <tbody>
+        {% for lane in lanes %}
+          <tr>
+            <td>{{ lane.name }}</td>
+            <td>{{ lane.interval_seconds }}s</td>
+            <td>{{ lane.priority }}</td>
+            <td>{{ lane.max_batch_size }}</td>
+            <td>{{ lane.enabled }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No refresh lanes configured yet. Seed hot, warm, cool, and lazy lanes next.</p>
+  {% endif %}
+</section>
+{% endblock %}

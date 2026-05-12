@@ -1,0 +1,16 @@
+[Unit]
+Description=Flux Worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=flux
+Group=flux
+WorkingDirectory=/opt/flux
+EnvironmentFile=/etc/flux/flux.env
+ExecStart=/opt/flux/.venv/bin/python manage.py flux_worker
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

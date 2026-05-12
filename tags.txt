@@ -1,0 +1,212 @@
+
+==============================
+Tag: [default]Scripts/Card Data/Combustor
+Quality: Good
+Timestamp: Thu Apr 30 19:57:20 MDT 2026
+Dataset Contents:
+TagName	TagDescription	DataType	Overview	Detail	Summary	Setpoint
+DESCRIPTION_META	Description Meta	NA	False	True	False	False
+MESSAGE_PILOT	Message Pilot	NA	False	True	False	False
+MESSAGE_STACK	Message Stack	NA	False	True	False	False
+TEMPERATURE_PILOT	Temperature Pilot	NA	True	True	True	False
+TEMPERATURE_STACK	Temperature Stack	NA	True	True	True	False
+==============================
+Tag: [default]Scripts/Card Data/Compressor
+Quality: Good
+Timestamp: Thu Apr 30 19:57:20 MDT 2026
+Dataset Contents:
+TagName	DataType	Overview	Detail	Summary	Setpoint
+TestTag01	DI	False	False	False	False
+TestTag02	AI	False	False	False	False
+==============================
+Tag: [default]Scripts/Card Data/Cooler
+Quality: Good
+Timestamp: Thu Apr 30 19:57:20 MDT 2026
+Dataset Contents:
+TagName	TagDescription	DataType	Overview	Detail	Summary	Setpoint
+DESCRIPTION_META	Description Meta	SI	False	False	False	False
+PRESSURE_OIL	Pressure Oil	AI	True	False	True	False
+TEMPERATURE_INLET	Temperature Inlet	AI	True	False	True	False
+TEMPERATURE_OUTLET	Temperature Outlet	AI	True	False	True	False
+==============================
+Tag: [default]Scripts/Card Data/Dehy
+Quality: Good
+Timestamp: Thu Apr 30 19:57:20 MDT 2026
+Dataset Contents:
+TagName	TagDescription	DataType	Overview	Detail	Summary	Setpoint
+DESCRIPTION_META	Description	NA	True	False	True	False
+TEMPERATURE	Temperature	NA	True	False	True	False
+==============================
+Tag: [default]Scripts/Card Data/Engine
+Quality: Good
+Timestamp: Thu Apr 30 19:57:20 MDT 2026
+Dataset Contents:
+TagName	TagDescription	DataType	Overview	Detail	Summary	Setpoint
+Pressure_Catalyst_DP	Catalyst DP	AI	True	True	True	False
+Temp_Catalyst_Inlet	Pre Catalyst Temp	AI	True	True	True	True
+Temp_Catalyst_Outlet	Post Catalyst Temp	AI	True	True	True	True
+==============================
+Tag: [default]Scripts/Card Data/GAPL
+Quality: Good
+Timestamp: Thu Apr 30 19:57:20 MDT 2026
+Dataset Contents:
+TagName	TagDescription	DataType	Overview	Detail	Summary	Setpoint
+VOLUME_RATE	Flow Rate	NA	True	True	True	False
+PRESSURE_DIFF	Differential Pressure	NA	False	True	True	False
+PRESSURE_STATIC	Static Pressure	NA	True	True	True	False
+TEMPERATURE	Gas Temperature	NA	True	True	True	True
+VOLUME_TDAY	Volume Today	NA	True	True	False	False
+VOLUME_TDAY_PROJECTED	Volume Today Projected	NA	False	True	False	False
+VOLUME_TDAY_EXPECTED	Volume Today Expected	NA	False	True	False	False
+VOLUME_YDAY	Volume Yesterday	NA	True	True	True	True
+VOLUME_YDAY_EXPECTED	Volume Yesterday Expected	NA	False	True	True	False
+VOLUME_YDAY_VARIANCE	Volume Yesterday Variance	NA	True	True	True	False
+VOLUME_TDAY_EXPECTED	Volume Expected Today	NA	False	True	False	False
+TIME_TDAY	Flow Time Today	NA	False	True	False	False
+TIME_YDAY	Flow Time Yesterday	NA	False	True	False	False
+==============================
+Tag: [default]Scripts/Card Data/GAPL_INJ
+Quality: Good
+Timestamp: Thu Apr 30 19:57:20 MDT 2026
+Dataset Contents:
+TagName	TagDescription	DataType	Overview	Detail	Summary	Setpoint
+VOLUME_RATE	Flow Rate	NA	True	True	True	False
+PRESSURE_DIFF	Differential Pressure	NA	False	True	True	False
+PRESSURE_STATIC	Static Pressure	NA	True	True	True	False
+TEMPERATURE	Gas Temperature	NA	True	True	True	True
+VOLUME_TDAY	Volume Today	NA	True	True	False	False
+VOLUME_TDAY_PROJECTED	Volume Today Projected	NA	False	True	False	False
+VOLUME_TDAY_EXPECTED	Volume Today Expected	NA	False	True	False	False
+VOLUME_YDAY	Volume Yesterday	NA	True	True	True	True
+VOLUME_YDAY_EXPECTED	Volume Yesterday Expected	NA	False	True	True	False
+VOLUME_YDAY_VARIANCE	Volume Yesterday Variance	NA	True	True	True	False
+VOLUME_TDAY_EXPECTED	Volume Expected Today	NA	False	True	False	False
+TIME_TDAY	Flow Time Today	NA	False	True	False	False
+TIME_YDAY	Flow Time Yesterday	NA	False	True	False	False
+==============================
+Tag: [default]Scripts/Card Data/Inst_Air_Compressor
+Quality: Good
+Timestamp: Thu Apr 30 19:57:20 MDT 2026
+Dataset Contents:
+TagName	TagDescription	DataType	Overview	Detail	Summary	Setpoint
+DESCRIPTION_META	Description Meta	NA	False	True	False	False
+PRESSURE	Pressure	NA	True	True	True	False
+SETPOINT_LO	Setpoint Lo	NA	True	True	True	False
+SETPOINT_LOLO	Setpoint LoLo	NA	True	True	True	False
+ALARM_LO	Alarm Lo	NA	True	True	True	True
+ALARM_LOLO	Alarm LoLo	NA	True	True	True	True
+==============================
+Tag: [default]Scripts/Card Data/Meter_Gas
+Quality: Good
+Timestamp: Thu Apr 30 19:57:20 MDT 2026
+Dataset Contents:
+TagName	TagDescription	DataType	Overview	Detail	Summary	Setpoint
+VOLUME_RATE	Flow Rate	NA	True	True	True	False
+PRESSURE_DIFF	Differential Pressure	NA	False	True	True	False
+PRESSURE_STATIC	Static Pressure	NA	True	True	True	False
+TEMPERATURE	Gas Temperature	NA	True	True	True	True
+VOLUME_TDAY	Volume Today	NA	True	True	False	False
+VOLUME_TDAY_PROJECTED	Volume Today Projected	NA	False	True	False	False
+VOLUME_TDAY_EXPECTED	Volume Today Expected	NA	False	True	False	False
+VOLUME_YDAY	Volume Yesterday	NA	True	True	True	True
+VOLUME_YDAY_EXPECTED	Volume Yesterday Expected	NA	False	True	True	False
+VOLUME_YDAY_VARIANCE	Volume Yesterday Variance	NA	True	True	True	False
+VOLUME_TDAY_EXPECTED	Volume Expected Today	NA	False	True	False	False
+TIME_TDAY	Flow Time Today	NA	False	True	False	False
+TIME_YDAY	Flow Time Yesterday	NA	False	True	False	False
+ORIFICE_DIA	Orifice Diameter	NA	True	True	False	False
+==============================
+Tag: [default]Scripts/Card Data/Meter_Liquid
+Quality: Good
+Timestamp: Thu Apr 30 19:57:20 MDT 2026
+Dataset Contents:
+TagName	TagDescription	DataType	Overview	Detail	Summary	Setpoint
+VOLUME_RATE	Flow Rate	NA	True	True	True	False
+VOLUME_TDAY	Volume Today	NA	True	True	True	False
+VOLUME_YDAY	Volume Yesterday	NA	True	True	True	False
+==============================
+Tag: [default]Scripts/Card Data/Pressure
+Quality: Good
+Timestamp: Thu Apr 30 19:57:20 MDT 2026
+Dataset Contents:
+TagName	TagDescription	DataType	Overview	Detail	Summary	Setpoint
+DESCRIPTION_META	Description Meta	NA	False	True	False	False
+PRESSURE	Pressure	NA	True	True	True	False
+HiHi_Lim	Hi Limit Setpoint		True	True	True	True
+LoLo_Lim	Lo Limit Setpoint		True	True	True	True
+PRESSURE_30MinAvg	30 Minute Average		True	True	True	False
+==============================
+Tag: [default]Scripts/Card Data/Pump
+Quality: Good
+Timestamp: Thu Apr 30 19:57:20 MDT 2026
+Dataset Contents:
+TagName	DataType	Overview	Detail	Summary	Setpoint
+TestTag01	DI	False	False	False	False
+TestTag02	AI	False	False	False	False
+==============================
+Tag: [default]Scripts/Card Data/Reboiler
+Quality: Good
+Timestamp: Thu Apr 30 19:57:20 MDT 2026
+Dataset Contents:
+TagName	TagDescription	DataType	Overview	Detail	Summary	Setpoint
+DESCRIPTION_META	Description	NA	False	True	False	False
+TEMPERATURE	Temperature	NA	True	True	True	False
+==============================
+Tag: [default]Scripts/Card Data/ROLLUP
+Quality: Good
+Timestamp: Thu Apr 30 19:57:20 MDT 2026
+Dataset Contents:
+TagName	TagDescription	DataType	Overview	Detail	Summary	Setpoint
+VOLUME_RATE	Volume Rate	AI	True	True	True	True
+VOLUME_YDAY	Volume Yesterday	AI	True	True	True	True
+VOLUME_YDAY_EXPECTED	Volume Yesterday Expected	AI	True	False	False	False
+VOLUME_YDAY_VARIANCE	Volume Yesterday Variance	AI	True	False	False	False
+VOLUME_YDAY_VARIANCE_PCT	Volume Yesterday Variance Percentage	AI	True	False	False	False
+VOLUME_YDAY_DIFF	Volume Yesterday Difference	AI	True	True	True	False
+==============================
+Tag: [default]Scripts/Card Data/Tank
+Quality: Good
+Timestamp: Thu Apr 30 19:57:20 MDT 2026
+Dataset Contents:
+TagName	TagDescription	DataType	Overview	Detail	Summary	Setpoint
+DESCRIPTION	Tag ID	NA	False	True	True	False
+ERROR	Tank Transmitter Error	NA	False	True	True	False
+LEVEL_COUNT	Number of Levels Detected	NA	False	True	True	False
+LEVEL_IFC	Interface Level (Water)	NA	True	True	True	False
+LEVEL_TOP	Top Level (Oil)	NA	True	True	True	False
+LSHH	High High Level Switch	NA	True	True	True	False
+==============================
+Tag: [default]Scripts/Card Data/TEG
+Quality: Good
+Timestamp: Thu Apr 30 19:57:20 MDT 2026
+Dataset Contents:
+TagName	TagDescription	DataType	Overview	Detail	Summary	Setpoint
+DESCRIPTION_META	Description Meta	NA	False	True	False	False
+STATUS	Run Status	NA	True	True	True	False
+==============================
+Tag: [default]Scripts/Card Data/Transmitter
+Quality: Good
+Timestamp: Thu Apr 30 19:57:20 MDT 2026
+Dataset Contents:
+TagName	TagDescription	DataType	Overview	Detail	Summary	Setpoint
+DESCRIPTION_META	Description Meta	NA	True	False	True	False
+MESSAGE_PILOT	Message Pilot	NA	False	True	False	False
+MESSAGE_STACK	Message Stack	NA	False	True	False	False
+TEMPERATURE_PILOT	Temperature Pilot	NA	True	False	True	False
+TEMPERATURE_STACK	Temperature Stack	NA	True	False	True	False
+==============================
+Tag: [default]Scripts/Card Data/Well
+Quality: Good
+Timestamp: Thu Apr 30 19:57:20 MDT 2026
+Dataset Contents:
+TagName	TagDescription	DataType	Overview	Detail	Summary	Setpoint
+WELL_CATEGORY	Well Category	NA	True	True	True	True
+PROGRAM_MESSAGE	Program Message	NA	True	True	True	True
+CYCLE_DATA/NONARRIVALS_CONS	Consecutive Non-Arrivals	NA	True	True	True	True
+CYCLE_DATA/NONARRIVALS_TDAY	Non-Arrivals Today	NA	True	True	True	True
+CYCLE_DATA/NONARRIVALS_YDAY	Non-Arrivals Yday	NA	False	True	True	True
+PRESSURE_TUBING	Tubing Pressure	NA	True	True	True	True
+PRESSURE_CASING	Casing Pressure	NA	True	True	True	True
+VOLUME_RATE	Volume Rate	NA	False	True	True	False
+VOLUME_RATE_CRITICAL	Volume Rate Critical	NA	False	True	True	False
+LOAD_FACTOR	Load Factor	NA	False	True	True	False

@@ -1,0 +1,36 @@
+{% extends "flux/base.html" %}
+
+{% block title %}Flux Trace{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">flux.trace</p>
+      <h1>Historical Tag Trace</h1>
+    </div>
+    <span class="status-pill">history scaffold</span>
+  </div>
+  <p>Flux Trace will query samples, trends, and historical context while Flux Live stays focused on current state.</p>
+</section>
+
+<section class="panel">
+  {% if samples %}
+    <table>
+      <thead><tr><th>Tag</th><th>Value</th><th>Quality</th><th>Read At</th></tr></thead>
+      <tbody>
+        {% for sample in samples %}
+          <tr>
+            <td>{{ sample.tag }}</td>
+            <td>{{ sample.value }}</td>
+            <td>{{ sample.quality_code }}</td>
+            <td>{{ sample.read_at }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No historical samples recorded yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

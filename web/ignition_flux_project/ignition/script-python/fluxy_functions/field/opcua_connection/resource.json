@@ -1,0 +1,17 @@
+{
+  "scope": "A",
+  "version": 1,
+  "restricted": false,
+  "overridable": true,
+  "files": [
+    "code.py"
+  ],
+  "attributes": {
+    "lastModificationSignature": "a57eb83b0c9b921a02e6da26cdb285e4e69737662f505fb34f27ab91ef1a5528",
+    "hintScope": 2,
+    "lastModification": {
+      "actor": "fluxy.deploy_scripting",
+      "timestamp": "2026-05-11T00:00:00Z"
+    }
+  }
+}

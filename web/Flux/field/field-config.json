@@ -1,0 +1,60 @@
+{
+  "endpoints": [
+    {
+      "application_uri": "urn:flux:field",
+      "devices": [
+        {
+          "browse_path": "Devices",
+          "device_type": "ControlLogix",
+          "name": "FluxLogix001",
+          "tags": [
+            {
+              "browse_name": "BoolTag",
+              "data_type": "bool",
+              "initial_value": "false",
+              "max_value": null,
+              "min_value": null,
+              "name": "BoolTag",
+              "node_id": "ns=2;s=FluxLogix001.BoolTag",
+              "opc_item_path": "FluxLogix001/BoolTag",
+              "simulation_type": "toggle",
+              "update_rate_ms": 1000,
+              "variance": 0.0
+            },
+            {
+              "browse_name": "FloatTag",
+              "data_type": "float",
+              "initial_value": "50.0",
+              "max_value": 100.0,
+              "min_value": 0.0,
+              "name": "FloatTag",
+              "node_id": "ns=2;s=FluxLogix001.FloatTag",
+              "opc_item_path": "FluxLogix001/FloatTag",
+              "simulation_type": "wave",
+              "update_rate_ms": 10000,
+              "variance": 0.1
+            },
+            {
+              "browse_name": "IntegerTag",
+              "data_type": "int",
+              "initial_value": "0",
+              "max_value": 1000.0,
+              "min_value": 0.0,
+              "name": "IntegerTag",
+              "node_id": "ns=2;s=FluxLogix001.IntegerTag",
+              "opc_item_path": "FluxLogix001/IntegerTag",
+              "simulation_type": "ramp",
+              "update_rate_ms": 5000,
+              "variance": 0.0
+            }
+          ]
+        }
+      ],
+      "endpoint_url": "opc.tcp://localhost:4840/flux/field",
+      "name": "local-field",
+      "namespace_uri": "urn:flux:field:sim",
+      "product_uri": "urn:flux:field",
+      "security_policy": "None"
+    }
+  ]
+}

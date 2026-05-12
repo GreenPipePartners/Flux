@@ -1,0 +1,45 @@
+{% extends "flux/base.html" %}
+
+{% block title %}Flux Live{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">flux.live</p>
+      <h1>Live Tag Snapshots</h1>
+    </div>
+    <span class="status-pill">current state</span>
+  </div>
+  <p>Flux Live renders the latest cached tag values without live Perspective binding pressure.</p>
+</section>
+
+<section class="terminal-strip">
+  <span>&gt; stale_after={{ stale_after_seconds }}s</span>
+  <span class="terminal-ok">&gt; online={{ online_count }}</span>
+  <span>&gt; stale={{ stale_count }}</span>
+  <span>&gt; bad_quality={{ bad_quality_count }}</span>
+</section>
+
+<section class="panel">
+  {% if tags %}
+    <table>
+      <thead><tr><th>Asset</th><th>Tag</th><th>Value</th><th>Quality</th><th>Read At</th><th>Schedule</th></tr></thead>
+      <tbody>
+        {% for tag in tags %}
+          <tr>
+            <td>{{ tag.asset_name|default:"-" }}</td>
+            <td><span title="{{ tag.full_path }}">{{ tag.display_name }}</span></td>
+            <td>{% if tag.latest_value %}{{ tag.latest_value.value }} {{ tag.engineering_units }}{% else %}<span class="status-missing">missing</span>{% endif %}</td>
+            <td>{% if tag.latest_value %}<span class="status-pill">{{ tag.latest_value.quality_code }}</span>{% else %}<span class="status-pill status-missing">No read</span>{% endif %}</td>
+            <td>{% if tag.latest_value %}{{ tag.latest_value.read_at }}{% else %}-{% endif %}</td>
+            <td>{{ tag.schedule.name }} / {{ tag.schedule.interval_seconds }}s</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No live tags configured yet. Existing runtime models will feed this view.</p>
+  {% endif %}
+</section>
+{% endblock %}

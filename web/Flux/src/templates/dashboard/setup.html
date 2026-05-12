@@ -1,0 +1,54 @@
+{% extends "flux/base.html" %}
+
+{% block title %}Initial Flux Setup{% endblock %}
+
+{% block content %}
+<section class="hero setup-hero">
+  <div>
+    <p class="eyebrow">First-run configuration</p>
+    <h1>Welcome to Flux!</h1>
+    <p>
+      Please create an admin user account to get started.
+    </p>
+  </div>
+  <pre class="ascii-pipe" aria-label="Flux setup state">
+      FLUX SETUP
+         || no users
+         \/
+      SUPERUSER
+         || admin access
+         \/
+      READY
+  </pre>
+</section>
+
+<section class="panel narrow-panel">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">Bootstrap admin</p>
+      <h1>Initial Account</h1>
+    </div>
+    <span class="status-pill">Required</span>
+  </div>
+
+  <form method="post" class="form-stack">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+      <div class="error-text">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    {% for field in form %}
+      <label for="{{ field.id_for_label }}">
+        {{ field.label }}
+        {{ field }}
+        {% if field.help_text %}<span class="form-help">{{ field.help_text }}</span>{% endif %}
+        {% if field.errors %}<span class="error-text">{{ field.errors }}</span>{% endif %}
+      </label>
+    {% endfor %}
+
+    <div class="actions">
+      <button class="button" type="submit">Create superuser</button>
+    </div>
+  </form>
+</section>
+{% endblock %}
