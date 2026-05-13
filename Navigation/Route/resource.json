@@ -1,0 +1,60 @@
+{
+  "scope": "DG",
+  "version": 2,
+  "restricted": false,
+  "overridable": true,
+  "files": [
+    "query.sql"
+  ],
+  "attributes": {
+    "useMaxReturnSize": false,
+    "autoBatchEnabled": false,
+    "fallbackValue": "",
+    "maxReturnSize": 100,
+    "cacheUnit": "SEC",
+    "type": "Query",
+    "enabled": true,
+    "cacheAmount": 1,
+    "cacheEnabled": false,
+    "database": "Navigation",
+    "fallbackEnabled": false,
+    "lastModificationSignature": "fe4657db362f1b99239110831b1b655b7399c90862271a572020a488f4095d79",
+    "permissions": [
+      {
+        "zone": "",
+        "role": ""
+      }
+    ],
+    "lastModification": {
+      "actor": "bmiller",
+      "timestamp": "2026-03-10T14:08:46Z"
+    },
+    "parameters": [
+      {
+        "type": "Parameter",
+        "identifier": "site_id",
+        "sqlType": 2
+      },
+      {
+        "type": "Parameter",
+        "identifier": "route_id",
+        "sqlType": 2
+      },
+      {
+        "type": "Parameter",
+        "identifier": "subroute_num",
+        "sqlType": 2
+      },
+      {
+        "type": "Parameter",
+        "identifier": "lease_id",
+        "sqlType": 2
+      },
+      {
+        "type": "Parameter",
+        "identifier": "well_id",
+        "sqlType": 2
+      }
+    ]
+  }
+}

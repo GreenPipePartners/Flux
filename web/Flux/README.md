@@ -14,6 +14,42 @@ uv run python manage.py runserver
 
 Local settings default to SQLite when `DATABASE_URL` is empty. Production should use Postgres.
 
+SQLite is acceptable for simple page checks, but it will lock under the live demo pattern where Django serves HTMX requests while a worker writes runtime values. Use Postgres for any concurrent web + worker run.
+
+## Local Postgres
+
+Create a local Flux database and role:
+
+```bash
+sudo -u postgres createuser --pwprompt flux
+sudo -u postgres createdb --owner flux flux
+```
+
+Create `.env` from the example:
+
+```bash
+cp .env.example .env
+```
+
+Ensure it contains:
+
+```text
+DATABASE_URL=postgres://flux:flux@localhost:5432/flux
+```
+
+Then migrate and run:
+
+```bash
+uv run python manage.py migrate
+uv run python manage.py runserver
+```
+
+Run the live Field demo worker in another terminal:
+
+```bash
+uv run python manage.py run_field_demo --interval 10
+```
+
 ## First-Run Setup
 
 After deployment and migrations, Flux redirects to `/setup/` when no users exist. That page creates the initial Django superuser and then disables itself automatically because at least one user exists.

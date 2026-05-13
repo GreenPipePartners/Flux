@@ -1,0 +1,65 @@
+{
+  "scope": "DG",
+  "version": 2,
+  "restricted": false,
+  "overridable": true,
+  "files": [
+    "query.sql"
+  ],
+  "attributes": {
+    "useMaxReturnSize": false,
+    "autoBatchEnabled": false,
+    "fallbackValue": "",
+    "maxReturnSize": 100,
+    "cacheUnit": "SEC",
+    "type": "Query",
+    "enabled": true,
+    "cacheAmount": 1,
+    "cacheEnabled": false,
+    "database": "Navigation",
+    "fallbackEnabled": false,
+    "lastModificationSignature": "c214e99d5a4942748142b6f496c1b1c747f4733e948873fc317b26fb8292749f",
+    "permissions": [
+      {
+        "zone": "",
+        "role": ""
+      }
+    ],
+    "lastModification": {
+      "actor": "bmiller",
+      "timestamp": "2026-03-10T12:42:03Z"
+    },
+    "parameters": [
+      {
+        "type": "Parameter",
+        "identifier": "site_id",
+        "sqlType": 2
+      },
+      {
+        "type": "Parameter",
+        "identifier": "route_id",
+        "sqlType": 2
+      },
+      {
+        "type": "Parameter",
+        "identifier": "subroute_num",
+        "sqlType": 2
+      },
+      {
+        "type": "Parameter",
+        "identifier": "lease_id",
+        "sqlType": 2
+      },
+      {
+        "type": "Parameter",
+        "identifier": "facility_id",
+        "sqlType": 2
+      },
+      {
+        "type": "Parameter",
+        "identifier": "well_id",
+        "sqlType": 2
+      }
+    ]
+  }
+}

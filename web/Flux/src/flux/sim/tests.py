@@ -1,5 +1,10 @@
 from datetime import timedelta
+import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
+import sqlite3
 
+from django.core.management import call_command
 from django.test import TestCase
 from django.utils import timezone
 
@@ -121,6 +126,33 @@ class SimModelTests(TestCase):
         self.assertEqual(len(fx.historian.stored), 1)
 
 
+class SimAdapterTests(TestCase):
+    def test_import_command_loads_provider_export(self):
+        with TemporaryDirectory() as temp_dir:
+            source = Path(temp_dir) / "provider.json"
+            database = Path(temp_dir) / "sim.db"
+            source.write_text(json.dumps(provider_export_fixture()), encoding="utf-8")
+
+            call_command(
+                "import_tag_provider_export",
+                str(source),
+                "--database",
+                str(database),
+                "--provider",
+                "ACM02",
+                "--batch-size",
+                "2",
+            )
+
+            with sqlite3.connect(database) as connection:
+                total_nodes = connection.execute(
+                    "SELECT total_nodes FROM sim_provider WHERE name = ?",
+                    ("ACM02",),
+                ).fetchone()[0]
+
+        self.assertEqual(total_nodes, 4)
+
+
 class FakeFluxy:
     def __init__(self):
         self.tag = FakeTagApi()
@@ -148,3 +180,38 @@ class FakeHistorianApi:
     def store_data_points(self, paths, values, *, timestamps, qualities):
         self.stored.append({"paths": paths, "values": values, "timestamps": timestamps, "qualities": qualities})
         return ["Good" for _path in paths]
+
+
+def provider_export_fixture():
+    return {
+        "name": "Tag_02",
+        "tagType": "Provider",
+        "tags": [
+            {
+                "name": "Area",
+                "tagType": "Folder",
+                "tags": [
+                    {
+                        "name": "Device01",
+                        "tagType": "UdtInstance",
+                        "typeId": "[Tag_02]_types_/Device/SP/RTU",
+                        "parameters": {
+                            "OPC_Server": "ACM_02",
+                            "OPC_Device": "Device01",
+                        },
+                        "tags": [
+                            {
+                                "name": "PV",
+                                "tagType": "AtomicTag",
+                                "valueSource": "opc",
+                                "dataType": "Float4",
+                                "opcServer": "ACM_02",
+                                "opcItemPath": "ns=2;s=Device01.40001F",
+                                "value": 12.5,
+                            }
+                        ],
+                    }
+                ],
+            }
+        ],
+    }

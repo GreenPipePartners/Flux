@@ -1,0 +1,20 @@
+{% extends "flux/base.html" %}
+
+{% block title %}Flux Live Pad Overview{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">flux.live</p>
+      <h1>Pad Overview Demo</h1>
+    </div>
+    <span class="status-pill">field demo</span>
+  </div>
+  <p>Well, meter, and tank cards rendered from Flux runtime snapshots populated by the Flux Field demo.</p>
+</section>
+
+{% include "nav/partials/navigation_panel.html" %}
+
+{% include "live/partials/pad_overview_tab_panel.html" %}
+{% endblock %}

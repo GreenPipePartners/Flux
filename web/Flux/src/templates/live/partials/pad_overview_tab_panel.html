@@ -1,0 +1,25 @@
+<div id="pad-overview-panel" class="live-tab-panel">
+  <div class="live-tabs" role="tablist" aria-label="Pad equipment type">
+    {% for tab in equipment_tabs %}
+      <a
+        class="live-tab{% if tab == selected_equipment %} is-active{% endif %}"
+        href="{% url 'live:pad_overview' %}?equipment={{ tab|lower }}"
+        role="tab"
+        aria-selected="{% if tab == selected_equipment %}true{% else %}false{% endif %}"
+        hx-get="{% url 'live:pad_overview_tab_panel' %}?equipment={{ tab|lower }}"
+        hx-target="#pad-overview-panel"
+        hx-swap="outerHTML"
+        hx-push-url="{% url 'live:pad_overview' %}?equipment={{ tab|lower }}"
+      >{{ tab }}</a>
+    {% endfor %}
+  </div>
+
+  <div
+    class="live-refresh-panel"
+    hx-get="{% url 'live:pad_overview_cards' %}?equipment={{ selected_equipment|lower }}"
+    hx-trigger="load, every 1s"
+    hx-swap="innerHTML"
+  >
+    {% include "live/partials/pad_overview_content.html" %}
+  </div>
+</div>

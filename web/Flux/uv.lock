@@ -99,7 +99,8 @@ dependencies = [
     { name = "django" },
     { name = "django-environ" },
     { name = "django-htmx" },
-    { name = "fluxy" },
+    { name = "flux-sim" },
+    { name = "fluxy-ign" },
     { name = "psycopg", extra = ["binary"] },
     { name = "whitenoise" },
 ]
@@ -120,7 +121,8 @@ requires-dist = [
     { name = "django", specifier = ">=5.0,<6.0" },
     { name = "django-environ", specifier = ">=0.11" },
     { name = "django-htmx", specifier = ">=1.18" },
-    { name = "fluxy", editable = "../../fluxy" },
+    { name = "flux-sim", editable = "../../sim" },
+    { name = "fluxy-ign", editable = "../../fluxy" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
     { name = "whitenoise", specifier = ">=6.7" },
 ]
@@ -134,7 +136,17 @@ dev = [
 linux = [{ name = "gunicorn", specifier = ">=23.0" }]
 
 [[package]]
-name = "fluxy"
+name = "flux-sim"
+version = "0.1.0"
+source = { editable = "../../sim" }
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=8.0" }]
+
+[[package]]
+name = "fluxy-ign"
 version = "0.1.0"
 source = { editable = "../../fluxy" }
 dependencies = [
@@ -142,7 +154,11 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "httpx", specifier = ">=0.27" }]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "sqlalchemy", marker = "extra == 'sqlalchemy'", specifier = ">=2.0" },
+]
+provides-extras = ["sqlalchemy"]
 
 [package.metadata.requires-dev]
 dev = [

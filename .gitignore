@@ -6,12 +6,16 @@ __pycache__/
 .mypy_cache/
 .pyright/
 db.sqlite3
+*.db
+*.sqlite
 *.sqlite3
 media/
 staticfiles/
 node_modules/
 .opencode/node_modules/
 .opencode/
+.env
+web/Flux/.env
 
 # .NET build and local OPC UA certificate state
 bin/
@@ -21,3 +25,4 @@ pki/
 # Local/generated project data
 dev_tag_builder/out/
 local_source_exports/
+tags02.json

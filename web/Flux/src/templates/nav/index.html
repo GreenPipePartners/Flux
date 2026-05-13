@@ -1,0 +1,18 @@
+{% extends "flux/base.html" %}
+
+{% block title %}Flux Navigation{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">flux.nav</p>
+      <h1>Navigation Filter</h1>
+    </div>
+    <span class="status-pill">configurable</span>
+  </div>
+  <p>DB-configured navigation profiles preserving action order, filter order, traversal order, query providers, and placements.</p>
+</section>
+
+{% include "nav/partials/navigation_panel.html" %}
+{% endblock %}

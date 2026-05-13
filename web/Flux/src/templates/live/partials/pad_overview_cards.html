@@ -1,0 +1,42 @@
+{% for card in cards %}
+  <article class="stage-card live-equipment-card">
+    <span>{{ card.equipment_type }}</span>
+    <h2>{{ card.title }}</h2>
+    <div class="live-point-list">
+      {% for point in card.points %}
+        <div class="live-point-row">
+          <div>
+            <strong>{{ point.label }}</strong>
+            <small title="{{ point.full_path }}">{{ point.quality }}{% if point.stale %} / stale{% endif %}</small>
+          </div>
+          <div class="live-point-value">
+            {% if point.value is not None %}{{ point.display_value }}{% else %}<span class="status-missing">missing</span>{% endif %}
+            {% if point.units %}<small>{{ point.units }}</small>{% endif %}
+            {% if point.history %}
+              <dl class="live-extremes">
+                {% for extreme in point.history %}
+                  <div class="live-extreme-range" style="--range-percent: {{ extreme.marker_percent }}%;" title="{{ extreme.label }} range">
+                    <dt class="sr-only">{{ extreme.label }}</dt>
+                    <dd>
+                      <span class="live-extreme-endpoint" title="min {{ extreme.label }}: {{ extreme.min_value }}" aria-label="min {{ extreme.label }}: {{ extreme.min_value }}"></span>
+                      <span class="live-extreme-track" aria-hidden="true">
+                        <span class="live-extreme-marker"></span>
+                      </span>
+                      <span class="live-extreme-endpoint" title="max {{ extreme.label }}: {{ extreme.max_value }}" aria-label="max {{ extreme.label }}: {{ extreme.max_value }}"></span>
+                    </dd>
+                  </div>
+                {% endfor %}
+              </dl>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </article>
+{% empty %}
+  <article class="stage-card">
+    <span>DEMO</span>
+    <h2>No Demo Values</h2>
+    <p>Run <code>uv run python manage.py run_field_demo --configure-ignition --once</code> to populate the first snapshots.</p>
+  </article>
+{% endfor %}

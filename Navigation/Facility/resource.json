@@ -1,0 +1,50 @@
+{
+  "scope": "DG",
+  "version": 2,
+  "restricted": false,
+  "overridable": true,
+  "files": [
+    "query.sql"
+  ],
+  "attributes": {
+    "useMaxReturnSize": false,
+    "autoBatchEnabled": false,
+    "fallbackValue": "",
+    "maxReturnSize": 100,
+    "cacheUnit": "SEC",
+    "type": "Query",
+    "enabled": true,
+    "cacheAmount": 1,
+    "cacheEnabled": false,
+    "database": "Navigation",
+    "fallbackEnabled": false,
+    "lastModificationSignature": "7fb009e949da3cb08becc17c9cdb4604fe2d03bed81db4536a6a992746e68266",
+    "permissions": [
+      {
+        "zone": "",
+        "role": ""
+      }
+    ],
+    "lastModification": {
+      "actor": "bmiller",
+      "timestamp": "2026-03-10T11:23:38Z"
+    },
+    "parameters": [
+      {
+        "type": "Parameter",
+        "identifier": "site_id",
+        "sqlType": 2
+      },
+      {
+        "type": "Parameter",
+        "identifier": "lease_id",
+        "sqlType": 2
+      },
+      {
+        "type": "Parameter",
+        "identifier": "facility_id",
+        "sqlType": 2
+      }
+    ]
+  }
+}

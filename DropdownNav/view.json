@@ -1,0 +1,2764 @@
+{
+  "custom": {},
+  "params": {
+    "currentFilters": {
+      "Facility": null,
+      "Field": 1,
+      "Lease": null,
+      "Pad": null,
+      "Route": 4,
+      "SubRoute": null,
+      "Well": null
+    },
+    "selectedName": "PD-4S"
+  },
+  "propConfig": {
+    "params.currentFilters": {
+      "binding": {
+        "config": {
+          "struct": {
+            "screen": "{/root.custom.currentFilters}",
+            "session": "{/root.custom.sessionFilters}",
+            "useSession": "{session.custom.useSessionProps}"
+          },
+          "waitOnAll": true
+        },
+        "transforms": [
+          {
+            "code": "\tif value[\u0027useSession\u0027]:\n\t\treturn value[\u0027session\u0027]\n\telse:\n\t\treturn value[\u0027screen\u0027]",
+            "type": "script"
+          }
+        ],
+        "type": "expr-struct"
+      },
+      "paramDirection": "output",
+      "persistent": true
+    },
+    "params.lastSelectedName": {
+      "binding": {
+        "config": {
+          "path": "/root.custom.selectedName"
+        },
+        "type": "property"
+      }
+    },
+    "params.selectedName": {
+      "binding": {
+        "config": {
+          "path": "/root.custom.selectedName"
+        },
+        "type": "property"
+      },
+      "paramDirection": "output",
+      "persistent": true
+    }
+  },
+  "props": {
+    "defaultSize": {
+      "height": 53,
+      "width": 1200
+    }
+  },
+  "root": {
+    "children": [
+      {
+        "events": {
+          "dom": {
+            "onClick": {
+              "config": {
+                "script": "\t\n\tif self.parent.custom.useSession:\n\t\tself.parent.custom.sessionFilters.Well \u003d None\n\t\tself.parent.custom.sessionFilters.Lease \u003d None\n\t\tself.parent.custom.sessionFilters.Pad \u003d None\n\t\tself.parent.custom.sessionFilters.SubRoute \u003d None\n\t\tself.parent.custom.sessionFilters.Route \u003d None\n\t\tself.parent.custom.sessionFilters.Field \u003d None\n\t\n\telse:\n\t\tself.parent.custom.currentFilters.Well \u003d None\n\t\tself.parent.custom.currentFilters.Lease \u003d None\n\t\tself.parent.custom.currentFilters.Pad \u003d None\n\t\tself.parent.custom.currentFilters.SubRoute \u003d None\n\t\tself.parent.custom.currentFilters.Route \u003d None\n\t\tself.parent.custom.currentFilters.Field \u003d None\n\t\tself.getSibling(\"Well_Dropdown\").props.value \u003d None\n\t\t\n\tself.getSibling(\"Facility_Dropdown\").props.value \u003d None\n\tself.getSibling(\"Lease_Dropdown\").props.value \u003d None\n\tself.getSibling(\"Pad_Dropdown\").props.value \u003d None\n\tself.getSibling(\"Sub_Route_Dropdown\").props.value \u003d None\n\tself.getSibling(\"Route_Dropdown\").props.value \u003d None\n\tself.getSibling(\"Field_Dropdown\").props.value \u003d None\n\tself.getSibling(\"Field_Dropdown\").props.value \u003d 1\n\tcategory \u003d \"clear\"\n\tobject_map \u003d {\n\t    \"lease\": \"Lease_Dropdown\",\n\t    \"well\": \"Well_Dropdown\",\n\t    \"site\": \"Pad_Dropdown\",\n\t    \"subroute\": \"Sub_Route_Dropdown\",\n\t    \"route\": \"Route_Dropdown\",\n\t    \"facility\": \"Facility_Dropdown\",\n\t}\n\tfilters \u003d {\n\t    key: self.getSibling(val).props.value\n\t    for key, val in object_map.items()\n\t}\n\tfrom Navigation.Filter import NavigationFilter\n\tnav_filter \u003d NavigationFilter(filters, None, category, \u0027Clear_Button\u0027)\n\tfilters, current_options \u003d nav_filter.update_navigation()\n\t\n\t\n\tfor key, value in object_map.items():\n\t    if key \u003d\u003d category:\n\t        continue\n\t    self.getSibling(value).props.value \u003d filters[key]\n\t    if current_options.get(key) is not None:\n\t        self.getSibling(value).props.options \u003d current_options.get(key)\n\tself.parent.custom.previousFilters.Lease \u003d None\n\tself.parent.custom.previousFilters.Pad \u003d None\n\tself.parent.custom.previousFilters.SubRoute \u003d None\n\tself.parent.custom.previousFilters.Route \u003d None\n\tself.parent.custom.previousFilters.Well \u003d None\n\tself.parent.custom.previousFilters.Facility \u003d None\n\t\n\tself.parent.custom.nextFilters.Lease \u003d None\n\tself.parent.custom.nextFilters.Pad \u003d None\n\tself.parent.custom.nextFilters.SubRoute \u003d None\n\tself.parent.custom.nextFilters.Route \u003d None\n\tself.parent.custom.nextFilters.Well \u003d None\n\tself.parent.custom.nextFilters.Facility \u003d None\n\tself.parent.custom.lastSelectedDropdown \u003d \u0027Field_Dropdown\u0027\n\t\n#\tsystem.perspective.print(\u0027Query Count: %s\u0027%nav_filter.query_count)\n"
+              },
+              "scope": "G",
+              "type": "script"
+            }
+          }
+        },
+        "meta": {
+          "name": "Clear Button"
+        },
+        "position": {
+          "basis": "80px"
+        },
+        "props": {
+          "style": {
+            "classes": "Buttons/Button01"
+          },
+          "text": "CLEAR"
+        },
+        "type": "ia.input.button"
+      },
+      {
+        "events": {
+          "component": {
+            "onActionPerformed": {
+              "config": {
+                "script": "\tself.parent.custom.lastSelectedDropdown \u003d \"Field_Dropdown\""
+              },
+              "scope": "G",
+              "type": "script"
+            }
+          }
+        },
+        "meta": {
+          "name": "Field_Dropdown"
+        },
+        "position": {
+          "basis": "100px",
+          "grow": 1
+        },
+        "propConfig": {
+          "custom.fieldQueryString": {
+            "binding": {
+              "config": {
+                "path": "this.props.value"
+              },
+              "transforms": [
+                {
+                  "code": "\tif value \u003d\u003d \u0027\u0027 or value \u003d\u003d None:\n\t\treturn \u00271\u003d1\u0027\n\telse:\n\t\treturn \u0027Meta_Site.Field_Id \u003d \u0027 + str(value)",
+                  "type": "script"
+                }
+              ],
+              "type": "property"
+            }
+          },
+          "props.options": {
+            "binding": {
+              "config": {
+                "queryPath": "Navigation/Field"
+              },
+              "type": "query"
+            },
+            "onChange": {
+              "enabled": null,
+              "script": "\tif self.props.options.getRowCount() \u003d\u003d 1:\n\t\tself.props.value \u003d self.props.options.getValueAt(0,0)"
+            },
+            "persistent": true
+          },
+          "props.value": {
+            "binding": {
+              "config": {
+                "struct": {
+                  "session": "{session.custom.fieldSelected}",
+                  "useSession": "{session.custom.useSessionProps}"
+                },
+                "waitOnAll": true
+              },
+              "enabled": false,
+              "transforms": [
+                {
+                  "code": "\tif value[\u0027useSession\u0027]:\n\t\treturn value[\u0027session\u0027]\n\telse:\n        \n\t\treturn self.props.value\n        \n        #return 1\n        \n        # Changed by Jason Butler and Tony Gagler on 12/9/2025 in order to keep \u0027Pinedale\u0027 selected as the field.\n        # Uncomment out return self.props.value to set back to normal.  Need to look at this and maybe find a better way.",
+                  "type": "script"
+                }
+              ],
+              "type": "expr-struct"
+            }
+          }
+        },
+        "props": {
+          "options": {
+            "$": [
+              "ds",
+              192,
+              1777549527473
+            ],
+            "$columns": [
+              {
+                "data": [
+                  1
+                ],
+                "name": "id",
+                "type": "Long"
+              },
+              {
+                "data": [
+                  "Pinedale"
+                ],
+                "name": "Field",
+                "type": "String"
+              }
+            ]
+          },
+          "placeholder": {
+            "color": "#AAAAAA",
+            "text": "Field..."
+          },
+          "style": {
+            "borderColor": "",
+            "borderStyle": "solid",
+            "classes": "Menus/DropDown_Menu",
+            "fontFamily": "Roboto",
+            "fontSize": 16,
+            "textTransform": "capitalize"
+          },
+          "value": 1
+        },
+        "type": "ia.input.dropdown"
+      },
+      {
+        "events": {
+          "component": {
+            "onActionPerformed": {
+              "config": {
+                "script": "\tself.getSibling(\"Sub_Route_Dropdown\").props.value \u003d None\n\tself.getSibling(\"Pad_Dropdown\").props.value \u003d None\n\tself.getSibling(\"Well_Dropdown\").props.value \u003d None\n\tif self.props.value is None:\n\t\tself.parent.custom.lastSelectedDropdown \u003d \"Field_Dropdown\"\n\telse:\n\t\tself.parent.custom.lastSelectedDropdown \u003d \"Route_Dropdown\"\n\t\t\n\tcategory \u003d \"route\"\n\tobject_map \u003d {\n\t    \"lease\": \"Lease_Dropdown\",\n\t    \"well\": \"Well_Dropdown\",\n\t    \"site\": \"Pad_Dropdown\",\n\t    \"subroute\": \"Sub_Route_Dropdown\",\n\t    \"route\": \"Route_Dropdown\",\n\t    \"facility\": \"Facility_Dropdown\",\n\t}\n\tfilters \u003d {\n\t    key: self.getSibling(val).props.value if key !\u003d category else self.props.value\n\t    for key, val in object_map.items()\n\t}\n\toptions \u003d {\n\t    key: self.getSibling(val).props.options if key !\u003d category else self.props.options\n\t    for key, val in object_map.items()\n\t}\n\tfrom Navigation.Filter import NavigationFilter\n\tnav_filter \u003d NavigationFilter(filters, options, category, \u0027Route_Dropdown\u0027)\n\tfilters, current_options \u003d nav_filter.update_navigation()\n\t\n\t\n\tfor key, value in object_map.items():\n\t    if key \u003d\u003d category:\n\t        continue\n\t    if current_options.get(key) is not None:\n\t        self.getSibling(value).props.options \u003d current_options.get(key)\n\t    self.getSibling(value).props.value \u003d filters[key]\n\tif self.props.value is None:\n\t\treturn\n\tnext_filter, prev_filter \u003d nav_filter.next_prev_filters()\n\tself.parent.custom.previousFilters.Lease \u003d prev_filter[\"lease\"]\n\tself.parent.custom.previousFilters.Pad \u003d prev_filter[\"site\"]\n\tself.parent.custom.previousFilters.SubRoute \u003d prev_filter[\"subroute\"]\n\tself.parent.custom.previousFilters.Route \u003d prev_filter[\"route\"]\n\tself.parent.custom.previousFilters.Well \u003d prev_filter[\"well\"]\n\tself.parent.custom.previousFilters.Facility \u003d prev_filter[\"facility\"]\n\t\n\tself.parent.custom.nextFilters.Lease \u003d next_filter[\"lease\"]\n\tself.parent.custom.nextFilters.Pad \u003d next_filter[\"site\"]\n\tself.parent.custom.nextFilters.SubRoute \u003d next_filter[\"subroute\"]\n\tself.parent.custom.nextFilters.Route \u003d next_filter[\"route\"]\n\tself.parent.custom.nextFilters.Well \u003d next_filter[\"well\"]\n\tself.parent.custom.nextFilters.Facility \u003d next_filter[\"facility\"]\n\t\n\tsystem.perspective.print(\u0027Query Count: %s\u0027%nav_filter.query_count)"
+              },
+              "scope": "G",
+              "type": "script"
+            }
+          }
+        },
+        "meta": {
+          "name": "Route_Dropdown"
+        },
+        "position": {
+          "basis": "100px",
+          "grow": 1,
+          "shrink": 0
+        },
+        "propConfig": {
+          "custom.routeQueryString": {
+            "binding": {
+              "config": {
+                "path": "this.props.value"
+              },
+              "transforms": [
+                {
+                  "code": "\tif value \u003d\u003d \u0027\u0027 or value \u003d\u003d None:\n\t\treturn \u00271\u003d1\u0027\n\telse:\n\t\treturn \u0027Meta_Site.Group_Id \u003d \u0027 + str(value)",
+                  "type": "script"
+                }
+              ],
+              "type": "property"
+            }
+          }
+        },
+        "props": {
+          "options": {
+            "$": [
+              "ds",
+              192,
+              1777554109294
+            ],
+            "$columns": [
+              {
+                "data": [
+                  1,
+                  2,
+                  3,
+                  4
+                ],
+                "name": "id",
+                "type": "Long"
+              },
+              {
+                "data": [
+                  "PD-1N",
+                  "PD-2NC",
+                  "PD-3SC",
+                  "PD-4S"
+                ],
+                "name": "route_name",
+                "type": "String"
+              }
+            ]
+          },
+          "placeholder": {
+            "color": "#AAAAAA",
+            "text": "Route/Group..."
+          },
+          "showClearIcon": true,
+          "style": {
+            "borderColor": "#62BB46",
+            "classes": "Menus/DropDown_Menu"
+          },
+          "value": 4
+        },
+        "type": "ia.input.dropdown"
+      },
+      {
+        "events": {
+          "component": {
+            "onActionPerformed": {
+              "config": {
+                "script": "\tself.getSibling(\"Well_Dropdown\").props.value \u003d None\n\tself.getSibling(\"Pad_Dropdown\").props.value \u003d None\n\tif self.props.value is not None:\n\t\tself.parent.custom.lastSelectedDropdown \u003d \"Sub_Route_Dropdown\"\n\telse:\n\t\tself.parent.custom.lastSelectedDropdown \u003d \"Route_Dropdown\"\n\tcategory \u003d \"subroute\"\n\tobject_map \u003d {\n\t    \"lease\": \"Lease_Dropdown\",\n\t    \"well\": \"Well_Dropdown\",\n\t    \"site\": \"Pad_Dropdown\",\n\t    \"subroute\": \"Sub_Route_Dropdown\",\n\t    \"route\": \"Route_Dropdown\",\n\t    \"facility\": \"Facility_Dropdown\",\n\t}\n\tfilters \u003d {\n\t    key: self.getSibling(val).props.value if key !\u003d category else self.props.value\n\t    for key, val in object_map.items()\n\t}\n\toptions \u003d {\n\t    key: self.getSibling(val).props.options if key !\u003d category else self.props.options\n\t    for key, val in object_map.items()\n\t}\n\tfrom Navigation.Filter import NavigationFilter\n\tnav_filter \u003d NavigationFilter(filters, options, category, \u0027Sub_Route_Dropdown\u0027)\n\tfilters, current_options \u003d nav_filter.update_navigation()\n\t\n\t\n\tfor key, value in object_map.items():\n\t    if key \u003d\u003d category:\n\t        continue\n\t    if current_options.get(key) is not None:\n\t        self.getSibling(value).props.options \u003d current_options.get(key)\n\t    self.getSibling(value).props.value \u003d filters[key]\n\t\n\tif self.props.value is None:\n\t\treturn\n\tnext_filter, prev_filter \u003d nav_filter.next_prev_filters()\n\tself.parent.custom.previousFilters.Lease \u003d prev_filter[\"lease\"]\n\tself.parent.custom.previousFilters.Pad \u003d prev_filter[\"site\"]\n\tself.parent.custom.previousFilters.SubRoute \u003d prev_filter[\"subroute\"]\n\tself.parent.custom.previousFilters.Route \u003d prev_filter[\"route\"]\n\tself.parent.custom.previousFilters.Well \u003d prev_filter[\"well\"]\n\tself.parent.custom.previousFilters.Facility \u003d prev_filter[\"facility\"]\n\t\n\tself.parent.custom.nextFilters.Lease \u003d next_filter[\"lease\"]\n\tself.parent.custom.nextFilters.Pad \u003d next_filter[\"site\"]\n\tself.parent.custom.nextFilters.SubRoute \u003d next_filter[\"subroute\"]\n\tself.parent.custom.nextFilters.Route \u003d next_filter[\"route\"]\n\tself.parent.custom.nextFilters.Well \u003d next_filter[\"well\"]\n\tself.parent.custom.nextFilters.Facility \u003d next_filter[\"facility\"]\n\tsystem.perspective.print(\u0027Query Count: %s\u0027%nav_filter.query_count)"
+              },
+              "scope": "G",
+              "type": "script"
+            }
+          }
+        },
+        "meta": {
+          "name": "Sub_Route_Dropdown"
+        },
+        "position": {
+          "basis": "100px",
+          "grow": 1,
+          "shrink": 0
+        },
+        "propConfig": {
+          "custom.routeQueryString": {
+            "binding": {
+              "config": {
+                "path": "this.props.value"
+              },
+              "transforms": [
+                {
+                  "code": "\tif value \u003d\u003d \u0027\u0027 or value \u003d\u003d None:\n\t\treturn \u00271\u003d1\u0027\n\telse:\n\t\treturn \u0027Meta_Site.Group_Id \u003d \u0027 + str(value)",
+                  "type": "script"
+                }
+              ],
+              "type": "property"
+            }
+          },
+          "props.enabled": {
+            "binding": {
+              "config": {
+                "expression": "if(isNull({../Route_Dropdown.props.value}),False,True)"
+              },
+              "type": "expr"
+            }
+          }
+        },
+        "props": {
+          "options": {
+            "$": [
+              "ds",
+              192,
+              1777554103765
+            ],
+            "$columns": [
+              {
+                "data": [
+                  1,
+                  2,
+                  3,
+                  4
+                ],
+                "name": "subroute_num",
+                "type": "Long"
+              }
+            ]
+          },
+          "placeholder": {
+            "color": "#AAAAAA",
+            "text": "Sub-Route..."
+          },
+          "search": {
+            "enabled": false
+          },
+          "showClearIcon": true,
+          "style": {
+            "borderColor": "",
+            "classes": "Menus/DropDown_Menu"
+          },
+          "value": null
+        },
+        "type": "ia.input.dropdown"
+      },
+      {
+        "events": {
+          "component": {
+            "onActionPerformed": {
+              "config": {
+                "script": "\tif self.props.value is None:\n\t\tself.parent.custom.lastSelectedDropdown \u003d \"Sub_Route_Dropdown\"\n\telse:\n\t\tself.parent.custom.lastSelectedDropdown \u003d \"Pad_Dropdown\"\n\tcategory \u003d \"site\"\n\tobject_map \u003d {\n\t    \"lease\": \"Lease_Dropdown\",\n\t    \"well\": \"Well_Dropdown\",\n\t    \"site\": \"Pad_Dropdown\",\n\t    \"subroute\": \"Sub_Route_Dropdown\",\n\t    \"route\": \"Route_Dropdown\",\n\t    \"facility\": \"Facility_Dropdown\",\n\t}\n\tfilters \u003d {\n\t    key: self.getSibling(val).props.value if key !\u003d category else self.props.value\n\t    for key, val in object_map.items()\n\t}\n\toptions \u003d {\n\t    key: self.getSibling(val).props.options if key !\u003d category else self.props.options\n\t    for key, val in object_map.items()\n\t}\n\tfrom Navigation.Filter import NavigationFilter\n\tnav_filter \u003d NavigationFilter(filters, options, category, \u0027Pad_Dropdown\u0027)\n\tfilters, current_options \u003d nav_filter.update_navigation()\n\tsystem.perspective.print(\u0027well filters on site|%s\u0027%filters[\"well\"])\n\t\n#\t\n#\tfor key, value in object_map.items():\n#\t    if key \u003d\u003d category:\n#\t        continue\n#\t    if current_options.get(key) is not None:\n#\t        self.getSibling(value).props.options \u003d current_options.get(key)\n#\t    self.getSibling(value).props.value \u003d filters[key]\n\t\n\tfor key, value in object_map.items():\n\t\tif self.props.value is None:\n\t\t\tcontinue\n\t\tif key \u003d\u003d category and current_options.get(key) is not None:\n\t\t    self.props.options \u003d current_options.get(key)\n\t\tif current_options.get(key) is not None:\n\t\t    self.getSibling(value).props.options \u003d current_options.get(key)\n\t\tself.getSibling(value).props.value \u003d filters[key]\n\t\n\tif self.props.value is None:\n\t\treturn\n\tnext_filter, prev_filter \u003d nav_filter.next_prev_filters()\n\tself.parent.custom.previousFilters.Lease \u003d prev_filter[\"lease\"]\n\tself.parent.custom.previousFilters.Pad \u003d prev_filter[\"site\"]\n\tself.parent.custom.previousFilters.SubRoute \u003d prev_filter[\"subroute\"]\n\tself.parent.custom.previousFilters.Route \u003d prev_filter[\"route\"]\n\tself.parent.custom.previousFilters.Well \u003d prev_filter[\"well\"]\n\tself.parent.custom.previousFilters.Facility \u003d prev_filter[\"facility\"]\n\t\n\tself.parent.custom.nextFilters.Lease \u003d next_filter[\"lease\"]\n\tself.parent.custom.nextFilters.Pad \u003d next_filter[\"site\"]\n\tself.parent.custom.nextFilters.SubRoute \u003d next_filter[\"subroute\"]\n\tself.parent.custom.nextFilters.Route \u003d next_filter[\"route\"]\n\tself.parent.custom.nextFilters.Well \u003d next_filter[\"well\"]\n\tself.parent.custom.nextFilters.Facility \u003d next_filter[\"facility\"]\n\tsystem.perspective.print(\u0027Query Count: %s\u0027%nav_filter.query_count)"
+              },
+              "scope": "G",
+              "type": "script"
+            }
+          }
+        },
+        "meta": {
+          "name": "Pad_Dropdown"
+        },
+        "position": {
+          "basis": "100px",
+          "grow": 1,
+          "shrink": 0
+        },
+        "propConfig": {
+          "custom.siteQueryString": {
+            "binding": {
+              "config": {
+                "path": "this.props.value"
+              },
+              "transforms": [
+                {
+                  "code": "\tif value \u003d\u003d \u0027\u0027 or value \u003d\u003d None:\n\t\treturn \u00271\u003d1\u0027\n\telse:\n\t\treturn \u0027Meta_Site.Id \u003d \u0027 + str(value)",
+                  "type": "script"
+                }
+              ],
+              "type": "property"
+            }
+          },
+          "custom.sitewellQueryString": {
+            "binding": {
+              "config": {
+                "path": "this.props.value"
+              },
+              "transforms": [
+                {
+                  "code": "\tif value \u003d\u003d \u0027\u0027 or value \u003d\u003d None:\n\t\treturn \u00271\u003d1\u0027\n\telse:\n\t\treturn \u0027Meta_Device.Site_Id \u003d \u0027 + str(value)",
+                  "type": "script"
+                }
+              ],
+              "type": "property"
+            }
+          },
+          "props.options": {
+            "persistent": true
+          }
+        },
+        "props": {
+          "options": {
+            "$": [
+              "ds",
+              192,
+              1777554109294
+            ],
+            "$columns": [
+              {
+                "data": [
+                  157,
+                  15,
+                  311,
+                  16,
+                  317,
+                  447,
+                  445,
+                  448,
+                  451,
+                  444,
+                  443,
+                  450,
+                  158,
+                  17,
+                  449,
+                  442,
+                  420,
+                  23,
+                  434,
+                  454,
+                  438,
+                  25,
+                  437,
+                  184,
+                  440,
+                  435,
+                  477,
+                  436,
+                  453,
+                  27,
+                  28,
+                  29,
+                  30,
+                  433,
+                  441,
+                  432,
+                  439,
+                  141,
+                  237,
+                  176,
+                  204,
+                  205,
+                  71,
+                  223,
+                  72,
+                  177,
+                  73,
+                  74,
+                  75,
+                  76,
+                  77,
+                  78,
+                  214,
+                  296,
+                  154,
+                  79,
+                  80,
+                  191,
+                  244,
+                  81,
+                  82,
+                  83,
+                  137,
+                  84,
+                  227,
+                  294,
+                  138,
+                  85,
+                  206,
+                  250,
+                  86,
+                  155,
+                  87,
+                  88,
+                  207,
+                  89,
+                  245,
+                  90,
+                  314,
+                  178,
+                  91,
+                  139,
+                  140,
+                  93,
+                  142,
+                  208,
+                  224,
+                  251,
+                  183,
+                  94,
+                  209,
+                  192,
+                  252,
+                  210,
+                  225,
+                  95,
+                  306,
+                  96,
+                  193,
+                  97
+                ],
+                "name": "id",
+                "type": "Long"
+              },
+              {
+                "data": [
+                  "AL01-05",
+                  "AL01-09",
+                  "AL01-16",
+                  "AL02-06",
+                  "AL02-16",
+                  "AL03-04",
+                  "AL03-05",
+                  "AL04-05",
+                  "AL05-04",
+                  "AL05-05",
+                  "AL06-04",
+                  "AL06-09",
+                  "AL11-04",
+                  "AL14-04",
+                  "AL15-04",
+                  "AL15-23",
+                  "CGF04",
+                  "FC08-36",
+                  "RB04-31",
+                  "RB05-31",
+                  "RB05-32",
+                  "RB06-30",
+                  "RB06-32",
+                  "RB07-31",
+                  "RB09-30",
+                  "RB09-31",
+                  "RB09-32",
+                  "RB10-31",
+                  "RB10-32",
+                  "RB11-31",
+                  "RB13-29",
+                  "RB13-30",
+                  "RB13-32",
+                  "RB15-30",
+                  "RB15-32",
+                  "RB16-30",
+                  "RB16-31",
+                  "WB01-09",
+                  "WB01-10",
+                  "WB01-21",
+                  "WB02-08",
+                  "WB03-10",
+                  "WB03-14",
+                  "WB04-09",
+                  "WB04-10",
+                  "WB04-23",
+                  "WB04-25",
+                  "WB04-26",
+                  "WB05-04",
+                  "WB05-09",
+                  "WB05-12",
+                  "WB05-13",
+                  "WB05-14",
+                  "WB05-15",
+                  "WB05-23",
+                  "WB05-24",
+                  "WB05-25",
+                  "WB06-04",
+                  "WB06-05",
+                  "WB06-23",
+                  "WB06-26",
+                  "WB07-04",
+                  "WB07-05",
+                  "WB07-15",
+                  "WB07-23",
+                  "WB08-04",
+                  "WB08-06",
+                  "WB08-08",
+                  "WB08-11",
+                  "WB08-14",
+                  "WB08-22",
+                  "WB08-25",
+                  "WB08-26",
+                  "WB09-08",
+                  "WB09-14",
+                  "WB09-15",
+                  "WB09-23",
+                  "WB09-26",
+                  "WB10-04",
+                  "WB10-09",
+                  "WB10-24",
+                  "WB11-04",
+                  "WB11-10",
+                  "WB11-23",
+                  "WB12-09",
+                  "WB13-03",
+                  "WB13-11",
+                  "WB13-13",
+                  "WB13-14",
+                  "WB13-24",
+                  "WB14-05",
+                  "WB15-04",
+                  "WB15-05",
+                  "WB15-10",
+                  "WB15-11",
+                  "WB15-23",
+                  "WB16-04",
+                  "WB16-05",
+                  "WB16-10",
+                  "WB16-25"
+                ],
+                "name": "site_name",
+                "type": "String"
+              }
+            ]
+          },
+          "placeholder": {
+            "color": "#AAAAAA",
+            "text": "Pad/Site..."
+          },
+          "showClearIcon": true,
+          "style": {
+            "borderColor": "",
+            "classes": "Menus/DropDown_Menu"
+          },
+          "value": null
+        },
+        "type": "ia.input.dropdown"
+      },
+      {
+        "events": {
+          "component": {
+            "onActionPerformed": {
+              "config": {
+                "script": "\tif self.props.value is None:\n\t\tself.parent.custom.lastSelectedDropdown \u003d \"Pad_Dropdown\"\n\telse:\n\t\tself.parent.custom.lastSelectedDropdown \u003d \"Facility_Dropdown\"\n\tcategory \u003d \"facility\"\n\tobject_map \u003d {\n\t    \"lease\": \"Lease_Dropdown\",\n\t    \"well\": \"Well_Dropdown\",\n\t    \"site\": \"Pad_Dropdown\",\n\t    \"subroute\": \"Sub_Route_Dropdown\",\n\t    \"route\": \"Route_Dropdown\",\n\t    \"facility\": \"Facility_Dropdown\",\n\t}\n\tfilters \u003d {\n\t    key: self.getSibling(val).props.value if key !\u003d category else self.props.value\n\t    for key, val in object_map.items()\n\t}\n\toptions \u003d {\n\t    key: self.getSibling(val).props.options if key !\u003d category else self.props.options\n\t    for key, val in object_map.items()\n\t}\n\tfrom Navigation.Filter import NavigationFilter\n\tnav_filter \u003d NavigationFilter(filters, options, category, \u0027Facility_Dropdown\u0027)\n\tfilters, current_options \u003d nav_filter.update_navigation()\n\t\n\tfor key, value in object_map.items():\n\t\tif self.props.value is None:\n\t\t\tcontinue\n\t\tif key \u003d\u003d category and current_options.get(key) is not None:\n\t\t    self.props.options \u003d current_options.get(key)\n\t\tif current_options.get(key) is not None:\n\t\t    self.getSibling(value).props.options \u003d current_options.get(key)\n\t\tself.getSibling(value).props.value \u003d filters[key]\n\t\n\tif self.props.value is None:\n\t\treturn\n\tnext_filter, prev_filter \u003d nav_filter.next_prev_filters()\n\t\n\tself.parent.custom.previousFilters.Lease \u003d prev_filter[\"lease\"]\n\tself.parent.custom.previousFilters.Pad \u003d prev_filter[\"site\"]\n\tself.parent.custom.previousFilters.SubRoute \u003d prev_filter[\"subroute\"]\n\tself.parent.custom.previousFilters.Route \u003d prev_filter[\"route\"]\n\tself.parent.custom.previousFilters.Well \u003d prev_filter[\"well\"]\n\tself.parent.custom.previousFilters.Facility \u003d prev_filter[\"facility\"]\n\t\n\tself.parent.custom.nextFilters.Lease \u003d next_filter[\"lease\"]\n\tself.parent.custom.nextFilters.Pad \u003d next_filter[\"site\"]\n\tself.parent.custom.nextFilters.SubRoute \u003d next_filter[\"subroute\"]\n\tself.parent.custom.nextFilters.Route \u003d next_filter[\"route\"]\n\tself.parent.custom.nextFilters.Well \u003d next_filter[\"well\"]\n\tself.parent.custom.nextFilters.Facility \u003d next_filter[\"facility\"]\n\tsystem.perspective.print(\u0027Query Count: %s\u0027%nav_filter.query_count)"
+              },
+              "scope": "G",
+              "type": "script"
+            }
+          }
+        },
+        "meta": {
+          "name": "Facility_Dropdown"
+        },
+        "position": {
+          "basis": "100px",
+          "grow": 1,
+          "shrink": 0
+        },
+        "propConfig": {
+          "custom.facilityQueryString": {
+            "binding": {
+              "config": {
+                "path": "this.props.value"
+              },
+              "transforms": [
+                {
+                  "code": "\tif value \u003d\u003d \u0027\u0027 or value \u003d\u003d None:\n\t\treturn \u00271\u003d1\u0027\n\telse:\n\t\treturn \u0027Meta_List_Facility.Id \u003d \u0027 + str(value)",
+                  "type": "script"
+                }
+              ],
+              "type": "property"
+            }
+          },
+          "position.display": {
+            "binding": {
+              "config": {
+                "expression": "if({parent.custom.selectedPage} \u003d \u0027LGSTrends\u0027, True,False)"
+              },
+              "type": "expr"
+            },
+            "onChange": {
+              "enabled": null,
+              "script": "\tif currentValue.value is False:\n\t\tself.props.value \u003d None"
+            }
+          }
+        },
+        "props": {
+          "options": {
+            "$": [
+              "ds",
+              192,
+              1777554109295
+            ],
+            "$columns": [
+              {
+                "data": [
+                  5,
+                  1,
+                  2,
+                  3,
+                  4,
+                  7,
+                  6
+                ],
+                "name": "id",
+                "type": "Long"
+              },
+              {
+                "data": [
+                  "CENTRAL",
+                  "CGF1",
+                  "CGF2",
+                  "CGF3",
+                  "CGF4",
+                  "MPLX",
+                  "North"
+                ],
+                "name": "facility_name",
+                "type": "String"
+              }
+            ]
+          },
+          "placeholder": {
+            "color": "#AAAAAA",
+            "text": "Facility..."
+          },
+          "showClearIcon": true,
+          "style": {
+            "borderColor": "",
+            "classes": "Menus/DropDown_Menu"
+          },
+          "value": null
+        },
+        "type": "ia.input.dropdown"
+      },
+      {
+        "events": {
+          "component": {
+            "onActionPerformed": {
+              "config": {
+                "script": "\tif self.props.value is None:\n\t\tself.parent.custom.lastSelectedDropdown \u003d \"Facility_Dropdown\"\n\telse:\n\t\tself.parent.custom.lastSelectedDropdown \u003d \"Lease_Dropdown\"\n\tcategory \u003d \"lease\"\n\tobject_map \u003d {\n\t    \"lease\": \"Lease_Dropdown\",\n\t    \"well\": \"Well_Dropdown\",\n\t    \"site\": \"Pad_Dropdown\",\n\t    \"subroute\": \"Sub_Route_Dropdown\",\n\t    \"route\": \"Route_Dropdown\",\n\t    \"facility\": \"Facility_Dropdown\",\n\t}\n\tfilters \u003d {\n\t    key: self.getSibling(val).props.value if key !\u003d category else self.props.value\n\t    for key, val in object_map.items()\n\t}\n\toptions \u003d {\n\t    key: self.getSibling(val).props.options if key !\u003d category else self.props.options\n\t    for key, val in object_map.items()\n\t}\n\tfrom Navigation.Filter import NavigationFilter\n\tnav_filter \u003d NavigationFilter(filters, options, category, \u0027Lease_Dropdown\u0027)\n\tfilters, current_options \u003d nav_filter.update_navigation()\n\t\n\t\n\tfor key, value in object_map.items():\n\t\tif self.props.value is None:\n\t\t\tcontinue\n\t\tif key \u003d\u003d category and current_options.get(key) is not None:\n\t\t    self.props.options \u003d current_options.get(key)\n\t\tif current_options.get(key) is not None:\n\t\t    self.getSibling(value).props.options \u003d current_options.get(key)\n\t\tself.getSibling(value).props.value \u003d filters[key]\n\t\n\tif self.props.value is None:\n\t\treturn\n\tnext_filter, prev_filter \u003d nav_filter.next_prev_filters()\n\t\n\tself.parent.custom.previousFilters.Lease \u003d prev_filter[\"lease\"]\n\tself.parent.custom.previousFilters.Pad \u003d prev_filter[\"site\"]\n\tself.parent.custom.previousFilters.SubRoute \u003d prev_filter[\"subroute\"]\n\tself.parent.custom.previousFilters.Route \u003d prev_filter[\"route\"]\n\tself.parent.custom.previousFilters.Well \u003d prev_filter[\"well\"]\n\tself.parent.custom.previousFilters.Facility \u003d prev_filter[\"facility\"]\n\t\n\tself.parent.custom.nextFilters.Lease \u003d next_filter[\"lease\"]\n\tself.parent.custom.nextFilters.Pad \u003d next_filter[\"site\"]\n\tself.parent.custom.nextFilters.SubRoute \u003d next_filter[\"subroute\"]\n\tself.parent.custom.nextFilters.Route \u003d next_filter[\"route\"]\n\tself.parent.custom.nextFilters.Well \u003d next_filter[\"well\"]\n\tself.parent.custom.nextFilters.Facility \u003d next_filter[\"facility\"]\n\tsystem.perspective.print(\u0027Query Count: %s\u0027%nav_filter.query_count)"
+              },
+              "scope": "G",
+              "type": "script"
+            }
+          }
+        },
+        "meta": {
+          "name": "Lease_Dropdown"
+        },
+        "position": {
+          "basis": "100px",
+          "grow": 1,
+          "shrink": 0
+        },
+        "propConfig": {
+          "custom.leaseQueryString": {
+            "binding": {
+              "config": {
+                "path": "this.props.value"
+              },
+              "transforms": [
+                {
+                  "code": "\tif value \u003d\u003d \u0027\u0027 or value \u003d\u003d None:\n\t\treturn \u00271\u003d1\u0027\n\telse:\n\t\treturn \u0027Meta_List_Lease.Id \u003d \u0027 + str(value)",
+                  "type": "script"
+                }
+              ],
+              "type": "property"
+            }
+          },
+          "position.display": {
+            "binding": {
+              "config": {
+                "expression": "if({parent.custom.selectedPage} \u003d \u0027LGSTrends\u0027, True,False)"
+              },
+              "type": "expr"
+            },
+            "onChange": {
+              "enabled": null,
+              "script": "\tif currentValue.value is False:\n\t\tself.props.value \u003d None"
+            }
+          }
+        },
+        "props": {
+          "options": {
+            "$": [
+              "ds",
+              192,
+              1777554109294
+            ],
+            "$columns": [
+              {
+                "data": [
+                  3,
+                  5,
+                  13,
+                  15,
+                  17,
+                  18,
+                  19,
+                  20,
+                  33,
+                  35,
+                  36,
+                  43,
+                  44,
+                  47,
+                  48,
+                  51,
+                  53,
+                  55,
+                  61,
+                  63
+                ],
+                "name": "id",
+                "type": "Long"
+              },
+              {
+                "data": [
+                  "ST0400524",
+                  "ST9200198",
+                  "WYW015314",
+                  "WYW015316",
+                  "WYW016155",
+                  "WYW016158",
+                  "WYW016161",
+                  "WYW016162",
+                  "WYW118148",
+                  "WYW118156",
+                  "WYW118157",
+                  "WYW133050",
+                  "WYW133051",
+                  "WYW142261",
+                  "WYW142501A",
+                  "WYW144994",
+                  "WYW144996",
+                  "WYW150655",
+                  "WYW187810",
+                  "WYW188504"
+                ],
+                "name": "lease_name",
+                "type": "String"
+              }
+            ]
+          },
+          "placeholder": {
+            "color": "#AAAAAA",
+            "text": "Lease..."
+          },
+          "showClearIcon": true,
+          "style": {
+            "borderColor": "",
+            "classes": "Menus/DropDown_Menu"
+          },
+          "value": null
+        },
+        "type": "ia.input.dropdown"
+      },
+      {
+        "events": {
+          "component": {
+            "onActionPerformed": {
+              "config": {
+                "script": "\tsystem.perspective.print(\"action_performed\")\n\tsystem.perspective.print(self.props.value)\n\tif not self.props.value:\n\t\tself.parent.custom.lastSelectedDropdown \u003d \"Pad_Dropdown\"\n\telse:\n\t\tself.parent.custom.lastSelectedDropdown \u003d \"Well_Dropdown\"\n\tcategory \u003d \"well\"\n\tobject_map \u003d {\n\t    \"lease\": \"Lease_Dropdown\",\n\t    \"well\": \"Well_Dropdown\",\n\t    \"site\": \"Pad_Dropdown\",\n\t    \"subroute\": \"Sub_Route_Dropdown\",\n\t    \"route\": \"Route_Dropdown\",\n\t    \"facility\": \"Facility_Dropdown\",\n\t}\n\tfilters \u003d {\n\t    key: self.getSibling(val).props.value if key !\u003d category else self.props.value\n\t    for key, val in object_map.items()\n\t}\n\toptions \u003d {\n\t    key: self.getSibling(val).props.options if key !\u003d category else self.props.options\n\t    for key, val in object_map.items()\n\t}\n\tfrom Navigation.Filter import NavigationFilter\n\tnav_filter \u003d NavigationFilter(filters, options, category, \u0027Well_Dropdown\u0027)\n\tfilters, current_options \u003d nav_filter.update_navigation()\n\t\n\tfor key, value in object_map.items():\n\t\tif self.props.value is None:\n\t\t\tcontinue\n\t\tif key \u003d\u003d category and current_options.get(key) is not None:\n\t\t    self.props.options \u003d current_options.get(key)\n\t\tif current_options.get(key) is not None:\n\t\t    self.getSibling(value).props.options \u003d current_options.get(key)\n\t\tself.getSibling(value).props.value \u003d filters[key]\n\t\n\tif self.props.value is None:\n\t\treturn\n\tnext_filter, prev_filter \u003d nav_filter.next_prev_filters()\n\tself.parent.custom.previousFilters.Lease \u003d prev_filter[\"lease\"]\n\tself.parent.custom.previousFilters.Pad \u003d prev_filter[\"site\"]\n\tself.parent.custom.previousFilters.SubRoute \u003d prev_filter[\"subroute\"]\n\tself.parent.custom.previousFilters.Route \u003d prev_filter[\"route\"]\n\tself.parent.custom.previousFilters.Well \u003d prev_filter[\"well\"]\n\tself.parent.custom.previousFilters.Facility \u003d prev_filter[\"facility\"]\n\t\n\tself.parent.custom.nextFilters.Lease \u003d next_filter[\"lease\"]\n\tself.parent.custom.nextFilters.Pad \u003d next_filter[\"site\"]\n\tself.parent.custom.nextFilters.SubRoute \u003d next_filter[\"subroute\"]\n\tself.parent.custom.nextFilters.Route \u003d next_filter[\"route\"]\n\tself.parent.custom.nextFilters.Well \u003d next_filter[\"well\"]\n\tself.parent.custom.nextFilters.Facility \u003d next_filter[\"facility\"]\n\tsystem.perspective.print(\u0027Query Count: %s\u0027%nav_filter.query_count)"
+              },
+              "scope": "G",
+              "type": "script"
+            }
+          }
+        },
+        "meta": {
+          "name": "Well_Dropdown"
+        },
+        "position": {
+          "basis": "100px",
+          "grow": 1,
+          "shrink": 0
+        },
+        "propConfig": {
+          "custom.wellQueryString": {
+            "binding": {
+              "config": {
+                "path": "this.props.value"
+              },
+              "transforms": [
+                {
+                  "code": "\tif value \u003d\u003d \u0027\u0027 or value \u003d\u003d None:\n\t\treturn \u00271\u003d1\u0027\n\telse:\n\t\treturn \u0027Meta_Well.Id \u003d \u0027 + str(value)",
+                  "type": "script"
+                }
+              ],
+              "type": "property"
+            }
+          },
+          "position.display": {
+            "binding": {
+              "config": {
+                "expression": "if({parent.custom.selectedPage} \u003d \u0027ProductionRollup\u0027, False, if({parent.custom.selectedPage} \u003d \u0027AlarmOverview\u0027, False, if({parent.custom.selectedPage} \u003d \u0027WorkRequest\u0027, False, if({parent.custom.selectedPage} \u003d \u0027LGSTrends\u0027, False, True))))"
+              },
+              "type": "expr"
+            },
+            "onChange": {
+              "enabled": null,
+              "script": "\tif currentValue.value is False:\n\t\tself.props.value \u003d None"
+            }
+          }
+        },
+        "props": {
+          "options": {
+            "$": [
+              "ds",
+              192,
+              1777554109294
+            ],
+            "$columns": [
+              {
+                "data": [
+                  3496,
+                  6,
+                  9,
+                  11,
+                  10,
+                  3526,
+                  3536,
+                  3643,
+                  3497,
+                  8,
+                  7,
+                  1,
+                  3533,
+                  3532,
+                  3534,
+                  3535,
+                  3537,
+                  3531,
+                  3642,
+                  3527,
+                  3539,
+                  2,
+                  4,
+                  5,
+                  3645,
+                  3644,
+                  374,
+                  3610,
+                  3577,
+                  3576,
+                  3578,
+                  376,
+                  375,
+                  3609,
+                  373,
+                  3505,
+                  3503,
+                  1999,
+                  858,
+                  3511,
+                  3517,
+                  3540,
+                  861,
+                  870,
+                  864,
+                  1896,
+                  869,
+                  863,
+                  1911,
+                  3502,
+                  1918,
+                  1893,
+                  3504,
+                  3575,
+                  3591,
+                  866,
+                  867,
+                  865,
+                  1865,
+                  3608,
+                  1887,
+                  1881,
+                  1882,
+                  868,
+                  862,
+                  1892,
+                  1866,
+                  3510,
+                  3518,
+                  3525,
+                  3509,
+                  3522,
+                  3513,
+                  3512,
+                  3520,
+                  3515,
+                  1895,
+                  1909,
+                  1910,
+                  3541,
+                  3521,
+                  3507,
+                  1917,
+                  1899,
+                  1913,
+                  3519,
+                  3514,
+                  3508,
+                  860,
+                  856,
+                  859,
+                  3607,
+                  857,
+                  3506,
+                  3516,
+                  3590,
+                  3589,
+                  3588,
+                  1597,
+                  1919,
+                  1811,
+                  1571,
+                  1965,
+                  2189,
+                  2162,
+                  2192,
+                  2209,
+                  2109,
+                  1942,
+                  1682,
+                  1864,
+                  2168,
+                  1900,
+                  2172,
+                  2205,
+                  2107,
+                  1940,
+                  1799,
+                  1862,
+                  2167,
+                  2179,
+                  1680,
+                  2111,
+                  2174,
+                  2180,
+                  1797,
+                  1968,
+                  1922,
+                  2178,
+                  2210,
+                  2110,
+                  1943,
+                  1789,
+                  1679,
+                  2171,
+                  1989,
+                  2129,
+                  1985,
+                  2032,
+                  2113,
+                  1951,
+                  1906,
+                  2052,
+                  1732,
+                  2078,
+                  2112,
+                  1698,
+                  1860,
+                  1991,
+                  2130,
+                  1712,
+                  1978,
+                  2037,
+                  2083,
+                  2010,
+                  2058,
+                  1727,
+                  1685,
+                  1952,
+                  2063,
+                  1995,
+                  2138,
+                  1973,
+                  2039,
+                  2094,
+                  2059,
+                  2080,
+                  1798,
+                  1996,
+                  2134,
+                  1709,
+                  1976,
+                  2042,
+                  1792,
+                  2055,
+                  2081,
+                  2008,
+                  2009,
+                  1994,
+                  2131,
+                  1982,
+                  2034,
+                  2069,
+                  2118,
+                  1878,
+                  2048,
+                  2141,
+                  2065,
+                  1992,
+                  2127,
+                  1974,
+                  2035,
+                  1820,
+                  2115,
+                  2049,
+                  2143,
+                  2066,
+                  3615,
+                  2001,
+                  2126,
+                  1983,
+                  2043,
+                  2067,
+                  1854,
+                  2119,
+                  2044,
+                  2068,
+                  1957,
+                  2002,
+                  2124,
+                  2046,
+                  1981,
+                  2038,
+                  2200,
+                  2091,
+                  1954,
+                  2142,
+                  1955,
+                  2136,
+                  1980,
+                  1987,
+                  2005,
+                  1988,
+                  1993,
+                  2084,
+                  2104,
+                  2128,
+                  2139,
+                  1984,
+                  2036,
+                  2116,
+                  2057,
+                  1706,
+                  2125,
+                  1977,
+                  2033,
+                  1849,
+                  2122,
+                  2045,
+                  1703,
+                  1961,
+                  2060,
+                  1998,
+                  2123,
+                  1972,
+                  1856,
+                  2121,
+                  2050,
+                  2148,
+                  2071,
+                  1700,
+                  1958,
+                  2061,
+                  2000,
+                  2137,
+                  1971,
+                  2074,
+                  1855,
+                  2092,
+                  1701,
+                  2047,
+                  2146,
+                  1702,
+                  1959,
+                  3617,
+                  2064,
+                  1986,
+                  1990,
+                  2085,
+                  2132,
+                  2140,
+                  1975,
+                  2040,
+                  2117,
+                  1876,
+                  2053,
+                  2175,
+                  1677,
+                  1796,
+                  1873,
+                  1997,
+                  2051,
+                  1979,
+                  2041,
+                  1853,
+                  2120,
+                  1908,
+                  2144,
+                  1686,
+                  1875,
+                  2004,
+                  2133,
+                  1970,
+                  2082,
+                  1857,
+                  2090,
+                  1879,
+                  2054,
+                  2070,
+                  1707,
+                  1956,
+                  2003,
+                  2135,
+                  2076,
+                  2100,
+                  1704,
+                  1877,
+                  2056,
+                  2173,
+                  1889,
+                  2006,
+                  2007,
+                  1834,
+                  2222,
+                  1946,
+                  2183,
+                  2221,
+                  2108,
+                  1933,
+                  1880,
+                  2150,
+                  2163,
+                  1868,
+                  1966,
+                  2114,
+                  1941,
+                  1795,
+                  1894,
+                  2156,
+                  2164,
+                  2186,
+                  2197,
+                  1678,
+                  1794,
+                  2159,
+                  2101,
+                  1938,
+                  1884,
+                  2160,
+                  2185,
+                  1705,
+                  2187,
+                  2096,
+                  1936,
+                  1885,
+                  3657,
+                  2151,
+                  2176,
+                  2204,
+                  1874,
+                  1824,
+                  2227,
+                  2218,
+                  2166,
+                  2230,
+                  2062,
+                  2233,
+                  1947,
+                  2224,
+                  1967,
+                  2231,
+                  2212,
+                  2098,
+                  1924,
+                  1869,
+                  2206,
+                  1927,
+                  1886,
+                  3616,
+                  2154,
+                  2161,
+                  2102,
+                  1872,
+                  2229,
+                  2220,
+                  1926,
+                  1861,
+                  3614,
+                  2153,
+                  2228,
+                  1779,
+                  2207,
+                  2188,
+                  1931,
+                  1625,
+                  1594,
+                  1776,
+                  1815,
+                  2226,
+                  1578,
+                  1585,
+                  2203,
+                  2191,
+                  1928,
+                  1588,
+                  1777,
+                  1813,
+                  1565,
+                  1583,
+                  1821,
+                  2202,
+                  2195,
+                  1639,
+                  1902,
+                  1778,
+                  1801,
+                  1576,
+                  2208,
+                  2184,
+                  1891,
+                  1630,
+                  1595,
+                  2223,
+                  1774,
+                  1598,
+                  1572,
+                  1788,
+                  1804,
+                  1587,
+                  1833,
+                  2201,
+                  1930,
+                  2105,
+                  1775,
+                  1809,
+                  1575,
+                  1611,
+                  1819,
+                  1622,
+                  2095,
+                  1674,
+                  2181,
+                  1772,
+                  1807,
+                  1574,
+                  1830,
+                  1619,
+                  2182,
+                  1602,
+                  1786,
+                  1810,
+                  1568,
+                  1580,
+                  2198,
+                  2193,
+                  1601,
+                  1618,
+                  1901,
+                  1621,
+                  1717,
+                  1737,
+                  1614,
+                  1832,
+                  1852,
+                  1690,
+                  2099,
+                  1728,
+                  1645,
+                  1624,
+                  1612,
+                  1688,
+                  2088,
+                  1850,
+                  1672,
+                  1628,
+                  1615,
+                  1828,
+                  1691,
+                  2087,
+                  1734,
+                  1647,
+                  1609,
+                  1829,
+                  1662,
+                  2097,
+                  1719,
+                  1733,
+                  1632,
+                  1846,
+                  1666,
+                  1904,
+                  1651,
+                  1653,
+                  1654,
+                  3498,
+                  1655,
+                  1669,
+                  1696,
+                  2093,
+                  2147,
+                  1637,
+                  2199,
+                  1699,
+                  1626,
+                  1589,
+                  1848,
+                  1668,
+                  2089,
+                  1731,
+                  2145,
+                  1636,
+                  1650,
+                  1692,
+                  1629,
+                  1631,
+                  1648,
+                  1593,
+                  1847,
+                  1673,
+                  1697,
+                  1723,
+                  1627,
+                  1736,
+                  1608,
+                  1845,
+                  1689,
+                  2086,
+                  1641,
+                  1670,
+                  1693,
+                  1649,
+                  1661,
+                  1708,
+                  1710,
+                  1714,
+                  1656,
+                  1658,
+                  1715,
+                  1842,
+                  1694,
+                  1721,
+                  1606,
+                  1592,
+                  1841,
+                  1711,
+                  1726,
+                  1652,
+                  1713,
+                  1586,
+                  1823,
+                  1843,
+                  1953,
+                  1720,
+                  1725,
+                  1644,
+                  2079,
+                  1663,
+                  1695,
+                  1605,
+                  1591,
+                  1659,
+                  1671,
+                  1718,
+                  1722,
+                  1640,
+                  1634,
+                  1620,
+                  1738,
+                  3499,
+                  1716,
+                  1735,
+                  1617,
+                  1826,
+                  1844,
+                  1665,
+                  1676,
+                  1863,
+                  1730,
+                  1642,
+                  1667,
+                  1903,
+                  1660,
+                  1657,
+                  2072,
+                  1838,
+                  1687,
+                  1867,
+                  1604,
+                  1905,
+                  1607,
+                  2075,
+                  1837,
+                  1664,
+                  1724,
+                  1643,
+                  1675,
+                  1684,
+                  1635,
+                  1613,
+                  2073,
+                  1840,
+                  1729,
+                  1646,
+                  2077,
+                  1787,
+                  1800,
+                  1790,
+                  3494,
+                  3495,
+                  1770,
+                  1785,
+                  1808,
+                  1567,
+                  1870,
+                  1827,
+                  1599,
+                  1616,
+                  3660,
+                  1773,
+                  1802,
+                  1579,
+                  1831,
+                  1851,
+                  1623,
+                  1916,
+                  1780,
+                  1805,
+                  1564,
+                  1610,
+                  2211,
+                  1839,
+                  1681,
+                  1793,
+                  3659,
+                  3658,
+                  1781,
+                  1806,
+                  1570,
+                  2215,
+                  1934,
+                  1683,
+                  1969,
+                  1581,
+                  1600,
+                  1835,
+                  1836,
+                  1858,
+                  1859,
+                  1871,
+                  1888,
+                  1890,
+                  1898,
+                  1897,
+                  1920,
+                  1771,
+                  1814,
+                  1817,
+                  1566,
+                  1822,
+                  1935,
+                  1915,
+                  1633,
+                  1590,
+                  1596,
+                  1603,
+                  1783,
+                  1812,
+                  1577,
+                  1818,
+                  1937,
+                  1791,
+                  1932,
+                  1912,
+                  1945,
+                  1784,
+                  1816,
+                  1573,
+                  1584,
+                  2213,
+                  1782,
+                  1803,
+                  1569,
+                  1582,
+                  1825,
+                  1925,
+                  1638,
+                  1948,
+                  3500,
+                  3491,
+                  1950,
+                  1960,
+                  3490,
+                  1949,
+                  1962,
+                  1963,
+                  2177,
+                  1923,
+                  2217,
+                  1929,
+                  1907,
+                  2155,
+                  2169,
+                  2194,
+                  1921,
+                  2219,
+                  2103,
+                  1964,
+                  2170,
+                  2158,
+                  2190,
+                  2216,
+                  2106,
+                  1939,
+                  1883,
+                  2152,
+                  3501,
+                  2196,
+                  2157,
+                  2232,
+                  2225,
+                  2214,
+                  1944,
+                  1914,
+                  2165
+                ],
+                "name": "id",
+                "type": "Long"
+              },
+              {
+                "data": [
+                  "AL1-16-29-107",
+                  "AL1-9",
+                  "AL11-4",
+                  "AL12-4D",
+                  "AL13-4D",
+                  "AL15-23",
+                  "AL15-4",
+                  "AL1B2-6D",
+                  "AL2-16-29-107",
+                  "AL2-6",
+                  "AL2-9",
+                  "AL2B-5D",
+                  "AL3-4D",
+                  "AL3-5",
+                  "AL4-4",
+                  "AL4-5",
+                  "AL5-4",
+                  "AL5-5",
+                  "AL5C1-5D",
+                  "AL6-4",
+                  "AL6-9",
+                  "AL7-5DST",
+                  "AL8-5D",
+                  "AL8B-5DST1",
+                  "AL8C1-6D",
+                  "AL8D1-6D",
+                  "FC1-36",
+                  "FC10C1-36D",
+                  "FC15A1-36D",
+                  "FC16A2-36D",
+                  "FC16B1-36D",
+                  "FC2-36D",
+                  "FC7-36D",
+                  "FC7C2-36D",
+                  "FC8-36",
+                  "FC8A2-36D",
+                  "FC8B2-36D",
+                  "NF13-10",
+                  "RB1-31D",
+                  "RB10-30D",
+                  "RB10-31D",
+                  "RB10-32",
+                  "RB11-31",
+                  "RB11-32D",
+                  "RB11A-29D",
+                  "RB11B2-30D",
+                  "RB12-32D",
+                  "RB12A-29D",
+                  "RB12A1-30D",
+                  "RB12A1-31D",
+                  "RB12A2-30D",
+                  "RB12B1-30D",
+                  "RB12B1-31D",
+                  "RB12B2-31D",
+                  "RB12B2-33D",
+                  "RB13-30",
+                  "RB13-32",
+                  "RB13A-29D",
+                  "RB13A1-30D",
+                  "RB13A2-31D",
+                  "RB13B1-30D",
+                  "RB13C1-30D",
+                  "RB13C2-30D",
+                  "RB14-32",
+                  "RB14A-29D",
+                  "RB14B2-30D",
+                  "RB14C2-30D",
+                  "RB15-30",
+                  "RB15-31",
+                  "RB15-32",
+                  "RB16-30",
+                  "RB16-31",
+                  "RB3-31",
+                  "RB4-31D",
+                  "RB4-32DA",
+                  "RB49-31D",
+                  "RB4C1-30D",
+                  "RB4C2-30D",
+                  "RB4D2-30D",
+                  "RB5-31",
+                  "RB5-32",
+                  "RB51-30D",
+                  "RB5A2-30D",
+                  "RB5B1-30D",
+                  "RB5B2-30D",
+                  "RB6-32",
+                  "RB65-31D",
+                  "RB67-30D",
+                  "RB6C-30",
+                  "RB7-31",
+                  "RB7A1-30D",
+                  "RB7C1-31D",
+                  "RB8-31D",
+                  "RB9-30DX",
+                  "RB9-31",
+                  "RB9A2-32D",
+                  "RB9C1-32D",
+                  "RB9C2-32D",
+                  "WB1-21",
+                  "WB1-26D",
+                  "WB1-6D",
+                  "WB1-9D",
+                  "WB10-9D",
+                  "WB10A-10D",
+                  "WB10A-5D",
+                  "WB10A1-10D",
+                  "WB10A1-11D",
+                  "WB10A1-13D",
+                  "WB10A1-14D",
+                  "WB10A1-15D",
+                  "WB10A1-25D",
+                  "WB10A1-5D",
+                  "WB10A2-25D",
+                  "WB10A2-5D",
+                  "WB10B1-11D",
+                  "WB10B1-13D",
+                  "WB10B1-14D",
+                  "WB10B1-23D",
+                  "WB10B1-25D",
+                  "WB10B1-5D",
+                  "WB10B2-10D",
+                  "WB10B2-15D",
+                  "WB10C1-13D",
+                  "WB10C1-5D",
+                  "WB10C2-10D",
+                  "WB10C2-23D",
+                  "WB10D-24",
+                  "WB10D-4D",
+                  "WB10D-5D",
+                  "WB10D1-11D",
+                  "WB10D1-13D",
+                  "WB10D1-14D",
+                  "WB10D1-23D",
+                  "WB10D2-15D",
+                  "WB10D2-5D",
+                  "WB11-10",
+                  "WB11-14D",
+                  "WB11-4D",
+                  "WB11-9D",
+                  "WB11A1-13D",
+                  "WB11A1-24D",
+                  "WB11A1-25D",
+                  "WB11A1-3D",
+                  "WB11A1-5D",
+                  "WB11A2-11D",
+                  "WB11A2-13D",
+                  "WB11A2-15D",
+                  "WB11A2-25D",
+                  "WB11B-10DX",
+                  "WB11B-14D",
+                  "WB11B-25D",
+                  "WB11B-4D",
+                  "WB11B-9D",
+                  "WB11B1-11D",
+                  "WB11B1-23D",
+                  "WB11B1-3D",
+                  "WB11B1-5D",
+                  "WB11B2-15D",
+                  "WB11B2-24D",
+                  "WB11B2-3D",
+                  "WB11C-10D",
+                  "WB11C-14D",
+                  "WB11C-4DX",
+                  "WB11C-9D",
+                  "WB11C1-13D",
+                  "WB11C1-3D",
+                  "WB11C2-11D",
+                  "WB11C2-23D",
+                  "WB11D-10D",
+                  "WB11D-14D",
+                  "WB11D-15D",
+                  "WB11D-4D",
+                  "WB11D-9D",
+                  "WB11D1-23D",
+                  "WB11D1-3D",
+                  "WB11D2-11D",
+                  "WB11F-10D",
+                  "WB11G-10D",
+                  "WB12-10D",
+                  "WB12-14D",
+                  "WB12-4D",
+                  "WB12-9D",
+                  "WB12A1-11D",
+                  "WB12A1-13D",
+                  "WB12A1-25D",
+                  "WB12A1-3D",
+                  "WB12A1-5D",
+                  "WB12A2-3D",
+                  "WB12B-10D",
+                  "WB12B-14D",
+                  "WB12B-4D",
+                  "WB12B-9D",
+                  "WB12B1-12D",
+                  "WB12B1-13D",
+                  "WB12B1-3D",
+                  "WB12B1-5D",
+                  "WB12B2-11D",
+                  "WB12B2-25D",
+                  "WB12C-10D",
+                  "WB12C-14D",
+                  "WB12C-4D",
+                  "WB12C-9D",
+                  "WB12C1-11D",
+                  "WB12C1-12D",
+                  "WB12C1-13D",
+                  "WB12C1-3D",
+                  "WB12C2-11D",
+                  "WB12C2-24D",
+                  "WB12D-10D",
+                  "WB12D-14D",
+                  "WB12D-3D",
+                  "WB12D-4D",
+                  "WB12D-9D",
+                  "WB12D1-12D",
+                  "WB12D1-13D",
+                  "WB12D1-24D",
+                  "WB12D1-5D",
+                  "WB12D2-24D",
+                  "WB12E-14D",
+                  "WB12E-4D",
+                  "WB12F-10D",
+                  "WB12G-10D",
+                  "WB12H-10D",
+                  "WB13-10D",
+                  "WB13-11",
+                  "WB13-13-A-1H",
+                  "WB13-14",
+                  "WB13-24",
+                  "WB13-4D",
+                  "WB13-9D",
+                  "WB13A1-13D",
+                  "WB13A1-3D",
+                  "WB13A2-15D",
+                  "WB13B-14D",
+                  "WB13B-4D",
+                  "WB13B-9D",
+                  "WB13B1-12D",
+                  "WB13B1-13",
+                  "WB13B1-3D",
+                  "WB13B2-15D",
+                  "WB13B2-24D",
+                  "WB13B2-3D",
+                  "WB13C-10D",
+                  "WB13C-14D",
+                  "WB13C-4DX",
+                  "WB13C1-12D",
+                  "WB13C1-13D",
+                  "WB13C1-3D",
+                  "WB13C1-5D",
+                  "WB13C2-11D",
+                  "WB13C2-15D",
+                  "WB13C2-24D",
+                  "WB13C2-3D",
+                  "WB13D-10D",
+                  "WB13D-14D",
+                  "WB13D-4D",
+                  "WB13D1-11D",
+                  "WB13D1-12D",
+                  "WB13D1-13D",
+                  "WB13D1-15D",
+                  "WB13D1-3D",
+                  "WB13D1-5D",
+                  "WB13D2-15D",
+                  "WB13D2-24D",
+                  "WB13D2-25D",
+                  "WB13D2-3D",
+                  "WB13I-10D",
+                  "WB14-10D",
+                  "WB14-11D",
+                  "WB14-14D",
+                  "WB14-24D",
+                  "WB14-4D",
+                  "WB14-9D",
+                  "WB14A1-13D",
+                  "WB14A1-25D",
+                  "WB14A1-3D",
+                  "WB14A1-5D",
+                  "WB14A2-15D",
+                  "WB14A2-23D",
+                  "WB14A2-25D",
+                  "WB14B-10DX",
+                  "WB14B-3D",
+                  "WB14B-4D",
+                  "WB14B-9D",
+                  "WB14B1-12D",
+                  "WB14B1-13D",
+                  "WB14B1-25D",
+                  "WB14B1-5D",
+                  "WB14B2-15D",
+                  "WB14B2-25D",
+                  "WB14C-10D",
+                  "WB14C-14D",
+                  "WB14C-4D",
+                  "WB14C1-11D",
+                  "WB14C1-12D",
+                  "WB14C1-13D",
+                  "WB14C1-25D",
+                  "WB14C1-3D",
+                  "WB14C2-11D",
+                  "WB14C2-15D",
+                  "WB14C2-24D",
+                  "WB14D-10D",
+                  "WB14D-14D",
+                  "WB14D1-11D",
+                  "WB14D1-13D",
+                  "WB14D1-15D",
+                  "WB14D1-25D",
+                  "WB14D1-3D",
+                  "WB14D1-5D",
+                  "WB14D2-25D",
+                  "WB14E-10D",
+                  "WB14F-10D",
+                  "WB15-11-A-1H",
+                  "WB15-23",
+                  "WB15A-15D",
+                  "WB15A1-10D",
+                  "WB15A1-11",
+                  "WB15A1-13D",
+                  "WB15A1-14D",
+                  "WB15A1-25D",
+                  "WB15A1-4D",
+                  "WB15A1-5D",
+                  "WB15A2-25D",
+                  "WB15B-9D",
+                  "WB15B1-13D",
+                  "WB15B1-14D",
+                  "WB15B1-23D",
+                  "WB15B1-25D",
+                  "WB15B1-4D",
+                  "WB15B1-5D",
+                  "WB15B2-10D",
+                  "WB15B2-11D",
+                  "WB15B2-15D",
+                  "WB15B2-23D",
+                  "WB15B2-4D",
+                  "WB15C1-13D",
+                  "WB15C1-14D",
+                  "WB15C1-25D",
+                  "WB15C1-5D",
+                  "WB15C2-10D",
+                  "WB15C2-15D",
+                  "WB15D1-10D",
+                  "WB15D1-13D",
+                  "WB15D1-14D",
+                  "WB15D1-25D",
+                  "WB15D1-26D",
+                  "WB15D1-4D",
+                  "WB15D1-5D",
+                  "WB15D2-11D",
+                  "WB15D2-25D",
+                  "WB15D2-2D",
+                  "WB16-5",
+                  "WB16A1-11D",
+                  "WB16A1-5D",
+                  "WB16A2-10D",
+                  "WB16A2-4D",
+                  "WB16B-10D",
+                  "WB16B-15D",
+                  "WB16B-4D",
+                  "WB16B-9D",
+                  "WB16B1-10D",
+                  "WB16B1-11D",
+                  "WB16B1-13D",
+                  "WB16B1-14D",
+                  "WB16B2-25D",
+                  "WB16C1-11D",
+                  "WB16C1-14D",
+                  "WB16C1-25D",
+                  "WB16C1-26D",
+                  "WB16C1-4D",
+                  "WB16C1-5D",
+                  "WB16C2-13D",
+                  "WB16C2-25D",
+                  "WB16D-10D",
+                  "WB16D1-11D",
+                  "WB16D1-14D",
+                  "WB16D1-25D",
+                  "WB16D1-26D",
+                  "WB16D1-4D",
+                  "WB16D1-5D",
+                  "WB1A-5D",
+                  "WB1A1-14D",
+                  "WB1A1-15D",
+                  "WB1A1-23D",
+                  "WB1A1-8D",
+                  "WB1A2-10D",
+                  "WB1B-5D",
+                  "WB1B-6DST",
+                  "WB1B-8D",
+                  "WB1B-9D",
+                  "WB1B1-10D",
+                  "WB1B1-14D",
+                  "WB1B1-15D",
+                  "WB1B1-23D",
+                  "WB1B2-10D",
+                  "WB1C-5D",
+                  "WB1C-6D",
+                  "WB1C-9D",
+                  "WB1C1-10D",
+                  "WB1C1-11D",
+                  "WB1C1-14D",
+                  "WB1C1-15D",
+                  "WB1C1-8D",
+                  "WB1C2-25D",
+                  "WB1D-5D",
+                  "WB1D-6D",
+                  "WB1D-9D",
+                  "WB1D1-14D",
+                  "WB1D1-15D",
+                  "WB1D1-25D",
+                  "WB1D1-8D",
+                  "WB1D2-10D",
+                  "WB2-26D",
+                  "WB2-5D",
+                  "WB2-8",
+                  "WB2-9D",
+                  "WB2A-15D",
+                  "WB2A-6DX",
+                  "WB2A1-10D",
+                  "WB2A1-11D",
+                  "WB2A1-14D",
+                  "WB2A1-23D",
+                  "WB2A2-24D",
+                  "WB2B-5D",
+                  "WB2B-6DXZ",
+                  "WB2B-9D",
+                  "WB2B1-10D",
+                  "WB2B1-11D",
+                  "WB2B1-14D",
+                  "WB2B1-24D",
+                  "WB2B2-14D",
+                  "WB2B2-15D",
+                  "WB2C-5D",
+                  "WB2C-6D",
+                  "WB2C-9D",
+                  "WB2C1-11D",
+                  "WB2C2-10D",
+                  "WB2C2-15D",
+                  "WB2D-4D",
+                  "WB2D-5D",
+                  "WB2D-6D",
+                  "WB2D-9D",
+                  "WB2D1-10D",
+                  "WB2D1-14D",
+                  "WB2D1-15D",
+                  "WB2D1-8D",
+                  "WB2D2-10D",
+                  "WB2D2-25D",
+                  "WB3-10",
+                  "WB3-4D",
+                  "WB3-5D",
+                  "WB3A1-10D",
+                  "WB3A1-11D",
+                  "WB3A1-13D",
+                  "WB3A1-15D",
+                  "WB3A1-24D",
+                  "WB3A1-5D",
+                  "WB3A1-9D",
+                  "WB3A2-8D",
+                  "WB3B1-10D",
+                  "WB3B1-15D",
+                  "WB3B1-24D",
+                  "WB3B2-13D",
+                  "WB3B2-14D",
+                  "WB3B2-9D",
+                  "WB3C1-10D",
+                  "WB3C1-11D",
+                  "WB3C1-15D",
+                  "WB3C1-24D",
+                  "WB3C1-5D",
+                  "WB3C1-9D",
+                  "WB3D1-10D",
+                  "WB3D1-11D",
+                  "WB3D1-14D",
+                  "WB3D1-24D",
+                  "WB3D1-4D",
+                  "WB3D1-5D",
+                  "WB3D1-9D",
+                  "WB3D2-13D",
+                  "WB3D2-14D",
+                  "WB3D2-25D",
+                  "WB4-10",
+                  "WB4-23",
+                  "WB4-25",
+                  "WB4-26",
+                  "WB4-4D",
+                  "WB4A1-14D",
+                  "WB4A1-15D",
+                  "WB4A1-24D",
+                  "WB4A1-8D",
+                  "WB4A1-9D",
+                  "WB4A2-13D",
+                  "WB4A2-15D",
+                  "WB4A2-9D",
+                  "WB4B-11D",
+                  "WB4B1-13D",
+                  "WB4B1-14D",
+                  "WB4B1-24D",
+                  "WB4B1-5D",
+                  "WB4B1-8D",
+                  "WB4B1-9D",
+                  "WB4B2-10D",
+                  "WB4B2-15D",
+                  "WB4B2-9D",
+                  "WB4C-9D",
+                  "WB4C1-10D",
+                  "WB4C1-11D",
+                  "WB4C1-13D",
+                  "WB4C1-14D",
+                  "WB4C1-15D",
+                  "WB4C1-5D",
+                  "WB4C1-9D",
+                  "WB4D-5D",
+                  "WB4D1-10D",
+                  "WB4D1-13D",
+                  "WB4D1-15D",
+                  "WB4D1-24D",
+                  "WB4D1-9",
+                  "WB4D2-14D",
+                  "WB4D2-15D",
+                  "WB5-10D",
+                  "WB5-14",
+                  "WB5-15D",
+                  "WB5-23",
+                  "WB5-25",
+                  "WB5-4",
+                  "WB5-9",
+                  "WB5A1-12",
+                  "WB5A1-13D",
+                  "WB5A1-15D",
+                  "WB5A1-5D",
+                  "WB5A2-10D",
+                  "WB5B1-11D",
+                  "WB5B1-13D",
+                  "WB5B1-24",
+                  "WB5B1-5D",
+                  "WB5B2-10D",
+                  "WB5C-25D",
+                  "WB5C1-11D",
+                  "WB5C1-12D",
+                  "WB5C1-13D",
+                  "WB5C1-24D",
+                  "WB5C1-4D",
+                  "WB5C1-5D",
+                  "WB5C1-9D",
+                  "WB5C2-11D",
+                  "WB5C2-14D",
+                  "WB5C2-15D",
+                  "WB5D-10D",
+                  "WB5D1-11D",
+                  "WB5D1-13D",
+                  "WB5D1-14D",
+                  "WB5D1-4D",
+                  "WB5D1-5D",
+                  "WB5D1-9D",
+                  "WB5D2-9D",
+                  "WB6-10D",
+                  "WB6-23",
+                  "WB6-26",
+                  "WB6-4",
+                  "WB6-5",
+                  "WB6A1-10D",
+                  "WB6A1-11D",
+                  "WB6A1-13D",
+                  "WB6A1-14D",
+                  "WB6A1-15D",
+                  "WB6A1-25D",
+                  "WB6A1-5D",
+                  "WB6A1-9D",
+                  "WB6A2-14D",
+                  "WB6A2-25D",
+                  "WB6B-14D",
+                  "WB6B-9D",
+                  "WB6B1-11D",
+                  "WB6B1-13D",
+                  "WB6B1-15D",
+                  "WB6B1-25D",
+                  "WB6B2-10D",
+                  "WB6B2-25D",
+                  "WB6C1-10D",
+                  "WB6C1-11D",
+                  "WB6C1-13D",
+                  "WB6C1-14D",
+                  "WB6C1-5D",
+                  "WB6C1-9D",
+                  "WB6C2-14D",
+                  "WB6C2-15D",
+                  "WB6C2-9D",
+                  "WB6D1-10D",
+                  "WB6D1-11D",
+                  "WB6D1-13D",
+                  "WB6D1-5D",
+                  "WB6D1-9D",
+                  "WB6D2-11D",
+                  "WB7-15D",
+                  "WB7-23",
+                  "WB7-23-2H",
+                  "WB7-23-3H",
+                  "WB7-23-4H",
+                  "WB7-4",
+                  "WB7-5D",
+                  "WB7-6D",
+                  "WB7-9DX",
+                  "WB7A-25D",
+                  "WB7A1-11D",
+                  "WB7A1-8D",
+                  "WB7A2-10D",
+                  "WB7A2-26D",
+                  "WB7B-5D",
+                  "WB7B-6D",
+                  "WB7B-9D",
+                  "WB7B1-11D",
+                  "WB7B1-13D",
+                  "WB7B1-14D",
+                  "WB7B2-25D",
+                  "WB7C-5D",
+                  "WB7C-6D",
+                  "WB7C-9D",
+                  "WB7C1-10D",
+                  "WB7C1-11D",
+                  "WB7C1-13D",
+                  "WB7C1-15D",
+                  "WB7C1-23D",
+                  "WB7C1-26D",
+                  "WB7C2-26D",
+                  "WB7D-5D",
+                  "WB7D-6D",
+                  "WB7D-9D",
+                  "WB7D1-11D",
+                  "WB7D1-14D",
+                  "WB7D1-15D",
+                  "WB7D1-24D",
+                  "WB7D2-10D",
+                  "WB7D2-8D",
+                  "WB8-14-3H",
+                  "WB8-14-4H",
+                  "WB8-14-A-1H",
+                  "WB8-22",
+                  "WB8-25",
+                  "WB8-25-A-1H",
+                  "WB8-25-A-2H",
+                  "WB8-25SE-1H",
+                  "WB8-25W-4H",
+                  "WB8-26",
+                  "WB8-5D",
+                  "WB8-6D",
+                  "WB8-8",
+                  "WB8-9D",
+                  "WB8A1-11D",
+                  "WB8A1-14D",
+                  "WB8A1-25D",
+                  "WB8A1-8D",
+                  "WB8A2-10D",
+                  "WB8B-10D",
+                  "WB8B-4D",
+                  "WB8B-5D",
+                  "WB8B-6D",
+                  "WB8B-9D",
+                  "WB8B1-11",
+                  "WB8B1-14D",
+                  "WB8B1-23D",
+                  "WB8B2-14D",
+                  "WB8B2-25D",
+                  "WB8C-15D",
+                  "WB8C-5D",
+                  "WB8C-6D",
+                  "WB8C-9D",
+                  "WB8C1-10D",
+                  "WB8C1-11D",
+                  "WB8D-5D",
+                  "WB8D-6D",
+                  "WB8D-9D",
+                  "WB8D1-10D",
+                  "WB8D1-11D",
+                  "WB8D1-14D",
+                  "WB8D1-8D",
+                  "WB9-15",
+                  "WB9-23",
+                  "WB9-23-11H",
+                  "WB9-23-5H",
+                  "WB9-23-A-1H",
+                  "WB9-23-A-2H",
+                  "WB9-23-A-3H",
+                  "WB9-23-M-1H",
+                  "WB9-26",
+                  "WB9-5D",
+                  "WB9A-4D",
+                  "WB9A1-11D",
+                  "WB9A1-14D",
+                  "WB9A1-25D",
+                  "WB9A1-4D",
+                  "WB9A1-5D",
+                  "WB9B-10D",
+                  "WB9B-4D",
+                  "WB9B1-11D",
+                  "WB9B1-13D",
+                  "WB9B1-25D",
+                  "WB9B1-5D",
+                  "WB9B2-4D",
+                  "WB9C1-10D",
+                  "WB9C1-11D",
+                  "WB9C1-13D",
+                  "WB9C1-14D",
+                  "WB9C1-25D",
+                  "WB9C1-4D",
+                  "WB9C1-8",
+                  "WB9C2-10D",
+                  "WB9C2-4D",
+                  "WB9D-10D",
+                  "WB9D-4D",
+                  "WB9D1-11D",
+                  "WB9D1-14",
+                  "WB9D1-25D",
+                  "WB9D1-5D"
+                ],
+                "name": "well_name",
+                "type": "String"
+              }
+            ]
+          },
+          "placeholder": {
+            "color": "#AAAAAA",
+            "text": "Well..."
+          },
+          "showClearIcon": true,
+          "style": {
+            "borderColor": "",
+            "classes": "Menus/DropDown_Menu"
+          },
+          "value": null
+        },
+        "type": "ia.input.dropdown"
+      },
+      {
+        "events": {
+          "component": {
+            "onActionPerformed": {
+              "config": {
+                "script": "\tobject_map \u003d {\n\t    \"lease\": \"Lease_Dropdown\",\n\t    \"well\": \"Well_Dropdown\",\n\t    \"site\": \"Pad_Dropdown\",\n\t    \"subroute\": \"Sub_Route_Dropdown\",\n\t    \"route\": \"Route_Dropdown\",\n\t    \"facility\": \"Facility_Dropdown\",\n\t}\n\tinverse_object_map \u003d {val: key for key, val in object_map.items()}\n\tcategory \u003d inverse_object_map[self.parent.custom.lastSelectedDropdown]\n\tinput_filters \u003d {\n\t    \"lease\": self.parent.custom.previousFilters.Lease,\n\t    \"well\": self.parent.custom.previousFilters.Well,\n\t    \"site\": self.parent.custom.previousFilters.Pad,\n\t    \"subroute\": self.parent.custom.previousFilters.SubRoute,\n\t    \"route\": self.parent.custom.previousFilters.Route,\n\t    \"facility\": self.parent.custom.previousFilters.Facility,\n\t}\n\toptions \u003d {\n\t    key: self.getSibling(val).props.options\n\t    for key, val in object_map.items()\n\t}\n\tfrom Navigation.Filter import NavigationFilter\n\tnav_filter \u003d NavigationFilter(input_filters, options, category, \u0027Previous_Button\u0027)\n\tfilters, current_options \u003d nav_filter.update_navigation()\n\t\n\tself.getSibling(\"Lease_Dropdown\").props.value \u003d filters[\"lease\"]\n\tself.getSibling(\"Well_Dropdown\").props.value \u003d filters[\"well\"]\n\tself.getSibling(\"Pad_Dropdown\").props.value \u003d filters[\"site\"]\n\tself.getSibling(\"Sub_Route_Dropdown\").props.value \u003d filters[\"subroute\"]\n\tself.getSibling(\"Facility_Dropdown\").props.value \u003d filters[\"facility\"]\n\t\n\tfor key, value in object_map.items():\n\t    self.getSibling(value).props.value \u003d filters[key]\n\t    if current_options.get(key) is not None:\n\t        self.getSibling(value).props.options \u003d current_options.get(key)\n\t\n\tnext_filter, prev_filter \u003d nav_filter.next_prev_filters()\n\tself.parent.custom.previousFilters.Lease \u003d prev_filter[\"lease\"]\n\tself.parent.custom.previousFilters.Pad \u003d prev_filter[\"site\"]\n\tself.parent.custom.previousFilters.SubRoute \u003d prev_filter[\"subroute\"]\n\tself.parent.custom.previousFilters.Route \u003d prev_filter[\"route\"]\n\tself.parent.custom.previousFilters.Well \u003d prev_filter[\"well\"]\n\tself.parent.custom.previousFilters.Facility \u003d prev_filter[\"facility\"]\n\t\n\tself.parent.custom.nextFilters.Lease \u003d next_filter[\"lease\"]\n\tself.parent.custom.nextFilters.Pad \u003d next_filter[\"site\"]\n\tself.parent.custom.nextFilters.SubRoute \u003d next_filter[\"subroute\"]\n\tself.parent.custom.nextFilters.Route \u003d next_filter[\"route\"]\n\tself.parent.custom.nextFilters.Well \u003d next_filter[\"well\"]\n\tself.parent.custom.nextFilters.Facility \u003d next_filter[\"facility\"]\n\tsystem.perspective.print(\u0027Query Count: %s\u0027%nav_filter.query_count)"
+              },
+              "scope": "G",
+              "type": "script"
+            }
+          }
+        },
+        "meta": {
+          "name": "Previous_Button"
+        },
+        "position": {
+          "basis": "60px"
+        },
+        "propConfig": {
+          "props.enabled": {
+            "binding": {
+              "config": {
+                "path": "parent.custom.lastSelectedDropdown"
+              },
+              "enabled": false,
+              "overlayOptOut": true,
+              "transforms": [
+                {
+                  "code": "\toptions \u003d self.getSibling(value).props.options\n\tselectedValue \u003d self.getSibling(value).props.value\n\tif options.getValueAt(0,0) \u003d\u003d selectedValue and value !\u003d \u0027Well_Dropdown\u0027:\n\t\treturn False\n\telse:\n\t\treturn True",
+                  "type": "script"
+                }
+              ],
+              "type": "property"
+            }
+          }
+        },
+        "props": {
+          "image": {
+            "height": 40,
+            "icon": {
+              "path": "material/chevron_left"
+            },
+            "width": 40
+          },
+          "style": {
+            "classes": "Buttons/Button01"
+          },
+          "text": ""
+        },
+        "type": "ia.input.button"
+      },
+      {
+        "events": {
+          "component": {
+            "onActionPerformed": {
+              "config": {
+                "script": "\t\n\tobject_map \u003d {\n\t    \"lease\": \"Lease_Dropdown\",\n\t    \"well\": \"Well_Dropdown\",\n\t    \"site\": \"Pad_Dropdown\",\n\t    \"subroute\": \"Sub_Route_Dropdown\",\n\t    \"route\": \"Route_Dropdown\",\n\t    \"facility\": \"Facility_Dropdown\",\n\t}\n\tinverse_object_map \u003d {val: key for key, val in object_map.items()}\n\tcategory \u003d inverse_object_map[self.parent.custom.lastSelectedDropdown]\n\tsystem.perspective.print(\u0027running next button with category: %s\u0027%category)\n\tinput_filters \u003d {\n\t    \"lease\": self.parent.custom.nextFilters.Lease,\n\t    \"well\": self.parent.custom.nextFilters.Well,\n\t    \"site\": self.parent.custom.nextFilters.Pad,\n\t    \"subroute\": self.parent.custom.nextFilters.SubRoute,\n\t    \"route\": self.parent.custom.nextFilters.Route,\n\t    \"facility\": self.parent.custom.nextFilters.Facility,\n\t}\n\toptions \u003d {\n\t    key: self.getSibling(val).props.options\n\t    for key, val in object_map.items()\n\t}\n\t\n\tsystem.perspective.print(\u0027--FILTERS--\u0027)\n\tsystem.perspective.print(input_filters)\n\tfrom Navigation.Filter import NavigationFilter\n\tnav_filter \u003d NavigationFilter(input_filters, options, category, \u0027Next_Button\u0027)\n\tfilters, current_options \u003d nav_filter.update_navigation()\n\t\n\tself.getSibling(\"Lease_Dropdown\").props.value \u003d filters[\"lease\"]\n\tself.getSibling(\"Well_Dropdown\").props.value \u003d filters[\"well\"]\n\tself.getSibling(\"Pad_Dropdown\").props.value \u003d filters[\"site\"]\n\tself.getSibling(\"Sub_Route_Dropdown\").props.value \u003d filters[\"subroute\"]\n\tself.getSibling(\"Route_Dropdown\").props.value \u003d filters[\"route\"]\n\tself.getSibling(\"Facility_Dropdown\").props.value \u003d filters[\"facility\"]\n\t\n\tfor key, value in object_map.items():\n\t    if current_options.get(key) is not None:\n\t        self.getSibling(value).props.options \u003d current_options.get(key)\n\t    self.getSibling(value).props.value \u003d filters[key]\n\t\n\tnext_filter, prev_filter \u003d nav_filter.next_prev_filters()\n\tself.parent.custom.previousFilters.Lease \u003d prev_filter[\"lease\"]\n\tself.parent.custom.previousFilters.Pad \u003d prev_filter[\"site\"]\n\tself.parent.custom.previousFilters.SubRoute \u003d prev_filter[\"subroute\"]\n\tself.parent.custom.previousFilters.Route \u003d prev_filter[\"route\"]\n\tself.parent.custom.previousFilters.Well \u003d prev_filter[\"well\"]\n\tself.parent.custom.previousFilters.Facility \u003d prev_filter[\"facility\"]\n\t\n\tself.parent.custom.nextFilters.Lease \u003d next_filter[\"lease\"]\n\tself.parent.custom.nextFilters.Pad \u003d next_filter[\"site\"]\n\tself.parent.custom.nextFilters.SubRoute \u003d next_filter[\"subroute\"]\n\tself.parent.custom.nextFilters.Route \u003d next_filter[\"route\"]\n\tself.parent.custom.nextFilters.Well \u003d next_filter[\"well\"]\n\tself.parent.custom.nextFilters.Facility \u003d next_filter[\"facility\"]\n\tsystem.perspective.print(\u0027Query Count: %s\u0027%nav_filter.query_count)"
+              },
+              "scope": "G",
+              "type": "script"
+            }
+          }
+        },
+        "meta": {
+          "name": "Next_Button"
+        },
+        "position": {
+          "basis": "60px"
+        },
+        "propConfig": {
+          "props.enabled": {
+            "binding": {
+              "config": {
+                "path": "parent.custom.lastSelectedDropdown"
+              },
+              "enabled": false,
+              "overlayOptOut": true,
+              "transforms": [
+                {
+                  "code": "\t\n\toptions \u003d self.getSibling(value).props.options\n\tselectedValue \u003d self.getSibling(value).props.value\n\tif options.getValueAt(options.getRowCount() - 1, 0) \u003d\u003d selectedValue and (value !\u003d \u0027Well_Dropdown\u0027 or value !\u003d \u0027Pad_Dropdown\u0027):\n\t\treturn False\n\telse:\n\t\treturn True",
+                  "type": "script"
+                }
+              ],
+              "type": "property"
+            }
+          }
+        },
+        "props": {
+          "image": {
+            "height": 40,
+            "icon": {
+              "path": "material/chevron_right"
+            },
+            "width": 40
+          },
+          "style": {
+            "classes": "Buttons/Button01"
+          },
+          "text": ""
+        },
+        "type": "ia.input.button"
+      },
+      {
+        "meta": {
+          "name": "ToggleSwitch",
+          "tooltip": {
+            "enabled": true,
+            "text": "When Disabled, each window will be unique. When Enabled, all windows share the selected information."
+          }
+        },
+        "position": {
+          "shrink": 0
+        },
+        "propConfig": {
+          "props.selected": {
+            "binding": {
+              "config": {
+                "bidirectional": true,
+                "path": "session.custom.useSessionProps"
+              },
+              "type": "property"
+            },
+            "onChange": {
+              "enabled": null,
+              "script": "\tif not currentValue and previousValue:\n\t\tsystem.perspective.sendMessage(\u0027updateFilters\u0027, payload \u003d {\u0027currentFilters\u0027:self.parent.custom.currentFilters})"
+            }
+          }
+        },
+        "props": {
+          "label": {
+            "text": "Use Session"
+          }
+        },
+        "type": "ia.input.toggle-switch"
+      },
+      {
+        "events": {
+          "dom": {
+            "onClick": [
+              {
+                "config": {
+                  "script": "\t\"\"\"\n\tOptimized performance metrics script with user comments\n\t\"\"\"\n\t\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\t# CONFIGURATION\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\tLOG_DATABASE \u003d \u0027IgnitionDB\u0027\n\tDB1_NAME \u003d \u0027IgnitionDB\u0027\n\tDB2_NAME \u003d \u0027IgnitionDB_Hist\u0027\n\tDB3_NAME \u003d \u0027IgnitionDB_RO\u0027\n\t\n\t# Location information\n\tif not self.parent.custom.useSession:\n\t    WELL \u003d self.parent.custom.currentFilters.Well\n\telif self.parent.custom.sessionFilters.Well:\n\t    WELL \u003d self.parent.custom.sessionFilters.Well\n\telse:\n\t    WELL \u003d \u0027Unknown\u0027\n\tif not self.parent.custom.useSession:\n\t    PAD \u003d self.parent.custom.currentFilters.Pad\n\telif self.parent.custom.sessionFilters.Pad:\n\t    PAD \u003d self.parent.custom.sessionFilters.Pad\n\telse:\n\t    PAD \u003d \u0027Unknown\u0027\n\tif not self.parent.custom.useSession:\n\t    ROUTE \u003d self.parent.custom.currentFilters.Route\n\telif self.parent.custom.sessionFilters.Route:\n\t    ROUTE \u003d self.parent.custom.sessionFilters.Route\n\telse:\n\t    ROUTE \u003d \u0027Unknown\u0027\n\t\n\tsession \u003d self.session\n\t\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\t# SHOW POPUP TO COLLECT USER COMMENTS\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\ttry:\n\t\tuser_comments_raw \u003d system.perspective.openPopup(\n\t\t\tid\u003d\u0027performance-comments\u0027,\n\t\t\tview\u003d\u0027Popups/PerformanceComments\u0027,\n\t\t\tparams\u003d{},\n\t\t\tposition\u003d{\u0027mode\u0027: \u0027modal\u0027},\n\t\t\tmodal\u003dTrue\n\t\t)\n\t\t\n\t\t# If user cancelled (closes popup without clicking submit), exit early\n\t\t# Note: Empty string \"\" means they clicked Submit with no text (which is OK)\n\t\tif user_comments_raw is None:\n\t\t\tsystem.perspective.print(\u0027Performance report cancelled by user\u0027)\n\t\t\treturn\n\t\t\n\t\t# Handle empty comments - use default message\n\t\tif user_comments_raw \u003d\u003d \"\" or user_comments_raw \u003d\u003d \"No comments provided\":\n\t\t\tusername_temp \u003d system.security.getUsername()\n\t\t\ttimestamp \u003d str(system.date.now())\n\t\t\tuser_comments \u003d \u0027User: {} reported issue at {}\u0027.format(username_temp, timestamp)\n\t\t\tsystem.perspective.print(\u0027No comments provided, using default message\u0027)\n\t\telse:\n\t\t\tuser_comments \u003d str(user_comments_raw)\n\t\t\tsystem.perspective.print(\u0027User comments received: \u0027 + user_comments[:50])\n\t\t\n\texcept Exception as e:\n\t\tsystem.perspective.print(\u0027Error showing comment popup: \u0027 + str(e))\n\t\tusername_temp \u003d system.security.getUsername()\n\t\ttimestamp \u003d str(system.date.now())\n\t\tuser_comments \u003d \u0027User: {} reported issue at {} (Error collecting comments)\u0027.format(username_temp, timestamp)\n\t\t\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\t# GATHER SESSION INFORMATION\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\ttry:\n\t\tcurrent_session_id \u003d str(session.props.id)\n\t\tsession_info_list \u003d system.perspective.getSessionInfo(usernameFilter\u003dself.session.props.auth.user.userName)\n\t\t\n\t\tsession_info \u003d None\n\t\tfor sess in session_info_list:\n\t\t\tif str(sess.get(\u0027id\u0027)) \u003d\u003d current_session_id:\n\t\t\t\tsession_info \u003d sess\n\t\t\t\tbreak\n\t\t\n\t\tif session_info:\n\t\t\tsession_id \u003d str(session_info.get(\u0027id\u0027, \u0027Unknown\u0027))\n\t\t\tusername \u003d str(session_info.get(\u0027username\u0027, \u0027Unknown\u0027))\n\t\t\tuser_agent \u003d str(session_info.get(\u0027userAgent\u0027, \u0027Unknown\u0027))\n\t\t\tproject_name \u003d str(session_info.get(\u0027project\u0027, \u0027Unknown\u0027))\n\t\t\tsession_uptime_ms \u003d session_info.get(\u0027uptime\u0027, None)\n\t\t\tclient_address \u003d str(session_info.get(\u0027clientAddress\u0027, \u0027Unknown\u0027))\n\t\t\tlast_comm_ms \u003d session_info.get(\u0027lastComm\u0027, None)\n\t\t\tsession_scope \u003d str(session_info.get(\u0027sessionScope\u0027, \u0027Unknown\u0027))\n\t\t\tactive_pages \u003d session_info.get(\u0027activePages\u0027, None)\n\t\t\trecent_bytes_sent \u003d session_info.get(\u0027recentBytesSent\u0027, None)\n\t\t\ttotal_bytes_sent \u003d session_info.get(\u0027totalBytesSent\u0027, None)\n\t\t\tauthorized \u003d session_info.get(\u0027authorized\u0027, None)\n\t\t\t\n\t\t\tpage_ids_list \u003d session_info.get(\u0027pageIds\u0027, [])\n\t\t\tpage_ids \u003d \u0027, \u0027.join([str(pid) for pid in page_ids_list]) if page_ids_list else \u0027None\u0027\n\t\telse:\n\t\t\tsession_id \u003d current_session_id\n\t\t\tusername \u003d system.security.getUsername()\n\t\t\tuser_agent \u003d str(session.props.userAgent) if hasattr(session.props, \u0027userAgent\u0027) else \u0027Unknown\u0027\n\t\t\tproject_name \u003d \u0027Unknown\u0027\n\t\t\tsession_uptime_ms \u003d None\n\t\t\tclient_address \u003d \u0027Unknown\u0027\n\t\t\tlast_comm_ms \u003d None\n\t\t\tsession_scope \u003d \u0027Unknown\u0027\n\t\t\tactive_pages \u003d None\n\t\t\trecent_bytes_sent \u003d None\n\t\t\ttotal_bytes_sent \u003d None\n\t\t\tpage_ids \u003d \u0027Unknown\u0027\n\t\t\tauthorized \u003d None\n\t\t\t\n\texcept Exception as e:\n\t\tsystem.perspective.print(\u0027Error getting session info: \u0027 + str(e))\n\t\tsession_id \u003d str(session.props.id) if hasattr(session.props, \u0027id\u0027) else \u0027Error\u0027\n\t\tusername \u003d system.security.getUsername()\n\t\tuser_agent \u003d \u0027Error\u0027\n\t\tproject_name \u003d \u0027Error\u0027\n\t\tsession_uptime_ms \u003d None\n\t\tclient_address \u003d \u0027Error\u0027\n\t\tlast_comm_ms \u003d None\n\t\tsession_scope \u003d \u0027Error\u0027\n\t\tactive_pages \u003d None\n\t\trecent_bytes_sent \u003d None\n\t\ttotal_bytes_sent \u003d None\n\t\tpage_ids \u003d \u0027Error\u0027\n\t\tauthorized \u003d None\n\t\n\t# Get user roles\n\ttry:\n\t\tuser_roles \u003d \u0027, \u0027.join(self.session.props.auth.user.roles)\n\texcept:\n\t\tuser_roles \u003d \u0027Unknown\u0027\n\t\n\t# Get current view path\n\ttry:\n\t\tview_path \u003d str(session.props.primaryPage.props.path) if hasattr(session.props, \u0027primaryPage\u0027) and session.props.primaryPage else \u0027Unknown\u0027\n\texcept:\n\t\tview_path \u003d \u0027Unknown\u0027\n\t\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\t# PARSE BROWSER TYPE FROM USER AGENT\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\ttry:\n\t\tua \u003d user_agent.lower()\n\t\tif \u0027edge\u0027 in ua or \u0027edg/\u0027 in ua:\n\t\t\tbrowser_type \u003d \u0027Edge\u0027\n\t\telif \u0027chrome\u0027 in ua and \u0027edge\u0027 not in ua:\n\t\t\tbrowser_type \u003d \u0027Chrome\u0027\n\t\telif \u0027firefox\u0027 in ua:\n\t\t\tbrowser_type \u003d \u0027Firefox\u0027\n\t\telif \u0027safari\u0027 in ua and \u0027chrome\u0027 not in ua:\n\t\t\tbrowser_type \u003d \u0027Safari\u0027\n\t\telif \u0027designer\u0027 in ua or \u0027\u003cdesigner\u003e\u0027 in ua:\n\t\t\tbrowser_type \u003d \u0027Designer\u0027\n\t\telse:\n\t\t\tbrowser_type \u003d \u0027Other\u0027\n\texcept:\n\t\tbrowser_type \u003d \u0027Unknown\u0027\n\t\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\t# ESTIMATE DEVICE TYPE FROM USER AGENT\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\ttry:\n\t\tua_lower \u003d user_agent.lower()\n\t\t\n\t\tif \u0027mobile\u0027 in ua_lower or \u0027android\u0027 in ua_lower and \u0027mobile\u0027 in ua_lower:\n\t\t\tdevice_type \u003d \u0027Mobile\u0027\n\t\t\tscreen_width \u003d 375\n\t\t\tscreen_height \u003d 667\n\t\telif \u0027tablet\u0027 in ua_lower or \u0027ipad\u0027 in ua_lower or (\u0027android\u0027 in ua_lower and \u0027mobile\u0027 not in ua_lower):\n\t\t\tdevice_type \u003d \u0027Tablet\u0027\n\t\t\tscreen_width \u003d 768\n\t\t\tscreen_height \u003d 1024\n\t\telif \u0027iphone\u0027 in ua_lower:\n\t\t\tdevice_type \u003d \u0027Mobile\u0027\n\t\t\tscreen_width \u003d 375\n\t\t\tscreen_height \u003d 812\n\t\telif \u0027designer\u0027 in ua_lower or \u0027\u003cdesigner\u003e\u0027 in ua_lower:\n\t\t\tdevice_type \u003d \u0027Designer\u0027\n\t\t\tscreen_width \u003d None\n\t\t\tscreen_height \u003d None\n\t\telse:\n\t\t\tdevice_type \u003d \u0027Desktop\u0027\n\t\t\tscreen_width \u003d 1920\n\t\t\tscreen_height \u003d 1080\n\texcept:\n\t\tdevice_type \u003d \u0027Unknown\u0027\n\t\tscreen_width \u003d None\n\t\tscreen_height \u003d None\n\t\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\t# GET CURRENT PAGE ID FROM PAGE_IDS LIST\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\ttry:\n\t\tif page_ids_list and len(page_ids_list) \u003e 0:\n\t\t\tcurrent_page_id \u003d str(page_ids_list[0])\n\t\telse:\n\t\t\tcurrent_page_id \u003d \u0027Unknown\u0027\n\texcept:\n\t\tcurrent_page_id \u003d \u0027Unknown\u0027\n\t\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\t# ESTIMATE COMPONENT COUNT\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\ttry:\n\t\tif recent_bytes_sent and recent_bytes_sent \u003e 0:\n\t\t\tcomponent_count_estimate \u003d int(recent_bytes_sent / 750)\n\t\telse:\n\t\t\tcomponent_count_estimate \u003d None\n\texcept:\n\t\tcomponent_count_estimate \u003d None\n\t\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\t# MEASURE NETWORK LATENCY \u0026 CONNECTION QUALITY\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\ttry:\n\t\tstart_time \u003d system.date.now()\n\t\tsystem.tag.readBlocking([\u0027[System]Gateway/CurrentDateTime\u0027])\n\t\tend_time \u003d system.date.now()\n\t\tnetwork_latency_ms \u003d int((end_time.time - start_time.time))\n\t\t\n\t\tif network_latency_ms \u003c 50:\n\t\t\tconnection_quality \u003d \u0027Excellent\u0027\n\t\telif network_latency_ms \u003c 150:\n\t\t\tconnection_quality \u003d \u0027Good\u0027\n\t\telif network_latency_ms \u003c 300:\n\t\t\tconnection_quality \u003d \u0027Fair\u0027\n\t\telse:\n\t\t\tconnection_quality \u003d \u0027Poor\u0027\n\texcept Exception as e:\n\t\tsystem.perspective.print(\u0027Error measuring network latency: \u0027 + str(e))\n\t\tnetwork_latency_ms \u003d None\n\t\tconnection_quality \u003d \u0027Unknown\u0027\n\t\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\t# CALCULATE TIME SINCE LAST INTERACTION\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\ttry:\n\t\ttime_since_last_interaction_ms \u003d last_comm_ms if last_comm_ms else None\n\texcept:\n\t\ttime_since_last_interaction_ms \u003d None\n\t\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\t# GET GATEWAY CPU (only available metric)\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\ttry:\n\t\tcpu_result \u003d system.tag.readBlocking([\u0027[System]Gateway/Performance/CPU Usage\u0027])[0]\n\t\tif cpu_result.quality.isGood():\n\t\t\tgateway_cpu \u003d cpu_result.value\n\t\telse:\n\t\t\tgateway_cpu \u003d None\n\texcept:\n\t\tgateway_cpu \u003d None\n\t\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\t# HELPER FUNCTION TO GET DB CONNECTION INFO\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\tdef getDbConnectionInfo(db_name):\n\t\ttry:\n\t\t\tdb_conn_dataset \u003d system.db.getConnectionInfo(db_name)\n\t\t\t\n\t\t\tif db_conn_dataset.getRowCount() \u003e 0:\n\t\t\t\treturn {\n\t\t\t\t\t\u0027connection_name\u0027: str(db_conn_dataset.getValueAt(0, \u0027Name\u0027)),\n\t\t\t\t\t\u0027connection_description\u0027: str(db_conn_dataset.getValueAt(0, \u0027Description\u0027)),\n\t\t\t\t\t\u0027type\u0027: str(db_conn_dataset.getValueAt(0, \u0027DBType\u0027)),\n\t\t\t\t\t\u0027status\u0027: str(db_conn_dataset.getValueAt(0, \u0027Status\u0027)),\n\t\t\t\t\t\u0027ext_status\u0027: str(db_conn_dataset.getValueAt(0, \u0027ExtStatus\u0027)),\n\t\t\t\t\t\u0027throughput\u0027: db_conn_dataset.getValueAt(0, \u0027Throughput\u0027),\n\t\t\t\t\t\u0027active_connections\u0027: db_conn_dataset.getValueAt(0, \u0027ActiveConnections\u0027),\n\t\t\t\t\t\u0027max_connections\u0027: db_conn_dataset.getValueAt(0, \u0027MaxConnections\u0027),\n\t\t\t\t\t\u0027validation_query\u0027: str(db_conn_dataset.getValueAt(0, \u0027ValidationQuery\u0027))[:500]\n\t\t\t\t}\n\t\t\telse:\n\t\t\t\treturn {\n\t\t\t\t\t\u0027connection_name\u0027: db_name,\n\t\t\t\t\t\u0027connection_description\u0027: \u0027Not found\u0027,\n\t\t\t\t\t\u0027type\u0027: \u0027Unknown\u0027,\n\t\t\t\t\t\u0027status\u0027: \u0027Not found\u0027,\n\t\t\t\t\t\u0027ext_status\u0027: \u0027Unknown\u0027,\n\t\t\t\t\t\u0027throughput\u0027: None,\n\t\t\t\t\t\u0027active_connections\u0027: None,\n\t\t\t\t\t\u0027max_connections\u0027: None,\n\t\t\t\t\t\u0027validation_query\u0027: None\n\t\t\t\t}\n\t\texcept Exception as e:\n\t\t\tsystem.perspective.print(\u0027Error getting connection info for {}: {}\u0027.format(db_name, str(e)))\n\t\t\treturn {\n\t\t\t\t\u0027connection_name\u0027: db_name,\n\t\t\t\t\u0027connection_description\u0027: \u0027Error\u0027,\n\t\t\t\t\u0027type\u0027: \u0027Unknown\u0027,\n\t\t\t\t\u0027status\u0027: \u0027Error\u0027,\n\t\t\t\t\u0027ext_status\u0027: \u0027Unknown\u0027,\n\t\t\t\t\u0027throughput\u0027: None,\n\t\t\t\t\u0027active_connections\u0027: None,\n\t\t\t\t\u0027max_connections\u0027: None,\n\t\t\t\t\u0027validation_query\u0027: None\n\t\t\t}\n\t\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\t# GET DATABASE CONNECTION INFO FOR ALL 3 DBs\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\tdb1_info \u003d getDbConnectionInfo(DB1_NAME)\n\tdb2_info \u003d getDbConnectionInfo(DB2_NAME)\n\tdb3_info \u003d getDbConnectionInfo(DB3_NAME)\n\t\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\t# BUILD USER NOTES WITH CONTEXT AND COMMENTS\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\tuser_notes \u003d \u0027User: {} reported slowdown at {} from {} on {} (est. {}x{}). Comments: {}\u0027.format(\n\t\tusername,\n\t\tstr(system.date.now()),\n\t\tdevice_type,\n\t\tbrowser_type,\n\t\tscreen_width if screen_width else \u0027Unknown\u0027,\n\t\tscreen_height if screen_height else \u0027Unknown\u0027,\n\t\tuser_comments\n\t)\n\t\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\t# PREPARE AND EXECUTE DATABASE INSERT\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\tinsert_query \u003d \"\"\"\n\tINSERT INTO Ignition.performance_logs (\n\t\tsession_id, username, user_roles,\n\t\twell, pad, route,\n\t\tview_path,\n\t\tuser_agent, client_address, session_scope, session_uptime_ms, last_comm_ms,\n\t\tactive_pages, recent_bytes_sent, total_bytes_sent, page_ids, authorized,\n\t\tnetwork_latency_ms,\n\t\tgateway_cpu_percent, thread_pool_max,\n\t\tdb1_connection_name, db1_connection_description, db1_type, db1_status, \n\t\tdb1_ext_status, db1_throughput, db1_active_connections, \n\t\tdb1_max_connections, db1_validation_query,\n\t\tdb2_connection_name, db2_connection_description, db2_type, db2_status, \n\t\tdb2_ext_status, db2_throughput, db2_active_connections, \n\t\tdb2_max_connections, db2_validation_query,\n\t\tdb3_connection_name, db3_connection_description, db3_type, db3_status, \n\t\tdb3_ext_status, db3_throughput, db3_active_connections, \n\t\tdb3_max_connections, db3_validation_query,\n\t\tbrowser_type, device_type, screen_width, screen_height,\n\t\tconnection_quality, time_since_last_interaction_ms, \n\t\tcomponent_count_estimate, current_page_id,\n\t\tuser_notes\n\t) VALUES (\n\t\t?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,\n\t\t?, ?, ?, ?, ?, ?, ?, ?, ?,\n\t\t?, ?, ?, ?, ?, ?, ?, ?, ?,\n\t\t?, ?, ?, ?, ?, ?, ?, ?, ?,\n\t\t?, ?, ?, ?, ?, ?, ?, ?, ?\n\t)\n\t\"\"\"\n\t\n\tparams \u003d [\n\t\tsession_id, username, user_roles,\n\t\tWELL, PAD, ROUTE,\n\t\tview_path,\n\t\tuser_agent, client_address, session_scope, session_uptime_ms, last_comm_ms,\n\t\tactive_pages, recent_bytes_sent, total_bytes_sent, page_ids, authorized,\n\t\tnetwork_latency_ms,\n\t\tgateway_cpu, 100,\n\t\tdb1_info[\u0027connection_name\u0027], db1_info[\u0027connection_description\u0027], \n\t\tdb1_info[\u0027type\u0027], db1_info[\u0027status\u0027], db1_info[\u0027ext_status\u0027], \n\t\tdb1_info[\u0027throughput\u0027], db1_info[\u0027active_connections\u0027], \n\t\tdb1_info[\u0027max_connections\u0027], db1_info[\u0027validation_query\u0027],\n\t\tdb2_info[\u0027connection_name\u0027], db2_info[\u0027connection_description\u0027], \n\t\tdb2_info[\u0027type\u0027], db2_info[\u0027status\u0027], db2_info[\u0027ext_status\u0027],\n\t\tdb2_info[\u0027throughput\u0027], db2_info[\u0027active_connections\u0027], \n\t\tdb2_info[\u0027max_connections\u0027], db2_info[\u0027validation_query\u0027],\n\t\tdb3_info[\u0027connection_name\u0027], db3_info[\u0027connection_description\u0027], \n\t\tdb3_info[\u0027type\u0027], db3_info[\u0027status\u0027], db3_info[\u0027ext_status\u0027],\n\t\tdb3_info[\u0027throughput\u0027], db3_info[\u0027active_connections\u0027], \n\t\tdb3_info[\u0027max_connections\u0027], db3_info[\u0027validation_query\u0027],\n\t\tbrowser_type, device_type, screen_width, screen_height,\n\t\tconnection_quality, time_since_last_interaction_ms,\n\t\tcomponent_count_estimate, current_page_id,\n\t\tstr(user_notes)\n\t]\n\t\n\ttry:\n\t\tsystem.db.runPrepUpdate(insert_query, params, LOG_DATABASE)\n\t\t\n\t\tsystem.perspective.print(\u0027✓ Performance metrics logged successfully!\u0027)\n\t\tsystem.perspective.print(\u0027  Session: {} ({})\u0027.format(session_id[:8] if len(session_id) \u003e 8 else session_id, session_scope))\n\t\tsystem.perspective.print(\u0027  User: {} from {}\u0027.format(username, client_address))\n\t\tsystem.perspective.print(\u0027  Location: Well {}, Pad {}, Route {}\u0027.format(WELL, PAD, ROUTE))\n\t\tsystem.perspective.print(\u0027  Comments: {}\u0027.format(user_comments[:100]))\n\t\tsystem.perspective.print(\u0027  Device: {} on {} (est. {}x{})\u0027.format(device_type, browser_type, screen_width, screen_height))\n\t\tsystem.perspective.print(\u0027  Network: {} ({}ms), Idle: {}ms\u0027.format(connection_quality, network_latency_ms, time_since_last_interaction_ms))\n\t\tsystem.perspective.print(\u0027  Gateway CPU: {}%\u0027.format(round(gateway_cpu * 100, 2) if gateway_cpu else \u0027N/A\u0027))\n\t\tsystem.perspective.print(\u0027  DB Status: {} / {} / {}\u0027.format(db1_info[\u0027status\u0027], db2_info[\u0027status\u0027], db3_info[\u0027status\u0027]))\n\t\t\n\t\tsystem.perspective.sendMessage(\n\t\t\t\u0027performance-log-success\u0027,\n\t\t\t{\u0027message\u0027: \u0027Performance metrics logged successfully. Thank you for reporting!\u0027, \u0027type\u0027: \u0027success\u0027},\n\t\t\tscope\u003d\u0027session\u0027\n\t\t)\n\t\t\n\texcept Exception as e:\n\t\tsystem.perspective.print(\u0027✗ Error logging performance metrics: \u0027 + str(e))\n\t\tsystem.perspective.sendMessage(\n\t\t\t\u0027performance-log-error\u0027,\n\t\t\t{\u0027message\u0027: \u0027Failed to log performance metrics. Please try again.\u0027, \u0027type\u0027: \u0027error\u0027, \u0027detail\u0027: str(e)},\n\t\t\tscope\u003d\u0027session\u0027\n\t\t)"
+                },
+                "enabled": false,
+                "scope": "G",
+                "type": "script"
+              },
+              {
+                "config": {
+                  "script": "\t\"\"\"\n\tOpen performance logging popup with current context\n\t\"\"\"\n\t\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\t# GATHER CONTEXT TO PASS TO POPUP\n\t# \u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\u003d\n\t\n\t# Location information\n\tif not self.parent.custom.useSession:\n\t    WELL \u003d self.parent.custom.currentFilters.Well\n\t    PAD \u003d self.parent.custom.currentFilters.Pad\n\t    ROUTE \u003d self.parent.custom.currentFilters.Route\n\telif self.parent.custom.sessionFilters.Well:\n\t    WELL \u003d self.parent.custom.sessionFilters.Well\n\t    PAD \u003d self.parent.custom.sessionFilters.Pad\n\t    ROUTE \u003d self.parent.custom.sessionFilters.Route\n\telse:\n\t    WELL \u003d \u0027Unknown\u0027\n\t    PAD \u003d \u0027Unknown\u0027\n\t    ROUTE \u003d \u0027Unknown\u0027\n\t\n\t# Pass context to popup as parameters\n\tparams \u003d {\n\t    \u0027well\u0027: WELL,\n\t    \u0027pad\u0027: PAD,\n\t    \u0027route\u0027: ROUTE\n\t}\n\t\n\t# Open popup (non-blocking)\n\tsystem.perspective.openPopup(\n\t    id\u003d\u0027performance-comments\u0027,\n\t    view\u003d\u0027Popups/PerformanceComments\u0027,\n\t    params\u003dparams,\n\t    position\u003d{\u0027mode\u0027: \u0027modal\u0027},\n\t    modal\u003dTrue\n\t)"
+                },
+                "scope": "G",
+                "type": "script"
+              }
+            ]
+          }
+        },
+        "meta": {
+          "name": "Issues Button"
+        },
+        "position": {
+          "basis": "80px"
+        },
+        "props": {
+          "style": {
+            "classes": "Buttons/Button01"
+          },
+          "text": "ISSUES"
+        },
+        "type": "ia.input.button"
+      }
+    ],
+    "custom": {
+      "Meta": {},
+      "currentFilters": {},
+      "lastSelectedDropdown": "Route_Dropdown",
+      "nextFilters": {
+        "Facility": null,
+        "Field": 1,
+        "Lease": null,
+        "Pad": 449,
+        "Route": 4,
+        "SubRoute": 4,
+        "Well": 3536
+      },
+      "previousFilters": {
+        "Facility": null,
+        "Field": null,
+        "Lease": null,
+        "Pad": 17,
+        "Route": 4,
+        "SubRoute": 4,
+        "Well": 11
+      },
+      "sessionFilters": {
+        "SubRoute": null
+      }
+    },
+    "events": {
+      "system": {
+        "onStartup": {
+          "config": {
+            "script": "\t#when filter dock loads (which will only be one time since its a static dock),\n\t#mimic the clear button. nothing should be selected. \n\t#this prevents saved values in designer from auto selecting in production\n\t\n\t# existing border clears\n\tself.getChild(\"Well_Dropdown\").props.style.borderColor \u003d \u0027\u0027\n\tself.getChild(\"Pad_Dropdown\").props.style.borderColor \u003d \u0027\u0027\n\tself.getChild(\"Route_Dropdown\").props.style.borderColor \u003d \u0027\u0027\n\tself.getChild(\"Field_Dropdown\").props.style.borderColor \u003d \u0027\u0027\n\tself.getChild(\"Lease_Dropdown\").props.style.borderColor \u003d \u0027\u0027\n\tself.getChild(\"Sub_Route_Dropdown\").props.style.borderColor \u003d \u0027\u0027   # \u003c-- NEW\n\t\n\t# existing value clears\n\tself.getChild(\"Well_Dropdown\").props.value \u003d None\n\tself.getChild(\"Pad_Dropdown\").props.value \u003d None\n\tself.getChild(\"Route_Dropdown\").props.value \u003d None\n\tself.getChild(\"Field_Dropdown\").props.value \u003d 1\n\tself.getChild(\"Lease_Dropdown\").props.value \u003d None\n\tself.getChild(\"Sub_Route_Dropdown\").props.value \u003d None             # \u003c-- NEW\n\t\n\t#    self.lastSelectedCheck()\n\tself.custom.lastSelectedDropdown \u003d \"Field_Dropdown\"\n\t\n\tself.getChild(\"Well_Dropdown\").props.options \u003d system.db.runNamedQuery(\u0027Navigation/Well\u0027)\n\tself.getChild(\"Pad_Dropdown\").props.options \u003d system.db.runNamedQuery(\u0027Navigation/Site\u0027)\n\tself.getChild(\"Route_Dropdown\").props.options \u003d system.db.runNamedQuery(\u0027Navigation/Route\u0027)\n\tself.getChild(\"Field_Dropdown\").props.options \u003d system.db.runNamedQuery(\u0027Navigation/Field\u0027)\n\tself.getChild(\"Lease_Dropdown\").props.options \u003d system.db.runNamedQuery(\u0027Navigation/Lease\u0027)\n\tself.getChild(\"Sub_Route_Dropdown\").props.options \u003d system.db.runNamedQuery(\u0027Navigation/Subroute\u0027)"
+          },
+          "scope": "G",
+          "type": "script"
+        }
+      }
+    },
+    "meta": {
+      "name": "root"
+    },
+    "propConfig": {
+      "custom.Meta.correctRoute": {
+        "binding": {
+          "config": {
+            "path": "./Route_Dropdown.props.value"
+          },
+          "type": "property"
+        }
+      },
+      "custom.Meta.data": {
+        "binding": {
+          "config": {
+            "queryPath": "MetaQueries/AllSites"
+          },
+          "type": "query"
+        }
+      },
+      "custom.currentFilters.Facility": {
+        "binding": {
+          "config": {
+            "path": "./Facility_Dropdown.props.value"
+          },
+          "type": "property"
+        }
+      },
+      "custom.currentFilters.Field": {
+        "binding": {
+          "config": {
+            "expression": "if({./Field_Dropdown.props.value}\u003d\u0027\u0027,null,{./Field_Dropdown.props.value})"
+          },
+          "type": "expr"
+        }
+      },
+      "custom.currentFilters.Lease": {
+        "binding": {
+          "config": {
+            "expression": "if({./Lease_Dropdown.props.value}\u003d\u0027\u0027,null,{./Lease_Dropdown.props.value})"
+          },
+          "type": "expr"
+        }
+      },
+      "custom.currentFilters.Pad": {
+        "binding": {
+          "config": {
+            "expression": "if({./Pad_Dropdown.props.value}\u003d\u0027\u0027,null,{./Pad_Dropdown.props.value})"
+          },
+          "type": "expr"
+        }
+      },
+      "custom.currentFilters.Route": {
+        "binding": {
+          "config": {
+            "expression": "if({./Route_Dropdown.props.value}\u003d\u0027\u0027,null,{./Route_Dropdown.props.value})"
+          },
+          "type": "expr"
+        }
+      },
+      "custom.currentFilters.SubRoute": {
+        "binding": {
+          "config": {
+            "path": "./Sub_Route_Dropdown.props.value"
+          },
+          "type": "property"
+        }
+      },
+      "custom.currentFilters.Well": {
+        "binding": {
+          "config": {
+            "expression": "if({./Well_Dropdown.props.value}\u003d\u0027\u0027,null,{./Well_Dropdown.props.value})"
+          },
+          "type": "expr"
+        }
+      },
+      "custom.lastSelectedDropdown": {
+        "onChange": {
+          "enabled": null,
+          "script": "\n\ttry:\n\t\tself.getChild(previousValue.value).props.style.borderColor \u003d \u0027\u0027\n\texcept:\n\t\tpass\n\tself.getChild(currentValue.value).props.style.borderColor \u003d \u0027#62BB46\u0027\n\t"
+        }
+      },
+      "custom.selectedName": {
+        "binding": {
+          "config": {
+            "path": "this.custom.lastSelectedDropdown"
+          },
+          "transforms": [
+            {
+              "code": "    # value \u003d name of the last dropdown that changed\n    lastSelectedDropdown \u003d value\n    # Always start with a safe default\n    lastSelectedName \u003d \"\"\n    # If nothing triggered or we get an unexpected value, just store/return empty\n    if not lastSelectedDropdown:\n        self.session.custom.lastSelectedName \u003d lastSelectedName\n        return lastSelectedName\n    if lastSelectedDropdown \u003d\u003d \"Sub_Route_Dropdown\":\n        routeValue \u003d self.getChild(\"Route_Dropdown\").props.value\n        routeDataset \u003d self.getChild(\"Route_Dropdown\").props.options\n        if routeDataset is not None:\n            for i in range(routeDataset.getRowCount()):\n                if routeDataset.getValueAt(i, 0) \u003d\u003d routeValue:\n                    sub_val \u003d self.getChild(\"Sub_Route_Dropdown\").props.value\n                    # handle None for sub_val safely\n                    if sub_val is None:\n                        sub_val \u003d 0\n                    lastSelectedName \u003d \"{} Sub:{}\".format(\n                        routeDataset.getValueAt(i, 1),\n                        sub_val\n                    )\n                    break\n    else:\n        # lastSelectedDropdown should be the *name* of a child, like \"Field_Dropdown\"\n        comp \u003d self.getChild(lastSelectedDropdown)\n        lastValue \u003d comp.props.value\n        lastSelectedDataset \u003d comp.props.options\n        if lastSelectedDataset is not None:\n            for i in range(lastSelectedDataset.getRowCount()):\n                if lastSelectedDataset.getValueAt(i, 0) \u003d\u003d lastValue:\n                    lastSelectedName \u003d lastSelectedDataset.getValueAt(i, 1)\n                    break\n    self.session.custom.lastSelectedName \u003d lastSelectedName\n    return lastSelectedName\n    \n    \n    #----------------OLD Code----------------------(Replaced with above code on 12/9/2025 by Jason Butler and Tony Gagler.\n#    \tlastSelectedDropdown \u003d value\n#\tif lastSelectedDropdown \u003d\u003d \"Sub_Route_Dropdown\":\n#\t\trouteValue \u003d self.getChild(\"Route_Dropdown\").props.value\n#\t\trouteDataset \u003d self.getChild(\"Route_Dropdown\").props.options\n#\t\tfor i in range(routeDataset.getRowCount()):\n#\t\t\tif routeDataset.getValueAt(i, 0) \u003d\u003d routeValue:\n#\t\t\t\tlastSelectedName \u003d routeDataset.getValueAt(i, 1) + \" Sub:%i\" %(self.getChild(\"Sub_Route_Dropdown\").props.value)\n#\t\t\t\tbreak\n#\telse:\n#\t\tlastValue \u003d self.getChild(lastSelectedDropdown).props.value\n#\t\tlastSelectedDataset \u003d self.getChild(lastSelectedDropdown).props.options\n#\t\tfor i in range(lastSelectedDataset.getRowCount()):\n#\t\t\tif lastSelectedDataset.getValueAt(i, 0) \u003d\u003d lastValue:\n#\t\t\t\tlastSelectedName \u003d lastSelectedDataset.getValueAt(i, 1)\n#\t\t\t\tbreak\n#\tself.session.custom.lastSelectedName \u003d lastSelectedName\n#\treturn lastSelectedName\n ",
+              "type": "script"
+            }
+          ],
+          "type": "property"
+        }
+      },
+      "custom.selectedPage": {
+        "binding": {
+          "config": {
+            "path": "page.props.primaryView"
+          },
+          "transforms": [
+            {
+              "code": "\ttry: return value.rsplit(\u0027/\u0027,1)[1]\n\texcept: return None",
+              "type": "script"
+            }
+          ],
+          "type": "property"
+        }
+      },
+      "custom.sessionFilters.Field": {
+        "binding": {
+          "config": {
+            "path": "session.custom.fieldSelected"
+          },
+          "type": "property"
+        }
+      },
+      "custom.sessionFilters.Lease": {
+        "binding": {
+          "config": {
+            "path": "session.custom.leaseSelected"
+          },
+          "type": "property"
+        }
+      },
+      "custom.sessionFilters.Pad": {
+        "binding": {
+          "config": {
+            "path": "session.custom.padSelected"
+          },
+          "type": "property"
+        }
+      },
+      "custom.sessionFilters.Route": {
+        "binding": {
+          "config": {
+            "path": "session.custom.routeSelected"
+          },
+          "type": "property"
+        }
+      },
+      "custom.sessionFilters.Well": {
+        "binding": {
+          "config": {
+            "path": "session.custom.wellSelected"
+          },
+          "type": "property"
+        }
+      },
+      "custom.useSession": {
+        "binding": {
+          "config": {
+            "bidirectional": true,
+            "path": "session.custom.useSessionProps"
+          },
+          "type": "property"
+        }
+      }
+    },
+    "props": {
+      "style": {
+        "borderColor": ""
+      }
+    },
+    "scripts": {
+      "customMethods": [],
+      "extensionFunctions": null,
+      "messageHandlers": [
+        {
+          "messageType": "screenToFilter",
+          "pageScope": true,
+          "script": "\t\n\tcurrentFilters \u003d payload[\u0027currentFilters\u0027]\n\tself.getChild(\"Field_Dropdown\").props.value \u003d currentFilters[\u0027Field\u0027]\n\tself.getChild(\"Route_Dropdown\").props.value \u003d currentFilters[\u0027Route\u0027]\n\tself.getChild(\"Well_Dropdown\").props.value \u003d currentFilters[\u0027Well\u0027]\n\tself.getChild(\"Pad_Dropdown\").props.value \u003d currentFilters[\u0027Pad\u0027]\n\tself.getChild(\"Lease_Dropdown\").props.value \u003d currentFilters[\u0027Lease\u0027]",
+          "sessionScope": false,
+          "viewScope": true
+        }
+      ]
+    },
+    "type": "ia.container.flex"
+  }
+}

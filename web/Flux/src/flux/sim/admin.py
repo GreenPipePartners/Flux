@@ -22,3 +22,4 @@ class SimHistoryBackfillAdmin(admin.ModelAdmin):
     list_display = ("name", "status", "start_at", "duration_days", "interval_seconds", "completed_at")
     list_filter = ("status",)
     search_fields = ("name", "history_prefix", "last_error")
+

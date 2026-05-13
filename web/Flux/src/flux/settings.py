@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "flux.opt",
     "flux.sim",
     "flux.field",
+    "flux.nav",
     "flux.live",
     "flux.trace",
     "runtime",
@@ -76,7 +77,13 @@ database_url = env("DATABASE_URL", default="")
 if database_url:
     DATABASES = {"default": dj_database_url.parse(database_url, conn_max_age=600)}
 else:
-    DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "db.sqlite3"}}
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+            "OPTIONS": {"timeout": 20},
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
