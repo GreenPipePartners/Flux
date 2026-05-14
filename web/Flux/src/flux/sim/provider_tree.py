@@ -13,6 +13,8 @@ from flux_sim.reconstruction import (
 )
 
 from .models import SimProviderSelection
+from flux.base import services as base_services
+from flux.base.models import TagProvider
 
 
 @dataclass
@@ -49,6 +51,11 @@ def default_sim_database_path() -> Path:
 
 
 def imported_provider_names(database_path: Path | None = None) -> list[str]:
+    if database_path is None:
+        names = base_services.provider_names()
+        if names:
+            return names
+        database_path = default_sim_database_path()
     database = database_path or default_sim_database_path()
     if not database.exists():
         return []
@@ -65,6 +72,8 @@ def build_imported_provider_tree(
     database_path: Path | None = None,
     max_depth: int = 8,
 ) -> ImportedProviderTree | None:
+    if database_path is None and TagProvider.objects.filter(name=provider).exists():
+        return base_services.build_provider_tree(provider, max_depth=max_depth)
     database = database_path or default_sim_database_path()
     if not provider or not database.exists():
         return None
@@ -124,6 +133,8 @@ def has_udt_instance_ancestor(path: str, nodes_by_path: dict[str, ImportedTreeNo
 
 
 def set_imported_selection(provider: str, path: str, *, enabled: bool) -> int:
+    if TagProvider.objects.filter(name=provider).exists():
+        return base_services.set_selection(provider, path, enabled=enabled)
     if enabled:
         SimProviderSelection.objects.update_or_create(
             provider=provider,
@@ -136,6 +147,8 @@ def set_imported_selection(provider: str, path: str, *, enabled: bool) -> int:
 
 
 def replace_imported_selection(provider: str, paths: list[str]) -> int:
+    if TagProvider.objects.filter(name=provider).exists():
+        return base_services.replace_selection(provider, paths)
     cleaned_paths = sorted({path.strip("/") for path in paths if path.strip("/")})
     SimProviderSelection.objects.filter(provider=provider).delete()
     SimProviderSelection.objects.bulk_create(
@@ -146,6 +159,8 @@ def replace_imported_selection(provider: str, paths: list[str]) -> int:
 
 
 def selected_source_paths(provider: str, *, database_path: Path | None = None) -> list[str]:
+    if database_path is None and TagProvider.objects.filter(name=provider).exists():
+        return base_services.selected_source_paths(provider)
     database = database_path or default_sim_database_path()
     selected_prefixes = list(
         SimProviderSelection.objects.filter(provider=provider, enabled=True).values_list("path", flat=True)

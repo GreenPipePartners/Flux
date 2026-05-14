@@ -14,6 +14,52 @@
   <p>Flux Sim configures simulated Ignition memory tags, writes values on schedules, and can backfill historian data.</p>
 </section>
 
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">flux.base</p>
+      <h1>Generate Provider Model</h1>
+    </div>
+    <span class="status-pill">postgres</span>
+  </div>
+  <p>Import an Ignition provider into the reusable base tag model. Sim, runtime, and field workflows should derive from this model instead of parsing tag JSON directly.</p>
+  <datalist id="sim-tag-provider-options">
+    {% for provider in sim_tag_providers %}
+      <option value="{{ provider }}"></option>
+    {% endfor %}
+  </datalist>
+  <div class="stage-grid">
+    <article class="stage-card">
+      <span>JSON</span>
+      <h2>Generate From JSON Import</h2>
+      <form method="post" action="{% url 'sim:import_provider_json' %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label for="json-provider">Provider name</label>
+        <input id="json-provider" name="provider" type="text" placeholder="ACM02">
+        <label for="provider-json">Provider export</label>
+        <input id="provider-json" name="provider_json" type="file" accept="application/json,.json" required>
+        <div class="actions">
+          <button class="button" type="submit">Import JSON</button>
+        </div>
+      </form>
+    </article>
+    <article class="stage-card">
+      <span>Ignition</span>
+      <h2>Generate From Ignition Provider</h2>
+      <form method="post" action="{% url 'sim:import_provider_ignition' %}">
+        {% csrf_token %}
+        <label for="source-provider">Ignition provider</label>
+        <input id="source-provider" name="source_provider" type="text" value="{{ sim_default_tag_provider }}" list="sim-tag-provider-options" required>
+        <label for="target-provider">Base provider name</label>
+        <input id="target-provider" name="provider" type="text" placeholder="{{ sim_default_tag_provider }}">
+        <div class="actions">
+          <button class="button" type="submit">Import From Ignition</button>
+        </div>
+      </form>
+    </article>
+  </div>
+</section>
+
 <section class="stage-grid">
   {% for schedule in schedules %}
     <article class="stage-card">
@@ -36,7 +82,7 @@
       <p class="eyebrow">imported provider</p>
       <h1>Provider Tree Selection</h1>
     </div>
-    <span class="status-pill">flux-sim.db</span>
+    <span class="status-pill">base model</span>
   </div>
   {% if imported_providers %}
     <form method="get" class="sim-provider-picker">
@@ -64,7 +110,7 @@
       </form>
     {% endif %}
   {% else %}
-    <p>No imported Flux Sim provider database found yet. Run <code>uv run manage.py import_tag_provider_export ../../tags02.json --provider ACM02</code>.</p>
+    <p>No base tag provider has been imported yet. Use JSON import or Ignition provider import above.</p>
   {% endif %}
 </section>
 
@@ -127,6 +173,27 @@
   {% else %}
     <p>No simulated tags configured yet.</p>
   {% endif %}
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">ignition cleanup</p>
+      <h1>Remove Simulated Tags</h1>
+    </div>
+    <span class="status-pill">Fluxy deleteTags</span>
+  </div>
+  <p>Delete one generated simulation branch from Ignition while keeping Flux Base and Sim configuration in Postgres.</p>
+  <form method="post" action="{% url 'sim:remove_ignition_sim_tags' %}">
+    {% csrf_token %}
+    <label for="remove-provider">Provider</label>
+    <input id="remove-provider" name="provider" type="text" value="{{ sim_default_tag_provider }}" list="sim-tag-provider-options" required>
+    <label for="remove-folder-path">Folder path</label>
+    <input id="remove-folder-path" name="folder_path" type="text" placeholder="FluxSim" required>
+    <div class="actions">
+      <button class="button button-secondary" type="submit">Remove From Ignition</button>
+    </div>
+  </form>
 </section>
 
 <section class="panel">

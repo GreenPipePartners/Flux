@@ -1,11 +1,16 @@
 from dataclasses import dataclass, field
+import os
 
 from django.contrib import messages
 from django.http import JsonResponse
 from django.db.models import QuerySet
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
+import fluxy
+from django.conf import settings
+from flux.base.services import import_provider_from_fluxy, import_provider_json_bytes
 
+from .engine import delete_tag_branch
 from .models import SimHistoryBackfill, SimSchedule, SimTag
 from .provider_tree import (
     build_imported_provider_tree,
@@ -57,6 +62,8 @@ def index(request):
             "imported_providers": imported_providers,
             "selected_imported_provider": selected_imported_provider,
             "imported_tag_tree": build_imported_provider_tree(selected_imported_provider),
+            "sim_default_tag_provider": settings.FLUX_SIM_DEFAULT_TAG_PROVIDER,
+            "sim_tag_providers": settings.FLUX_SIM_TAG_PROVIDERS,
             "backfills": SimHistoryBackfill.objects.order_by("-created_at")[:10],
         },
     )
@@ -70,6 +77,68 @@ def set_enabled(request):
     count = tags.update(enabled=enabled)
     state = "enabled" if enabled else "disabled"
     messages.success(request, f"{count} simulated tag(s) {state}.")
+    return redirect("sim:index")
+
+
+@require_POST
+def import_provider_json(request):
+    upload = request.FILES.get("provider_json")
+    provider = (request.POST.get("provider") or "").strip()
+    if upload is None:
+        messages.error(request, "Choose an Ignition provider JSON export to import.")
+        return redirect("sim:index")
+    try:
+        content = upload.read()
+        result = import_provider_json_bytes(
+            content,
+            provider_name=provider or upload.name.rsplit(".", 1)[0],
+            source_name=upload.name,
+        )
+    except Exception as exc:
+        messages.error(request, f"Provider JSON import failed: {exc}")
+        return redirect("sim:index")
+    messages.success(request, f"Imported {result.total_nodes} base tag node(s) for {result.provider.name}.")
+    return redirect(f"/sim/?provider={result.provider.name}")
+
+
+@require_POST
+def import_provider_ignition(request):
+    source_provider = (request.POST.get("source_provider") or settings.FLUX_SIM_DEFAULT_TAG_PROVIDER).strip()
+    provider = (request.POST.get("provider") or source_provider).strip()
+    base_url = os.getenv("FLUXY_BASE_URL", "http://localhost:8088/system/webdev/flux")
+    token = os.getenv("FLUXY_TOKEN")
+    try:
+        fx = fluxy.Fluxy(base_url=base_url, token=token, tag_provider=source_provider)
+        result = import_provider_from_fluxy(fx, source_provider=source_provider, provider_name=provider)
+    except Exception as exc:
+        messages.error(request, f"Ignition provider import failed: {exc}")
+        return redirect("sim:index")
+    messages.success(
+        request,
+        f"Imported {result.total_nodes} base tag node(s) from Ignition provider {source_provider} as {result.provider.name}.",
+    )
+    return redirect(f"/sim/?provider={result.provider.name}")
+
+
+@require_POST
+def remove_ignition_sim_tags(request):
+    provider = (request.POST.get("provider") or "").strip()
+    folder_path = (request.POST.get("folder_path") or "").strip().strip("/")
+    if not provider or not folder_path:
+        messages.error(request, "Provider and folder path are required to remove simulated tags from Ignition.")
+        return redirect("sim:index")
+    base_url = os.getenv("FLUXY_BASE_URL", "http://localhost:8088/system/webdev/flux")
+    token = os.getenv("FLUXY_TOKEN")
+    try:
+        fx = fluxy.Fluxy(base_url=base_url, token=token, tag_provider=provider)
+        deleted = delete_tag_branch(fx, provider=provider, folder_path=folder_path)
+    except Exception as exc:
+        messages.error(request, f"Ignition simulated tag removal failed: {exc}")
+        return redirect("sim:index")
+    messages.success(
+        request,
+        f"Requested deletion of {deleted} simulated tag branch(es) from Ignition for [{provider}]{folder_path}.",
+    )
     return redirect("sim:index")
 
 

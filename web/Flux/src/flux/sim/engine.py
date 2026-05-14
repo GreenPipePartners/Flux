@@ -68,6 +68,44 @@ def configure_enabled_tags(fx: FluxyLike) -> Any:
     return results
 
 
+def delete_configured_tags(fx: FluxyLike, *, provider: str, folder_path: str) -> int:
+    return delete_tag_branch(fx, provider=provider, folder_path=folder_path)
+
+
+def delete_tag_branch(fx: FluxyLike, *, provider: str, folder_path: str) -> int:
+    folder_path = folder_path.strip("/")
+    if not provider or not folder_path:
+        raise ValueError("provider and folder_path are required to delete simulated tags")
+    fx.tag.delete_tags([f"[{provider}]{folder_path}"])
+    return 1
+
+
+def deletion_targets(tags) -> list[str]:
+    folder_paths_by_provider: dict[str, set[str]] = {}
+    tag_paths: set[str] = set()
+    for tag in tags:
+        folder_path = tag.folder_path.strip("/")
+        if folder_path:
+            folder_paths_by_provider.setdefault(tag.provider, set()).add(folder_path)
+        else:
+            tag_paths.add(f"[{tag.provider}]{tag.name}")
+
+    targets = set(tag_paths)
+    for provider, folder_paths in folder_paths_by_provider.items():
+        for folder_path in minimal_folder_paths(folder_paths):
+            targets.add(f"[{provider}]{folder_path}")
+    return sorted(targets)
+
+
+def minimal_folder_paths(folder_paths: set[str]) -> list[str]:
+    selected: list[str] = []
+    for folder_path in sorted(folder_paths, key=lambda value: (value.count("/"), value)):
+        if any(folder_path == parent or folder_path.startswith(parent + "/") for parent in selected):
+            continue
+        selected.append(folder_path)
+    return selected
+
+
 def write_due_tags(fx: FluxyLike, *, now=None, batch_size: int = 500) -> int:
     now = now or timezone.now()
     due_tags = list(

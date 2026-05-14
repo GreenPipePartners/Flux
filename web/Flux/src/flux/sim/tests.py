@@ -3,12 +3,16 @@ import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import sqlite3
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from django.core.management import call_command
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.utils import timezone
+from flux.base.models import TagNode, TagProvider
 
-from .engine import configure_enabled_tags, run_history_backfill, value_for_tag, write_due_tags
+from .engine import configure_enabled_tags, delete_configured_tags, run_history_backfill, value_for_tag, write_due_tags
 from .models import SimHistoryBackfill, SimProviderSelection, SimSchedule, SimTag
 from .provider_tree import build_imported_provider_tree, selected_source_paths
 
@@ -226,6 +230,40 @@ class SimModelTests(TestCase):
         self.assertEqual(fx.tag.configured[0]["base_path"], "[default]")
         self.assertEqual(fx.tag.configured[0]["tags"][0]["name"], "ConfigTest")
 
+    def test_delete_configured_tags_removes_minimal_provider_branches(self):
+        SimTag.objects.update(enabled=False)
+        fast = SimSchedule.objects.create(name="fast", interval_seconds=1)
+        SimTag.objects.create(
+            provider="testsim",
+            name="BoolTag",
+            folder_path="FluxSim",
+            data_type=SimTag.DataType.BOOLEAN,
+            pattern=SimTag.Pattern.BOOL_TOGGLE,
+            schedule=fast,
+        )
+        SimTag.objects.create(
+            provider="testsim",
+            name="FloatTag",
+            folder_path="FluxSim/Nested",
+            data_type=SimTag.DataType.FLOAT8,
+            pattern=SimTag.Pattern.FLOAT_WAVE,
+            schedule=fast,
+        )
+        fx = FakeFluxy()
+
+        deleted = delete_configured_tags(fx, provider="testsim", folder_path="FluxSim")
+
+        self.assertEqual(deleted, 1)
+        self.assertEqual(fx.tag.deleted, [["[testsim]FluxSim"]])
+
+    def test_delete_configured_tags_does_not_require_simtag_rows(self):
+        fx = FakeFluxy()
+
+        deleted = delete_configured_tags(fx, provider="testsim", folder_path="AdHoc")
+
+        self.assertEqual(deleted, 1)
+        self.assertEqual(fx.tag.deleted, [["[testsim]AdHoc"]])
+
     def test_history_backfill_writes_configured_tags(self):
         SimTag.objects.update(enabled=False)
         fx = FakeFluxy()
@@ -349,6 +387,59 @@ class SimAdapterTests(TestCase):
         )
         self.assertTrue(SimProviderSelection.objects.filter(provider="Other", path="Keep").exists())
 
+    def test_sim_page_json_import_populates_base_provider(self):
+        upload = SimpleUploadedFile(
+            "simtag.json",
+            json.dumps(provider_export_fixture()).encode("utf-8"),
+            content_type="application/json",
+        )
+
+        response = self.client.post("/sim/import/json/", {"provider": "simtag", "provider_json": upload})
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(TagProvider.objects.filter(name="simtag", source=TagProvider.Source.JSON_UPLOAD).exists())
+        self.assertTrue(TagNode.objects.filter(provider__name="simtag", path="Area/Device01/PV").exists())
+
+    def test_sim_page_ignition_import_uses_fluxy_export(self):
+        fake_fx = SimpleNamespace(
+            tag=SimpleNamespace(
+                export_tags=lambda tag_path, recursive=True: SimpleNamespace(
+                    tags=provider_export_fixture(),
+                    raw_json=json.dumps(provider_export_fixture()),
+                )
+            )
+        )
+        with patch("flux.sim.views.fluxy.Fluxy", return_value=fake_fx) as fluxy_class:
+            response = self.client.post(
+                "/sim/import/ignition/",
+                {"source_provider": "simtag", "provider": "simtag"},
+            )
+
+        self.assertEqual(response.status_code, 302)
+        fluxy_class.assert_called_once()
+        self.assertTrue(TagProvider.objects.filter(name="simtag", source=TagProvider.Source.IGNITION_PROVIDER).exists())
+        self.assertTrue(TagNode.objects.filter(provider__name="simtag", path="Area/Device01/PV").exists())
+
+    def test_sim_page_remove_ignition_tags_uses_fluxy_delete(self):
+        fast = SimSchedule.objects.create(name="fast", interval_seconds=1)
+        SimTag.objects.create(
+            provider="testsim",
+            name="PV",
+            folder_path="FluxSim",
+            data_type=SimTag.DataType.FLOAT8,
+            pattern=SimTag.Pattern.FLOAT_WAVE,
+            schedule=fast,
+        )
+        fake_fx = FakeFluxy()
+        with patch("flux.sim.views.fluxy.Fluxy", return_value=fake_fx):
+            response = self.client.post(
+                "/sim/remove-ignition-tags/",
+                {"provider": "testsim", "folder_path": "FluxSim"},
+            )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(fake_fx.tag.deleted, [["[testsim]FluxSim"]])
+
 
 class FakeFluxy:
     def __init__(self):
@@ -360,6 +451,7 @@ class FakeTagApi:
     def __init__(self):
         self.writes = []
         self.configured = []
+        self.deleted = []
 
     def write_blocking(self, tag_paths, values):
         self.writes.append({"tag_paths": tag_paths, "values": values})
@@ -368,6 +460,10 @@ class FakeTagApi:
     def configure(self, tags, *, base_path, collision_policy):
         self.configured.append({"tags": tags, "base_path": base_path, "collision_policy": collision_policy})
         return ["Good"]
+
+    def delete_tags(self, tag_paths):
+        self.deleted.append(tag_paths)
+        return ["Good" for _path in tag_paths]
 
 
 class FakeHistorianApi:

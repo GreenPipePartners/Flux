@@ -11,6 +11,8 @@ env = environ.Env(
     DJANGO_ALLOWED_HOSTS=(list, ["localhost", "127.0.0.1"]),
     DJANGO_CSRF_TRUSTED_ORIGINS=(list, []),
     STALE_AFTER_SECONDS=(int, 120),
+    FLUX_SIM_DEFAULT_TAG_PROVIDER=(str, "tagsim"),
+    FLUX_SIM_TAG_PROVIDERS=(list, ["default", "tagsim"]),
 )
 
 env_file = BASE_DIR / ".env"
@@ -30,6 +32,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django_htmx",
+    "flux.base",
     "flux.serve",
     "flux.opt",
     "flux.sim",
@@ -110,6 +113,8 @@ if not DEBUG:
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "admin:login"
 STALE_AFTER_SECONDS = env("STALE_AFTER_SECONDS")
+FLUX_SIM_DEFAULT_TAG_PROVIDER = env("FLUX_SIM_DEFAULT_TAG_PROVIDER")
+FLUX_SIM_TAG_PROVIDERS = env("FLUX_SIM_TAG_PROVIDERS")
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
