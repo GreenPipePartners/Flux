@@ -22,7 +22,7 @@ Flux.web -> Configurator -> Flux.field / Flux.sim / Flux.serve
 Django is the UX and configurator layer:
 
 - `flux.live`: lightweight DB-backed visualization.
-- `flux.trace`: power-user charting and historical exploration.
+- `flux.trace`: power-user charting, historical exploration, and live trace trials over recorded runtime samples.
 - `flux.opt`: tag browse optimizer and runtime read planning.
 - `flux.serve`: worker/service orchestration UX and adapters.
 - `flux.field`: FieldAgent configuration UX and status adapters.
@@ -50,6 +50,8 @@ The production path is:
 2. `Flux.opt` controls browse/read planning and reduces inefficient tag IO.
 3. Runtime values are persisted into Flux runtime storage.
 4. `Flux.live`, `Flux.trace`, and `Flux.web` render from Flux storage instead of causing browser-driven Ignition tag IO.
+
+`Flux.trace` currently reads `runtime.TagSample` and renders Plotly trials from stored samples. The historical trial supports pinned chart markers, a copied Markdown marker-value table, and prompt-based annotations. The live trial polls new samples and only follows the newest right edge when the user is already viewing that edge; panning back preserves the inspected viewport while new samples continue to merge.
 
 ## Configurator Contract
 

@@ -59,6 +59,7 @@ def test_build_field_agent_config_uses_reconstruction_and_runtime(tmp_path: Path
     assert endpoint["namespace_uri"] == "urn:test:acm02"
     assert endpoint["devices"][0]["name"] == "Device01"
     assert endpoint["devices"][0]["tags"][0]["node_id"] == "ns=2;s=Device01.40001F"
+    assert endpoint["devices"][0]["tags"][0]["source_tag_path"] == "Area/Device01/PV"
 
 
 def provider_fixture():

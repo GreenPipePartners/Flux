@@ -9,6 +9,7 @@ dependencies = []
 flux-sim-import-provider = "flux_sim.cli:main"
 flux-sim-export-field-config = "flux_sim.export_field_config:main"
 flux-sim-prepare-online = "flux_sim.prepare_online:main"
+flux-sim-configure-ignition = "flux_sim.configure_ignition:main"
 
 [dependency-groups]
 dev = [

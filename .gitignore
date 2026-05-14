@@ -26,3 +26,4 @@ pki/
 dev_tag_builder/out/
 local_source_exports/
 tags02.json
+sim/field-config*.json

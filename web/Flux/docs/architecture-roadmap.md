@@ -32,6 +32,8 @@ Useful local pages:
 
 - `http://localhost:8000/live/`
 - `http://localhost:8000/live/pad-overview/`
+- `http://localhost:8000/trace/`
+- `http://localhost:8000/trace/live/`
 - `http://localhost:8000/nav/`
 - `http://localhost:8000/admin/`
 
@@ -93,6 +95,49 @@ Live selector logic is in:
 ```text
 src/flux/live/selectors.py
 ```
+
+## Trace Trial UI
+
+`flux.trace` currently has two Plotly-backed trial pages over `runtime.TagSample`:
+
+- `http://localhost:8000/trace/`: historical sample trace.
+- `http://localhost:8000/trace/live/`: polling live trace trial.
+
+Historical trace trial features:
+
+- Numeric `TagSample` streams are rendered as Plotly traces.
+- Unified x-hover and spike cursor are enabled for cross-trace inspection.
+- Clicking a plotted point pins a numbered marker, such as `(1)`, on the chart.
+- Pinned marker values are listed below the chart in a cross-tab table.
+- The table uses marker rows and trace-name columns.
+- Long trace headers are middle-ellipsized to 15 characters with the full trace name in the native browser tooltip.
+- Missing values remain blank; marker values only come from Plotly click-event data and are not interpolated or nearest-filled.
+- The marker table can be copied as a Markdown table.
+- Each pinned marker row can add a prompt-based chart annotation at the selected point.
+- Clear removes pinned markers, annotations, and the marker-value table state.
+
+Live trace trial features:
+
+- `/trace/live/` starts with the latest numeric samples and polls `/trace/live/samples/` every five seconds.
+- Samples are merged by runtime tag id to avoid rebuilding trace identity on each poll.
+- The visible x-range follows the newest right edge only while the user is already viewing the newest edge.
+- If the user pans or zooms back, new samples are merged without dragging the viewport forward.
+- A pause/resume button controls polling.
+
+Important trace files:
+
+```text
+src/flux/trace/selectors.py
+src/flux/trace/views.py
+src/templates/trace/index.html
+src/templates/trace/live.html
+```
+
+Current trace trial caveats:
+
+- Pinned markers and annotations are browser-session state only.
+- Saved trace sessions, persisted annotations, and server-side trace configuration models have not been introduced yet.
+- The live trace page is a trial polling surface, not the final service-supervised live historian UX.
 
 ## Runtime Storage
 

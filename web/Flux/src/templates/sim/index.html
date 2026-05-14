@@ -31,6 +31,105 @@
 </section>
 
 <section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">imported provider</p>
+      <h1>Provider Tree Selection</h1>
+    </div>
+    <span class="status-pill">flux-sim.db</span>
+  </div>
+  {% if imported_providers %}
+    <form method="get" class="sim-provider-picker">
+      <label for="provider">Provider</label>
+      <select id="provider" name="provider" onchange="this.form.submit()">
+        {% for provider in imported_providers %}
+          <option value="{{ provider }}" {% if provider == selected_imported_provider %}selected{% endif %}>{{ provider }}</option>
+        {% endfor %}
+      </select>
+    </form>
+    {% if imported_tag_tree %}
+      <p>{{ imported_tag_tree.selected_count }} provider branch selection(s). Export selected OPC leaf paths at <code>{% url 'sim:selected_paths' %}?provider={{ selected_imported_provider }}</code>.</p>
+      <form method="post" action="{% url 'sim:set_imported_bulk' %}" data-sim-tree-form>
+        {% csrf_token %}
+        <input type="hidden" name="provider" value="{{ selected_imported_provider }}">
+        <div class="sim-import-legend" aria-label="Icon legend">
+          <span><span aria-hidden="true">📁</span> folder</span>
+          <span><span aria-hidden="true">◆</span> UDT instance</span>
+          <span><span aria-hidden="true">●</span> tag</span>
+        </div>
+        {% include "sim/partials/imported_tag_tree.html" with nodes=imported_tag_tree.nodes provider=selected_imported_provider %}
+        <div class="actions sim-import-actions">
+          <button class="button" type="submit">Save Selection</button>
+        </div>
+      </form>
+    {% endif %}
+  {% else %}
+    <p>No imported Flux Sim provider database found yet. Run <code>uv run manage.py import_tag_provider_export ../../tags02.json --provider ACM02</code>.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">simulation selection</p>
+      <h1>Tag Tree</h1>
+    </div>
+    <span class="status-pill">provider / folder / tag</span>
+  </div>
+  {% if tag_tree %}
+    <div class="sim-tag-tree">
+      {% for provider in tag_tree %}
+        <article class="sim-tree-provider">
+          <div class="sim-tree-row">
+            <div>
+              <h2>[{{ provider.name }}]</h2>
+              <p>{{ provider.enabled_count }} of {{ provider.total_count }} simulated tags enabled.</p>
+            </div>
+            <div class="sim-tree-actions">
+              <form method="post" action="{% url 'sim:set_enabled' %}">
+                {% csrf_token %}
+                <input type="hidden" name="scope" value="provider">
+                <input type="hidden" name="provider" value="{{ provider.name }}">
+                <input type="hidden" name="enabled" value="1">
+                <button class="button" type="submit">Enable Provider</button>
+              </form>
+              <form method="post" action="{% url 'sim:set_enabled' %}">
+                {% csrf_token %}
+                <input type="hidden" name="scope" value="provider">
+                <input type="hidden" name="provider" value="{{ provider.name }}">
+                <input type="hidden" name="enabled" value="0">
+                <button class="button button-secondary" type="submit">Disable Provider</button>
+              </form>
+            </div>
+          </div>
+          {% if provider.folders_list %}
+            {% include "sim/partials/tag_tree_folders.html" with folders=provider.folders_list provider=provider.name %}
+          {% endif %}
+          {% if provider.root_tags %}
+            <ul class="sim-tree-list">
+              {% for tag in provider.root_tags %}
+                <li class="sim-tree-leaf">
+                  <span>{{ tag.name }} <small>{{ tag.data_type }}</small></span>
+                  <form method="post" action="{% url 'sim:set_enabled' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="scope" value="tag">
+                    <input type="hidden" name="tag_id" value="{{ tag.id }}">
+                    <input type="hidden" name="enabled" value="{% if tag.enabled %}0{% else %}1{% endif %}">
+                    <button class="button {% if tag.enabled %}button-secondary{% endif %}" type="submit">{% if tag.enabled %}Disable{% else %}Enable{% endif %}</button>
+                  </form>
+                </li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p>No simulated tags configured yet.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
   <div class="panel-header"><h1>Simulated Tags</h1></div>
   {% if tags %}
     <table>

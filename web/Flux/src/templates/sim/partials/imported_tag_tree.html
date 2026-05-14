@@ -1,0 +1,30 @@
+<ul class="sim-import-tree">
+  {% for node in nodes %}
+    <li class="sim-import-node">
+      <div class="sim-import-row-wrap">
+        {% if node.children_list %}
+          <button class="sim-import-toggle" type="button" data-sim-tree-toggle aria-expanded="false" aria-label="Toggle {{ node.name }}">&gt;</button>
+        {% else %}
+          <span class="sim-import-toggle-placeholder" aria-hidden="true"></span>
+        {% endif %}
+        <label class="sim-import-row" title="{{ node.path }}">
+          <input
+            type="checkbox"
+            name="paths"
+            value="{{ node.path }}"
+            data-sim-tree-checkbox
+            data-indeterminate="{% if node.partial %}1{% else %}0{% endif %}"
+            {% if node.selected %}checked{% endif %}
+          >
+          <span class="sim-import-icon" aria-hidden="true">{{ node.icon }}</span>
+          <span class="sim-import-name">{{ node.name }}</span>
+        </label>
+      </div>
+      {% if node.children_list %}
+        <div class="sim-import-children" data-sim-tree-children hidden>
+          {% include "sim/partials/imported_tag_tree.html" with nodes=node.children_list provider=provider %}
+        </div>
+      {% endif %}
+    </li>
+  {% endfor %}
+</ul>

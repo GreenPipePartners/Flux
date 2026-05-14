@@ -156,9 +156,10 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "httpx", specifier = ">=0.27" },
+    { name = "mcp", marker = "extra == 'mcp'", specifier = ">=1.0" },
     { name = "sqlalchemy", marker = "extra == 'sqlalchemy'", specifier = ">=2.0" },
 ]
-provides-extras = ["sqlalchemy"]
+provides-extras = ["sqlalchemy", "mcp"]
 
 [package.metadata.requires-dev]
 dev = [

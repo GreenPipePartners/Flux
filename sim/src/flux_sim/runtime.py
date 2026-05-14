@@ -199,6 +199,7 @@ def field_agent_tag_config(tag: SimulatedOpcTag) -> dict[str, Any]:
         "node_id": tag.opc_item_path,
         "browse_name": field_tag_name(tag),
         "opc_item_path": tag.opc_item_path,
+        "source_tag_path": tag.source_tag_path,
         "data_type": field_agent_data_type(tag.data_type),
         "update_rate_ms": 1000,
         "simulation_type": "wave" if field_agent_data_type(tag.data_type) == "float" else "static",
