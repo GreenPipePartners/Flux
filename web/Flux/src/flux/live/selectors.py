@@ -9,8 +9,8 @@ from typing import Any
 from django.conf import settings
 from django.utils import timezone
 
-from runtime.extremes import rolling_midnight_extremes
-from runtime.models import RuntimeTag
+from flux.base.runtime import RuntimeTag
+from flux.base.runtime_extremes import rolling_midnight_extremes
 
 
 @dataclass(frozen=True)

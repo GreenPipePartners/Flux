@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from runtime.models import TagSample
+from flux.base.runtime import TagSample
 
 
 @dataclass(frozen=True)
@@ -15,7 +15,7 @@ class TraceSeries:
     y: list[float]
 
 
-def plotly_sample_series(
+def trace_sample_series(
     *, max_tags: int = 3, samples_per_tag: int = 500, since=None
 ) -> dict[str, list[dict[str, Any]]]:
     rows = TagSample.objects.select_related("tag")

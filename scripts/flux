@@ -1,0 +1,382 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+import socket
+import urllib.error
+import urllib.request
+import webbrowser
+from pathlib import Path
+
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+WEB_URL = "http://localhost:8000/"
+WEB_DIR = ROOT_DIR / "web" / "Flux"
+WEB_ENV = WEB_DIR / ".env"
+FLUXY_PROJECT = ROOT_DIR / "web" / "ignition_flux_project"
+DEFAULT_GATEWAY_URL = "http://localhost:8088"
+DEFAULT_FLUXY_BASE_URL = "http://localhost:8088/system/webdev/flux"
+
+
+INTRO = f"""
+Flux
+====
+
+Flux is a local Ignition companion stack for fast, database-backed operations views.
+
+Local stack:
+  Web UI       {WEB_URL}
+  FieldAgent   OPC UA simulator on opc.tcp://localhost:4840/flux/field
+  Demo reader  Reads Ignition through Fluxy and stores latest values in Flux
+
+Common commands:
+  flux doctor           Check local Flux + Ignition dev-cell health
+  flux start            Start the Flux background service
+  flux stop             Stop the Flux background service
+  flux status           Show service status
+  flux logs             Follow service logs
+  flux open             Open the web UI
+  flux install-service  Install/refresh the user service
+
+Ignition dev cell:
+  flux ignition doctor        Check Gateway + Fluxy WebDev readiness
+  flux ignition deploy-fluxy  Deploy/refresh Fluxy WebDev resources
+  flux ignition request-scan  Ask Ignition to rescan the project
+  flux ignition open          Open the Ignition Gateway home page
+
+First local setup:
+  1. Run: flux install-service
+  2. Run: flux start
+  3. Open: {WEB_URL}
+
+Project paths:
+  Repo      {ROOT_DIR}
+  Web app   {ROOT_DIR / "web" / "Flux"}
+  Dev cell  {ROOT_DIR / "docs" / "ignition-dev-cell.md"}
+""".strip()
+
+
+def script(name: str) -> Path:
+    suffix = ".cmd" if os.name == "nt" else ".sh"
+    return ROOT_DIR / "scripts" / f"{name}{suffix}"
+
+
+def flux_env() -> dict[str, str]:
+    env = os.environ.copy()
+    if WEB_ENV.exists():
+        for line in WEB_ENV.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#") or "=" not in stripped:
+                continue
+            key, value = stripped.split("=", 1)
+            env.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+    env.setdefault("IGNITION_GATEWAY_URL", DEFAULT_GATEWAY_URL)
+    env.setdefault("FLUXY_BASE_URL", DEFAULT_FLUXY_BASE_URL)
+    env.setdefault("FLUXY_PROJECT_LOCATION", str(FLUXY_PROJECT))
+    return env
+
+
+def run_uv_fluxy(args: list[str]) -> int:
+    return subprocess.call(["uv", "run", "--project", "fluxy", *args], cwd=ROOT_DIR, env=flux_env())
+
+
+def capture(command: list[str], *, cwd: Path = ROOT_DIR) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(command, cwd=cwd, text=True, capture_output=True, env=flux_env())
+
+
+def check_http(url: str, timeout: float = 3.0) -> tuple[bool, str]:
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as response:
+            return 200 <= response.status < 400, f"HTTP {response.status}"
+    except urllib.error.HTTPError as exc:
+        return False, f"HTTP {exc.code}"
+    except OSError as exc:
+        return False, str(exc)
+
+
+def check_port(host: str, port: int, timeout: float = 2.0) -> tuple[bool, str]:
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True, "listening"
+    except OSError as exc:
+        return False, str(exc)
+
+
+def print_check(ok: bool, name: str, detail: str) -> None:
+    marker = "OK" if ok else "FAIL"
+    print(f"[{marker}] {name}: {detail}")
+
+
+def print_fix(command: str) -> None:
+    print(f"      fix: {command}")
+
+
+def django_doctor_state() -> tuple[dict | None, str]:
+    result = capture(["uv", "run", "python", "manage.py", "flux_doctor_state"], cwd=WEB_DIR)
+    if result.returncode != 0:
+        return None, (result.stderr or result.stdout).strip()
+    try:
+        return json.loads(result.stdout), ""
+    except json.JSONDecodeError as exc:
+        return None, f"Invalid doctor state JSON: {exc}"
+
+
+def doctor() -> int:
+    failures = 0
+
+    service = capture(["systemctl", "--user", "is-active", "flux-stack.service"])
+    service_ok = service.returncode == 0 and service.stdout.strip() == "active"
+    print_check(service_ok, "Flux service", service.stdout.strip() or service.stderr.strip() or "not active")
+    if not service_ok:
+        print_fix("flux start")
+    failures += 0 if service_ok else 1
+
+    web_ok, web_detail = check_http(WEB_URL)
+    print_check(web_ok, "Flux web", f"{WEB_URL} {web_detail}")
+    if not web_ok:
+        print_fix("flux start")
+    failures += 0 if web_ok else 1
+
+    field_ok, field_detail = check_port("localhost", 4840)
+    print_check(field_ok, "FieldAgent OPC UA", f"localhost:4840 {field_detail}")
+    if not field_ok:
+        print_fix("flux start")
+    failures += 0 if field_ok else 1
+
+    state, state_error = django_doctor_state()
+    if state is None:
+        print_check(False, "Flux app state", state_error or "unavailable")
+        print_fix("cd web/Flux && uv run python manage.py migrate")
+        failures += 1
+    else:
+        runtime = state["runtime"]
+        bridge = state["bridge"]
+        historian = state["historian"]
+
+        latest_age = runtime["latest_read_age_seconds"]
+        latest_detail = "no reads yet" if latest_age is None else f"latest read {latest_age}s ago"
+        runtime_ok = runtime["tag_count"] > 0 and runtime["stale_count"] == 0 and runtime["bad_quality_count"] == 0
+        print_check(
+            runtime_ok,
+            "Runtime reads",
+            "%s tags, %s online, %s stale, %s bad quality, %s"
+            % (
+                runtime["tag_count"],
+                runtime["online_count"],
+                runtime["stale_count"],
+                runtime["bad_quality_count"],
+                latest_detail,
+            ),
+        )
+        if runtime["stale_count"]:
+            print_fix("open http://localhost:8000/ and use 'Refresh stale reads now'")
+        if runtime["tag_count"] == 0:
+            print_fix("open http://localhost:8000/admin/runtime/runtimetag/")
+        failures += 0 if runtime_ok else 1
+
+        bridge_ok = bridge["online"] and bridge["token_set"]
+        bridge_detail = "%s, token %s" % (bridge["base_url"], "set" if bridge["token_set"] else "not set")
+        if bridge["message"]:
+            bridge_detail = f"{bridge_detail}, {bridge['message']}"
+        print_check(bridge_ok, "Live Ignition Bridge", bridge_detail)
+        if not bridge_ok:
+            print_fix("open http://localhost:8000/ and use Live Ignition Bridge -> Test connection")
+        failures += 0 if bridge_ok else 1
+
+        historian_ok = historian["ok"] and historian["status"].lower() == "valid"
+        historian_detail = "%s type=%s status=%s" % (
+            historian["database"],
+            historian["db_type"] or "unknown",
+            historian["status"] or historian["error"] or "unknown",
+        )
+        print_check(historian_ok, "Historian datasource", historian_detail)
+        if not historian_ok:
+            print_fix("verify FLUX_HISTORIAN_DATABASE or Ignition datasource status")
+        failures += 0 if historian_ok else 1
+
+    ignition = capture(["uv", "run", "--project", "fluxy", "fluxy-check-ignition-dev"])
+    ignition_ok = ignition.returncode == 0
+    print_check(ignition_ok, "Ignition dev cell", "ready" if ignition_ok else "not ready")
+    if not ignition_ok:
+        print_fix("flux ignition doctor --open")
+    output = (ignition.stdout or ignition.stderr).strip()
+    if output:
+        for line in output.splitlines():
+            print(f"      {line}")
+    failures += 0 if ignition_ok else 1
+
+    if failures:
+        print("Flux is not fully healthy.")
+        return 1
+    print("Flux is healthy.")
+    return 0
+
+
+def run_script(name: str) -> int:
+    path = script(name)
+    if not path.exists():
+        print(f"Flux command is not available on this platform yet: {path}", file=sys.stderr)
+        return 1
+    return subprocess.call([str(path)], cwd=ROOT_DIR)
+
+
+def open_ui() -> int:
+    opened = webbrowser.open(WEB_URL)
+    if not opened:
+        print(WEB_URL)
+        return 1
+    print(f"Opened {WEB_URL}")
+    return 0
+
+
+def open_url(url: str) -> int:
+    opened = webbrowser.open(url)
+    if not opened:
+        print(url)
+        return 1
+    print(f"Opened {url}")
+    return 0
+
+
+def ignition_doctor(args: argparse.Namespace) -> int:
+    command = [
+        "fluxy-check-ignition-dev",
+        "--gateway-url",
+        args.gateway_url,
+        "--fluxy-base-url",
+        args.fluxy_base_url,
+        "--timeout",
+        str(args.timeout),
+    ]
+    token = args.token if args.token is not None else flux_env().get("FLUXY_TOKEN")
+    if token:
+        command.extend(["--token", token])
+    if args.open:
+        command.append("--open")
+    return run_uv_fluxy(command)
+
+
+def ignition_deploy_fluxy(args: argparse.Namespace) -> int:
+    project_path = Path(args.project_path).expanduser().resolve()
+    if not project_path.exists():
+        print(f"Ignition project path does not exist: {project_path}", file=sys.stderr)
+        return 1
+
+    command = ["fluxy-deploy-webdev", str(project_path), "--namespace", args.namespace]
+    if args.clean:
+        command.append("--clean")
+    token = args.auth_token if args.auth_token is not None else flux_env().get("FLUXY_TOKEN")
+    if token:
+        command.extend(["--auth-token", token])
+
+    status = run_uv_fluxy(command)
+    if status != 0 or args.no_scan:
+        return status
+    return ignition_request_scan(args)
+
+
+def ignition_request_scan(args: argparse.Namespace) -> int:
+    env = flux_env()
+    base_url = getattr(args, "fluxy_base_url", None) or env["FLUXY_BASE_URL"]
+    token = getattr(args, "token", None)
+    if token is None:
+        token = env.get("FLUXY_TOKEN")
+    code = (
+        "import os, fluxy; "
+        "fx = fluxy.Fluxy(base_url=os.environ['FLUXY_BASE_URL'], token=os.environ.get('FLUXY_TOKEN')); "
+        "print(fx.project.request_scan())"
+    )
+    env["FLUXY_BASE_URL"] = base_url
+    if token:
+        env["FLUXY_TOKEN"] = token
+    return subprocess.call(["uv", "run", "--project", "fluxy", "python", "-c", code], cwd=ROOT_DIR, env=env)
+
+
+def ignition_info() -> int:
+    env = flux_env()
+    print("Flux Ignition dev cell")
+    print("=======================")
+    print(f"Gateway URL:       {env['IGNITION_GATEWAY_URL']}")
+    print(f"Fluxy base URL:    {env['FLUXY_BASE_URL']}")
+    print(f"Project location:  {env['FLUXY_PROJECT_LOCATION']}")
+    print(f"Fluxy token:       {'set' if env.get('FLUXY_TOKEN') else 'not set'}")
+    return 0
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Flux local development helper.")
+    subparsers = parser.add_subparsers(dest="command")
+    subparsers.add_parser("intro", help="Show the Flux getting-started intro")
+    subparsers.add_parser("doctor", help="Check local Flux + Ignition dev-cell health")
+    subparsers.add_parser("install-service", help="Install or refresh the user service")
+    subparsers.add_parser("start", help="Start the Flux background service")
+    subparsers.add_parser("stop", help="Stop the Flux background service")
+    subparsers.add_parser("status", help="Show Flux service status")
+    subparsers.add_parser("logs", help="Follow Flux service logs")
+    subparsers.add_parser("open", help="Open the Flux web UI")
+    ignition = subparsers.add_parser("ignition", help="Manage the Flux Ignition dev cell")
+    ignition_subparsers = ignition.add_subparsers(dest="ignition_command")
+
+    ignition_subparsers.add_parser("info", help="Show configured Ignition dev-cell paths and URLs")
+    doctor = ignition_subparsers.add_parser("doctor", help="Check Gateway + Fluxy WebDev readiness")
+    doctor.add_argument("--gateway-url", default=flux_env().get("IGNITION_GATEWAY_URL", DEFAULT_GATEWAY_URL))
+    doctor.add_argument("--fluxy-base-url", default=flux_env().get("FLUXY_BASE_URL", DEFAULT_FLUXY_BASE_URL))
+    doctor.add_argument("--token", default=None)
+    doctor.add_argument("--timeout", type=float, default=5.0)
+    doctor.add_argument("--open", action="store_true", help="Open manual-attention URLs")
+
+    deploy = ignition_subparsers.add_parser("deploy-fluxy", help="Deploy Fluxy WebDev resources")
+    deploy.add_argument("--project-path", default=str(FLUXY_PROJECT))
+    deploy.add_argument("--namespace", default="fluxy")
+    deploy.add_argument("--auth-token", default=None)
+    deploy.add_argument("--clean", action="store_true")
+    deploy.add_argument("--no-scan", action="store_true", help="Do not request an Ignition project scan after deploy")
+
+    scan = ignition_subparsers.add_parser("request-scan", help="Ask Ignition to rescan the project")
+    scan.add_argument("--fluxy-base-url", default=flux_env().get("FLUXY_BASE_URL", DEFAULT_FLUXY_BASE_URL))
+    scan.add_argument("--token", default=None)
+    ignition_subparsers.add_parser("open", help="Open the Ignition Gateway home page")
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+    command = args.command or "intro"
+    if command == "intro":
+        print(INTRO)
+        return 0
+    if command == "doctor":
+        return doctor()
+    if command == "install-service":
+        return run_script("flux-service-install")
+    if command == "start":
+        return run_script("flux-service-start")
+    if command == "stop":
+        return run_script("flux-service-stop")
+    if command == "status":
+        return run_script("flux-service-status")
+    if command == "logs":
+        return run_script("flux-service-logs")
+    if command == "open":
+        return open_ui()
+    if command == "ignition":
+        ignition_command = args.ignition_command or "info"
+        if ignition_command == "info":
+            return ignition_info()
+        if ignition_command == "doctor":
+            return ignition_doctor(args)
+        if ignition_command == "deploy-fluxy":
+            return ignition_deploy_fluxy(args)
+        if ignition_command == "request-scan":
+            return ignition_request_scan(args)
+        if ignition_command == "open":
+            return open_url(flux_env()["IGNITION_GATEWAY_URL"].rstrip("/") + "/web/home")
+    raise AssertionError(f"Unhandled command: {command}")
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

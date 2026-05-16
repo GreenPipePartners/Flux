@@ -3,7 +3,7 @@ from datetime import timedelta
 from django.test import TestCase
 from django.utils import timezone
 
-from runtime.models import DailyTagExtreme, LatestTagValue, RuntimeTag, TagSample, TagSchedule
+from flux.base.runtime import DailyTagExtreme, LatestTagValue, RuntimeTag, TagSample, TagSchedule
 
 from .selectors import pad_overview_cards
 

@@ -9,6 +9,7 @@ from django.views.decorators.http import require_POST
 import fluxy
 from django.conf import settings
 from flux.base.services import import_provider_from_fluxy, import_provider_json_bytes
+from flux.base.field_selectors import enabled_endpoint_configs
 
 from .engine import delete_tag_branch
 from .models import SimHistoryBackfill, SimSchedule, SimTag
@@ -168,6 +169,10 @@ def selected_paths(request):
             "selected_source_paths": selected_source_paths(provider),
         }
     )
+
+
+def field_config(request):
+    return JsonResponse({"endpoints": enabled_endpoint_configs()})
 
 
 def tags_for_scope(scope: str, post) -> QuerySet[SimTag]:

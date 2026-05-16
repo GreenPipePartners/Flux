@@ -17,6 +17,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "playwright>=1.50",
     "pytest>=8.0",
     "pytest-django>=4.8",
     "ruff>=0.6",
@@ -41,5 +42,6 @@ DJANGO_SETTINGS_MODULE = "flux.settings"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 pythonpath = ["src"]
 markers = [
+    "e2e: browser end-to-end tests",
     "integration: tests that require live Ignition/OPC services",
 ]

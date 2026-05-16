@@ -8,7 +8,7 @@ Flux is being shaped into an on-prem Django/HTMX companion UI for Ignition runti
 
 - `Flux.FieldAgent` simulates field devices through OPC UA.
 - Ignition reads those OPC UA tags through Fluxy-configured tags.
-- `run_field_demo` reads Ignition values through Fluxy and writes snapshots to Postgres runtime tables.
+- `run_sim_demo` reads Ignition values through Fluxy and writes snapshots to Flux base runtime tables.
 - `flux.live` renders DB-backed live values with HTMX, avoiding direct browser/Perspective tag bindings.
 - `flux.nav` provides configurable navigation/filter behavior based on the prior Ignition `DropdownNav`, `Filter`, and `Navigation` pattern.
 
@@ -19,7 +19,7 @@ Expected local services:
 ```bash
 dotnet run --project field/Flux.FieldAgent/Flux.FieldAgent.csproj --FluxField:ConfigPath=/home/bobby/Projects/11006-PRW-flux/web/Flux/field/field-config.json
 uv run python manage.py runserver 0.0.0.0:8000
-uv run python manage.py run_field_demo
+uv run python manage.py run_sim_demo
 ```
 
 Current Postgres connection:
@@ -63,9 +63,9 @@ src/flux/opt/demo.py
 To apply demo changes locally:
 
 ```bash
-uv run python manage.py shell -c "from flux.opt.demo import ensure_demo_runtime_config; print(len(ensure_demo_runtime_config()))"
+uv run python manage.py shell -c "from flux.sim.demo import ensure_demo_runtime_config; print(len(ensure_demo_runtime_config()))"
 uv run python manage.py export_field_config --output field/field-config.json
-uv run python manage.py run_field_demo --configure-ignition --once
+uv run python manage.py run_sim_demo --configure-ignition --once
 ```
 
 Then restart FieldAgent and the continuous demo reader.
@@ -98,20 +98,25 @@ src/flux/live/selectors.py
 
 ## Trace Trial UI
 
-`flux.trace` currently has two Plotly-backed trial pages over `runtime.TagSample`:
+`flux.trace` has two uPlot-backed pages over `runtime.TagSample`:
 
 - `http://localhost:8000/trace/`: historical sample trace.
 - `http://localhost:8000/trace/live/`: polling live trace trial.
 
+The old trial URLs remain as redirects only:
+
+- `http://localhost:8000/trace-clone/`: historical trace compatibility route.
+- `http://localhost:8000/trace-clone/live/`: polling live trace compatibility route.
+
 Historical trace trial features:
 
-- Numeric `TagSample` streams are rendered as Plotly traces.
-- Unified x-hover and spike cursor are enabled for cross-trace inspection.
-- Clicking a plotted point pins a numbered marker, such as `(1)`, on the chart.
+- Numeric `TagSample` streams are rendered as uPlot series.
+- Wheel zoom and drag pan are handled by local uPlot plugins.
+- Clicking inside the chart pins the nearest numbered marker, such as `(1)`, on the chart.
 - Pinned marker values are listed below the chart in a cross-tab table.
 - The table uses marker rows and trace-name columns.
 - Long trace headers are middle-ellipsized to 15 characters with the full trace name in the native browser tooltip.
-- Missing values remain blank; marker values only come from Plotly click-event data and are not interpolated or nearest-filled.
+- Missing values remain blank; marker values come from the nearest aligned sample timestamp and are not interpolated.
 - The marker table can be copied as a Markdown table.
 - Each pinned marker row can add a prompt-based chart annotation at the selected point.
 - Clear removes pinned markers, annotations, and the marker-value table state.
@@ -124,11 +129,20 @@ Live trace trial features:
 - If the user pans or zooms back, new samples are merged without dragging the viewport forward.
 - A pause/resume button controls polling.
 
+uPlot trace features:
+
+- Numeric `TagSample` streams are aligned client-side into uPlot's shared x-axis data shape.
+- Wheel zoom, side-scroll pan, and drag pan are implemented as small uPlot plugins.
+- Historical trace clicks pin numbered vertical markers and render the same marker-value table shape.
+- Marker tables can be copied as Markdown, and prompt annotations are drawn as chart overlays.
+- Live trace preserves right-edge follow behavior while allowing the user to pan or zoom away from the latest edge.
+
 Important trace files:
 
 ```text
 src/flux/trace/selectors.py
 src/flux/trace/views.py
+src/static/flux/trace/
 src/templates/trace/index.html
 src/templates/trace/live.html
 ```
@@ -184,9 +198,9 @@ Current configurable fields:
 
 Current behavior:
 
-- `run_field_demo` reloads scheduler config each loop.
+- `run_sim_demo` reloads scheduler config each loop.
 - Demo tags get assigned `balancer_code` values.
-- `run_field_demo --cold-balanced` reads only the current balancer bucket and advances by configured increment.
+- `run_sim_demo --cold-balanced` reads only the current balancer bucket and advances by configured increment.
 
 Target behavior:
 
@@ -320,7 +334,7 @@ Expected current counts:
 - Navigation placement is modeled but not fully used to auto-inject nav by view key.
 - Live Pad Overview nav is present but does not yet filter the card set by selected site/well.
 - Demand-aware hot/warm/cold scheduling is not fully implemented yet.
-- `run_field_demo` is still a manual process; proper service supervision is still needed.
+- `run_sim_demo` is still a manual process; proper service supervision is still needed.
 - Postgres test DB creation fails for user `flux`, so tests are currently run with `DATABASE_URL=` to use SQLite unless Postgres privileges are adjusted.
 
 ## Files Most Likely To Continue From

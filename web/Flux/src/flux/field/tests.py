@@ -3,18 +3,18 @@ import json
 from django.core.management import call_command
 from django.test import TestCase
 
-from .config import endpoint_config, ignition_tag_config
-from .models import FieldDevice, FieldEndpoint, FieldNode, FieldTag
+from flux.base.field_config import endpoint_config, ignition_tag_config
+from flux.base.models import FieldDevice, FieldEndpoint, FieldNode, FieldTag
 
 
 class FieldSmokeTests(TestCase):
-    def test_field_index_loads(self):
-        response = self.client.get("/field/")
+    def test_sim_index_loads(self):
+        response = self.client.get("/sim/")
 
         self.assertEqual(response.status_code, 200)
 
     def test_field_config_exports_seeded_nodes(self):
-        response = self.client.get("/field/config.json")
+        response = self.client.get("/sim/field-config.json")
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
@@ -63,7 +63,7 @@ class FieldSmokeTests(TestCase):
         self.assertEqual(tag.node_id, "ns=2;s=PathLogix.Speed")
 
     def test_config_payload_is_json_serializable(self):
-        response = self.client.get("/field/config.json")
+        response = self.client.get("/sim/field-config.json")
 
         json.dumps(response.json())
 

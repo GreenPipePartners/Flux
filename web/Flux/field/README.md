@@ -5,15 +5,15 @@ This directory is the project-level configuration workspace for Flux Field.
 The active Django app lives at:
 
 ```text
-web/Flux/src/flux/field/
+web/Flux/src/flux/base/
 ```
 
-That location is required for the Python namespace `flux.field`.
+The old `flux.field` Django app remains only as a legacy migration source until deployed databases have copied FieldAgent configuration into `flux.base`.
 
 The FieldAgent reads exported configuration from Flux through:
 
 ```text
-/field/config.json
+/sim/field-config.json
 ```
 
 The config supports multiple simulated devices. Each device exposes configured tags with a tag name, data type, update rate in milliseconds, min/max values, variance, and simulation type.

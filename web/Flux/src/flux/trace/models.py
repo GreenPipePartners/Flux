@@ -1,5 +1,5 @@
-"""Flux Trace model boundary.
+"""Flux Trace presentation boundary.
 
-Historical samples currently live in `runtime.TagSample`. Flux Trace begins as the historical
-presentation/query layer and can gain dedicated query/session models later.
+Historical samples are exposed through `flux.base.runtime` so Trace remains a historical
+presentation/query layer instead of owning runtime persistence.
 """

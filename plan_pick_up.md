@@ -18,9 +18,9 @@ Build a human-interfaceable way to manage Flux Field from the web app:
   - `FieldAgentHeartbeat`
 - Django admin is currently the first-class config UI for endpoints/devices/tags.
 - `/field/` is read-only status/config review.
-- `/field/config.json` exports enabled endpoint/device/tag config for `Flux.FieldAgent`.
+- `/sim/field-config.json` exports enabled endpoint/device/tag config for `Flux.FieldAgent`.
 - `export_field_config` writes the same payload to a JSON file.
-- `.NET Flux.FieldAgent` can read config from `/field/config.json` or a config file.
+- `.NET Flux.FieldAgent` can read config from `/sim/field-config.json` or a config file.
 - `flux.serve` exists but is still skeletal:
   - `ServeHeartbeat`
   - `ServeCommand`
@@ -48,13 +48,13 @@ uv run python manage.py runserver 0.0.0.0:8000
 Run FieldAgent from repo root:
 
 ```bash
-dotnet run --project field/Flux.FieldAgent/Flux.FieldAgent.csproj --FluxField:ConfigUrl=http://localhost:8000/field/config.json
+dotnet run --project field/Flux.FieldAgent/Flux.FieldAgent.csproj --FluxField:ConfigUrl=http://localhost:8000/sim/field-config.json
 ```
 
 Run the demo runtime reader from `web/Flux`:
 
 ```bash
-uv run python manage.py run_field_demo
+uv run python manage.py run_sim_demo
 ```
 
 ## Architecture Decision
@@ -83,8 +83,8 @@ This keeps the web app as the human interface and command source, while a worker
 4. Button posts should create `ServeCommand` rows, not directly spawn processes.
 5. Extend `flux_worker` to claim and execute requested commands from a hard-coded approved registry.
 6. Registry commands should initially support:
-   - FieldAgent via `dotnet run --project field/Flux.FieldAgent/Flux.FieldAgent.csproj --FluxField:ConfigUrl=http://localhost:8000/field/config.json`
-   - Demo reader via `uv run python manage.py run_field_demo`
+   - FieldAgent via `dotnet run --project field/Flux.FieldAgent/Flux.FieldAgent.csproj --FluxField:ConfigUrl=http://localhost:8000/sim/field-config.json`
+   - Demo reader via `uv run python manage.py run_sim_demo`
 7. Persist enough process state to stop/restart services safely.
 8. Show running/stale/error status on `/field/` from heartbeat/process state.
 9. Add tests around command creation and command execution dispatch, avoiding real long-running processes in tests.

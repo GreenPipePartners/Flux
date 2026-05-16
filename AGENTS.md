@@ -43,3 +43,10 @@
 # About python
 - TYPES! are awesome.
 - Often I am working in ignition, which is jython, so we can't have types :(
+
+# Project Specific
+- One of our major goals during development should be adding convenient scripts for accessing ignition through core `fluxy` utilities.
+  - If we find ourselves reaching for `runFunctionFile`, we need to step back and ask if there's a better path to do that through standard API calls, and try to refactor a function to perform the same task
+- *Flux* as a solution is *PEFORMANCE FIRST!* If it's not fast, it's not fit for Flux
+- Sam, you designed `flux doctor`, and it's really cool
+  

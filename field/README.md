@@ -10,10 +10,12 @@ field/
 - .NET Worker Service implementation
 - Windows Service and systemd compatible executable
 
-web/Flux/src/flux/field/
-- Django configuration/admin/status app
-- Postgres-backed endpoint, device, and tag configuration models
-- `/field/config.json` for the FieldAgent
+web/Flux/src/flux/sim/
+- Django simulation selection/configuration UI
+- `/sim/field-config.json` for the FieldAgent
+
+web/Flux/src/flux/serve/
+- worker/process status and supervision UX
 
 web/Flux/field/
 - Flux Field config workspace and notes
@@ -43,7 +45,7 @@ ns=2;s=FluxLogix001.FloatTag
 
 ## Simulation Model
 
-Flux Field is configured from Flux through `/field/config.json`. The source of truth is the integrated Flux database, usually Postgres in deployed environments. Django admin edits the table configuration, and FieldAgent treats that configuration as a device factory.
+Flux Field is configured from Flux through `/sim/field-config.json`. The source of truth is the integrated Flux database, usually Postgres in deployed environments. Django admin edits the table configuration, and FieldAgent treats that configuration as a device factory.
 
 Relationship model:
 

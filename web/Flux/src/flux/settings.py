@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     "flux.serve",
     "flux.opt",
     "flux.sim",
+    "flux.time",
     "flux.field",
     "flux.nav",
     "flux.live",

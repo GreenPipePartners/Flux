@@ -6,10 +6,22 @@ Ignition owns tag reads and writes sampled `QualifiedValue` results into Postgre
 
 ## Local Development
 
+For the current local operator workflow, prefer the top-level `flux` CLI from the repository root:
+
+```bash
+flux install-service
+flux start
+flux doctor
+```
+
+See `../../docs/operator-guide.md`.
+
+Manual Django-only startup remains useful for isolated checks:
+
 ```bash
 uv sync
 uv run python manage.py migrate
-uv run python manage.py runserver
+uv run python manage.py runserver --noreload -6 [::]:8000
 ```
 
 Local settings default to SQLite when `DATABASE_URL` is empty. Production should use Postgres.
@@ -47,7 +59,7 @@ uv run python manage.py runserver
 Run the live Field demo worker in another terminal:
 
 ```bash
-uv run python manage.py run_field_demo --interval 10
+uv run python manage.py run_sim_demo --interval 10
 ```
 
 ## Flux Sim Provider Selection
@@ -109,7 +121,9 @@ uv run python manage.py migrate sim
 
 ## Flux Trace Trial
 
-`flux.trace` now has an initial Plotly trial boundary for visualizing sample tag history. The current trial uses local sample tag data and returns a Plotly-friendly shape:
+`flux.trace` uses uPlot for visualizing sample tag history. uPlot assets are vendored locally under `src/static/flux/vendor/uplot/`, and Trace behavior is split into static ES modules under `src/static/flux/trace/`.
+
+The current trace uses local sample tag data and returns a renderer-neutral shape:
 
 ```json
 {
@@ -120,6 +134,28 @@ uv run python manage.py migrate sim
 ```
 
 The intended next step is a Fluxy historian adapter that returns the same shape from Ignition history, so the chart does not care whether data came from local samples or a live historian query.
+
+See `../../docs/trace-architecture.md`.
+
+## Live Extraction Trial
+
+The live-to-sim extraction trial builds memory tags and raw history in a live namespace, extracts tag config/history through Fluxy, recreates the tags in a sim namespace, and replays the extracted history.
+
+Run the command against the local dev gateway:
+
+```bash
+uv run python manage.py trial_live_extraction --cleanup
+```
+
+Run the gated integration test:
+
+```bash
+FLUX_LIVE_EXTRACTION_INTEGRATION=1 uv run pytest src/flux/sim/test_integration_live_extract.py -q
+```
+
+This is closed-loop for tag state. Raw historian data-point deletion is not available through public Ignition/Fluxy APIs, so database-specific cleanup adapters are documented as the next step.
+
+See `../../docs/live-extraction.md`.
 
 ## First-Run Setup
 
@@ -138,8 +174,10 @@ This is intentionally a bootstrap-only web configuration path for production env
 - `flux.serve`: service lifecycle, wrappers, heartbeats, and approved commands.
 - `flux.opt`: browse/read optimization, refresh lanes, leases, and cold-spot strategy.
 - `flux.sim`: simulated tag configuration, scheduled writes, and historical backfill.
-- `flux.field`: field-device exposure, starting with a .NET OPC UA server boundary.
+- `flux.base`: persistent datastore, including FieldAgent endpoint/device/tag configuration.
 - `flux.live`: live/current-state HTMX display.
-- `flux.trace`: historical and live Plotly trace trials over recorded runtime samples.
+- `flux.trace`: historical and live uPlot traces over recorded runtime samples.
 
 See `docs/architecture-roadmap.md` for the current roadmap.
+
+Repository-level docs start at `../../docs/README.md`.

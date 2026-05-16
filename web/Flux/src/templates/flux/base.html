@@ -5,6 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Flux{% endblock %}</title>
+  <link rel="icon" href="{% static 'flux/favicon.svg' %}" type="image/svg+xml">
   <script>
     try {
       document.documentElement.dataset.theme = localStorage.getItem("flux-theme") || "green";
@@ -29,7 +30,7 @@
       <a href="{% url 'nav:index' %}">Nav</a>
       <a href="{% url 'opt:index' %}">Opt</a>
       <a href="{% url 'sim:index' %}">Sim</a>
-      <a href="{% url 'field:index' %}">Field</a>
+      <a href="{% url 'time:index' %}">Time</a>
       <a href="{% url 'serve:index' %}">Serve</a>
       <a href="{% url 'admin:index' %}">Admin</a>
     </nav>

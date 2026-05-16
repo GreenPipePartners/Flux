@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from flux.field.config import endpoint_config, ignition_tag_config
-from flux.field.models import FieldDevice, FieldEndpoint, FieldTag
+from flux.base.field_config import endpoint_config, ignition_tag_config
+from flux.base.models import FieldDevice, FieldEndpoint, FieldTag
 
 
 pytestmark = pytest.mark.integration

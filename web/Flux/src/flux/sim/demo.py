@@ -5,14 +5,13 @@ from typing import Any
 
 from django.utils import timezone
 
-from flux.field.config import ignition_tag_config
-from flux.field.demo import DEMO_TAG_FOLDER, demo_tag_metadata, ensure_demo_field_config
-from flux.field.models import FieldTag
-from runtime.models import LatestTagValue, RuntimeTag, TagSample, TagSchedule
-from runtime.scheduler import assign_balancer_codes, scheduler_config
+from flux.base.runtime import LatestTagValue, RuntimeTag, TagSample, TagSchedule, assign_balancer_codes, scheduler_config
+from flux.base.field_config import ignition_tag_config
+from flux.base.models import FieldTag
+from flux.sim.field_demo import DEMO_TAG_FOLDER, demo_tag_metadata, ensure_demo_field_config
 
 
-DEMO_SCHEDULE_NAME = "field-demo-10s"
+DEMO_SCHEDULE_NAME = "sim-demo-10s"
 
 
 def ensure_demo_runtime_config() -> list[RuntimeTag]:

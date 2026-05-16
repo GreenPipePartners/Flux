@@ -1,0 +1,32 @@
+{% extends "flux/base.html" %}
+
+{% block title %}Flux Time{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">flux.time</p>
+    <h1>Time-Series Boundary</h1>
+    <p>Placeholder for external historian and time-series database support outside Ignition tag IO.</p>
+  </div>
+</section>
+
+<section class="card-grid">
+  <article class="card">
+    <h2>Purpose</h2>
+    <p>Flux Time will own benchmarked historian strategy, sample write/query contracts, and backend selection for high-volume time-series data.</p>
+  </article>
+  <article class="card">
+    <h2>Candidate Backends</h2>
+    <ul>
+      {% for backend in backend_candidates %}
+        <li>{{ backend }}</li>
+      {% endfor %}
+    </ul>
+  </article>
+  <article class="card">
+    <h2>Current Status</h2>
+    <p>Placeholder only. Benchmark harness and storage contracts should land here after the QuestDB and TimescaleDB evaluation.</p>
+  </article>
+</section>
+{% endblock %}

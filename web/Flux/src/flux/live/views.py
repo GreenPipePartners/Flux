@@ -2,7 +2,7 @@ from django.conf import settings
 from django.shortcuts import render
 from django.utils import timezone
 
-from runtime.models import RuntimeTag
+from flux.base.runtime import RuntimeTag
 from flux.nav.context import navigation_context
 
 from .selectors import pad_overview_cards

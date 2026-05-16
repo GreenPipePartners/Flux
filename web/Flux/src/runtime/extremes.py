@@ -8,7 +8,7 @@ from typing import Iterable
 from django.db import transaction
 from django.utils import timezone
 
-from .models import DailyTagExtreme, RuntimeTag, TagSample
+from flux.base.runtime import DailyTagExtreme, RuntimeTag, TagSample
 
 
 @dataclass(frozen=True)

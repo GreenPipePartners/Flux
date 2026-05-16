@@ -4,13 +4,12 @@ import time
 from django.core.management.base import BaseCommand, CommandError
 from django.db import OperationalError
 
-from flux.field.demo import ensure_demo_field_config
-from flux.opt.demo import configure_demo_ignition_tags, ensure_demo_runtime_config, read_demo_runtime_values
-from runtime.scheduler import advance_balancer_code, scheduler_config
+from flux.base.runtime import advance_balancer_code, scheduler_config
+from flux.sim.demo import configure_demo_ignition_tags, ensure_demo_runtime_config, read_demo_runtime_values
 
 
 class Command(BaseCommand):
-    help = "Configure and read the Flux Field well/meter/tank demo into Flux runtime tables."
+    help = "Configure and read the Flux simulation demo into Flux base runtime tables."
 
     def add_arguments(self, parser):
         parser.add_argument("--base-url", default=os.getenv("FLUXY_BASE_URL", "http://localhost:8088/system/webdev/flux"))
@@ -27,11 +26,10 @@ class Command(BaseCommand):
         try:
             import fluxy
         except ImportError as exc:
-            raise CommandError("Install fluxy before running the field demo") from exc
+            raise CommandError("Install fluxy before running the sim demo") from exc
 
-        ensure_demo_field_config()
         runtime_tags = ensure_demo_runtime_config()
-        self.stdout.write("Prepared %s runtime tags for Flux Field demo" % len(runtime_tags))
+        self.stdout.write("Prepared %s runtime tags for Flux simulation demo" % len(runtime_tags))
 
         fx = fluxy.Fluxy(
             base_url=options["base_url"],
@@ -49,10 +47,10 @@ class Command(BaseCommand):
                 runtime_tags = [tag for tag in runtime_tags if tag.balancer_code == config.current_balancer_code]
             read_count = self.read_with_retries(fx, retries=options["retries"], runtime_tags=runtime_tags)
             if read_count is not None:
-                self.stdout.write("Read %s Flux Field demo tags" % read_count)
+                self.stdout.write("Read %s Flux simulation demo tags" % read_count)
             if options["cold_balanced"]:
                 next_code = advance_balancer_code(config=config)
-                self.stdout.write("Advanced Flux Field demo balancer code to %s" % next_code)
+                self.stdout.write("Advanced Flux simulation demo balancer code to %s" % next_code)
             if options["once"]:
                 return
             time.sleep(options["interval"] or config.warm_interval_seconds)
@@ -73,6 +71,6 @@ class Command(BaseCommand):
             except Exception as exc:
                 if exc.__class__.__name__ != "FluxyError":
                     raise
-                self.stderr.write("Flux Field demo read failed; will retry next interval: %s" % exc)
+                self.stderr.write("Flux simulation demo read failed; will retry next interval: %s" % exc)
                 return None
         return None

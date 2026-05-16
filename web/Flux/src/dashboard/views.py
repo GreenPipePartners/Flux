@@ -1,12 +1,18 @@
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login
 from django.shortcuts import redirect, render
-from django.utils import timezone
 
-from runtime.models import RuntimeTag
+from flux.base.runtime import RuntimeTag
 
 from .forms import InitialSuperuserForm
+from .services import (
+    bridge_config,
+    dashboard_readiness,
+    dashboard_runtime_state,
+    refresh_runtime_tags,
+    test_bridge,
+    update_bridge_config,
+)
 
 
 def setup_required() -> bool:
@@ -17,36 +23,66 @@ def home(request):
     if setup_required():
         return redirect("dashboard:setup")
 
+    if request.method == "POST":
+        action = request.POST.get("action", "")
+        if action == "save_bridge":
+            base_url = request.POST.get("fluxy_base_url", "").strip()
+            token = request.POST.get("fluxy_token", "")
+            clear_token = request.POST.get("clear_fluxy_token") == "on"
+            if base_url:
+                update_bridge_config(base_url=base_url, token=token if token else None, clear_token=clear_token)
+                messages.success(request, "Saved Live Ignition Bridge configuration.")
+            else:
+                messages.warning(request, "Live Ignition Bridge URL is required.")
+            return redirect("dashboard:home")
+        if action == "test_bridge":
+            config = test_bridge()
+            if config.last_test_ok:
+                messages.success(request, config.last_test_message)
+            else:
+                messages.error(request, f"Live Ignition Bridge test failed: {config.last_test_message}")
+            return redirect("dashboard:home")
+        if action == "refresh_stale":
+            stale_ids = [int(value) for value in request.POST.getlist("stale_tag_id") if value.isdigit()]
+            stale_tags = list(RuntimeTag.objects.filter(id__in=stale_ids, enabled=True).select_related("schedule"))
+            try:
+                refreshed = refresh_runtime_tags(stale_tags)
+            except Exception as exc:
+                messages.error(request, f"Stale tag refresh failed: {exc}")
+            else:
+                messages.success(request, f"Refreshed {refreshed} stale runtime tags from Ignition.")
+            return redirect("dashboard:home")
+
     tags = RuntimeTag.objects.select_related("latest_value", "schedule").order_by(
         "asset_name", "display_name"
     )
-    now = timezone.now()
-    stale_after_seconds = settings.STALE_AFTER_SECONDS
-    stale_count = 0
-    bad_quality_count = 0
-    online_count = 0
-
-    for tag in tags:
-        value = getattr(tag, "latest_value", None)
-        if value is None:
-            stale_count += 1
-            continue
-        if value.quality_code.lower() != "good":
-            bad_quality_count += 1
-        if value.is_stale(now, stale_after_seconds):
-            stale_count += 1
-        else:
-            online_count += 1
+    runtime_state = dashboard_runtime_state(tags)
+    readiness = dashboard_readiness(runtime_state)
+    service_state = "ok" if all(item.state == "ok" for item in readiness) else "warning"
+    bridge = bridge_config()
 
     return render(
         request,
         "dashboard/home.html",
         {
             "tags": tags,
-            "online_count": online_count,
-            "stale_count": stale_count,
-            "bad_quality_count": bad_quality_count,
-            "stale_after_seconds": stale_after_seconds,
+            "online_count": runtime_state["online_count"],
+            "stale_count": runtime_state["stale_count"],
+            "bad_quality_count": runtime_state["bad_quality_count"],
+            "stale_after_seconds": runtime_state["stale_after_seconds"],
+            "tag_count": runtime_state["tag_count"],
+            "last_read_at": runtime_state["last_read_at"],
+            "readiness": readiness,
+            "service_state": service_state,
+            "stale_tag_items": runtime_state["stale_tag_items"][:12],
+            "stale_tag_overflow": max(runtime_state["stale_count"] - 12, 0),
+            "bridge": {
+                "base_url": bridge.base_url,
+                "token_set": bool(bridge.token),
+                "online": bridge.last_test_ok,
+                "message": bridge.last_test_message,
+                "last_test_at": bridge.last_test_at,
+            },
         },
     )
 

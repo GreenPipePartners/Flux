@@ -14,4 +14,5 @@ urlpatterns = [
     path("imported/set-enabled/", views.set_imported_enabled, name="set_imported_enabled"),
     path("imported/set-bulk/", views.set_imported_bulk, name="set_imported_bulk"),
     path("imported/selected-paths.json", views.selected_paths, name="selected_paths"),
+    path("field-config.json", views.field_config, name="field_config"),
 ]

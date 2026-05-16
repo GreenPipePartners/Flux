@@ -16,6 +16,7 @@ Flux.web -> Configurator -> Flux.field / Flux.sim / Flux.serve
 - `field/`: FieldAgent OPC UA simulator runtime. This is the real `Flux.field` execution core.
 - `sim/`: standalone `Flux.sim` core for importing Ignition tag exports, reconstructing provider models, flattening OPC requests, and generating simulation/FieldAgent configuration.
 - `web/Flux/`: Django/HTMX UX, admin, status, configuration, and worker-control surface. It should adapt core packages, not own their core logic.
+- `scripts/flux`: operator CLI for local service control, health checks, and managed Ignition dev-cell commands.
 
 ## Django Role
 
@@ -25,7 +26,7 @@ Django is the UX and configurator layer:
 - `flux.trace`: power-user charting, historical exploration, and live trace trials over recorded runtime samples.
 - `flux.opt`: tag browse optimizer and runtime read planning.
 - `flux.serve`: worker/service orchestration UX and adapters.
-- `flux.field`: FieldAgent configuration UX and status adapters.
+- `flux.base`: persistent datastore, including runtime and FieldAgent configuration objects.
 - `flux.sim`: simulation UX and adapters over root `sim/`.
 
 Core import, flattening, expression, server generation, and OPC UA simulation logic should stay outside Django.
@@ -51,7 +52,32 @@ The production path is:
 3. Runtime values are persisted into Flux runtime storage.
 4. `Flux.live`, `Flux.trace`, and `Flux.web` render from Flux storage instead of causing browser-driven Ignition tag IO.
 
-`Flux.trace` currently reads `runtime.TagSample` and renders Plotly trials from stored samples. The historical trial supports pinned chart markers, a copied Markdown marker-value table, and prompt-based annotations. The live trial polls new samples and only follows the newest right edge when the user is already viewing that edge; panning back preserves the inspected viewport while new samples continue to merge.
+`Flux.trace` reads `runtime.TagSample` and renders uPlot charts from stored samples. The historical trace supports pinned chart markers, a copied Markdown marker-value table, and prompt-based annotations. The live trace polls new samples and only follows the newest right edge when the user is already viewing that edge; panning back preserves the inspected viewport while new samples continue to merge. Trace JavaScript architecture is documented in `docs/trace-architecture.md`.
+
+Live-to-sim extraction is documented in `docs/live-extraction.md`. The current trial stays at the Fluxy public API boundary for tag/config/history reads and writes. Raw historian deletion is intentionally deferred to database-specific cleanup adapters because Ignition does not expose a public delete-data-points API.
+
+## Local Service Boundary
+
+Local development runtime is owned by a user systemd service:
+
+```text
+flux-stack.service -> scripts/flux-start.sh -> Django + FieldAgent + demo reader
+```
+
+The CLI and desktop launchers start/stop the service. Django should not directly own long-lived OS processes from request handlers.
+
+See `docs/operator-guide.md`.
+
+## Health Utility Boundary
+
+Health checks are split by responsibility:
+
+- `scripts/flux`: operator-facing CLI, shell/service/process checks, output formatting, and fix suggestions.
+- `dashboard.management.commands.flux_doctor_state`: JSON app-health bridge for the CLI.
+- `dashboard.services`: runtime readiness, Live Ignition Bridge config, stale-tag classification, and block-read recovery.
+- `fluxy`: Ignition Gateway, WebDev, and datasource probing.
+
+This keeps `flux doctor` useful without turning the CLI into an untestable copy of Django business logic.
 
 ## Configurator Contract
 

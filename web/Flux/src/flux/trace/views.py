@@ -2,9 +2,9 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils.dateparse import parse_datetime
 
-from runtime.models import TagSample
+from flux.base.runtime import TagSample
 
-from .selectors import plotly_sample_series
+from .selectors import trace_sample_series
 
 
 def index(request):
@@ -14,7 +14,7 @@ def index(request):
         "trace/index.html",
         {
             "samples": samples,
-            "plotly_chart": plotly_sample_series(),
+            "trace_chart": trace_sample_series(),
         },
     )
 
@@ -24,7 +24,7 @@ def live(request):
         request,
         "trace/live.html",
         {
-            "plotly_chart": plotly_sample_series(samples_per_tag=120),
+            "trace_chart": trace_sample_series(samples_per_tag=120),
             "poll_seconds": 5,
             "window_minutes": 15,
         },
@@ -33,4 +33,4 @@ def live(request):
 
 def live_samples(request):
     since = parse_datetime(request.GET.get("since", ""))
-    return JsonResponse(plotly_sample_series(samples_per_tag=120, since=since))
+    return JsonResponse(trace_sample_series(samples_per_tag=120, since=since))

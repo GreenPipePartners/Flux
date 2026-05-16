@@ -5,55 +5,100 @@
 {% block content %}
 <section class="hero">
   <div>
-    <p class="eyebrow">Ignition companion server</p>
-    <h1>Bulk-read once. Render fast.</h1>
-    <p>
-      Flux displays database-backed runtime snapshots from Ignition tag reads, keeping control workflows in Perspective while reducing live UI traffic.
-    </p>
+    <p class="eyebrow">Flux service console</p>
+    <h1>Service readiness</h1>
+    <p>Current Flux runtime, FieldAgent, and latest-read status for this local dev cell.</p>
     <div class="actions">
-      <a class="button" href="{% url 'admin:runtime_runtimetag_changelist' %}">Configure tags</a>
-      <a class="button button-secondary" href="{% url 'admin:runtime_tagschedule_changelist' %}">Schedules</a>
+      <a class="button" href="{% url 'live:index' %}">Open live view</a>
+      <a class="button button-secondary" href="{% url 'serve:index' %}">Serve status</a>
+      <a class="button button-secondary" href="{% url 'admin:runtime_runtimetag_changelist' %}">Configure tags</a>
     </div>
   </div>
-  <pre class="ascii-pipe" aria-label="Flux data path">
-      IGNITION
-         || readBlocking
-         \/
-      POSTGRES
-         || latest values
-         \/
-        FLUX
-  </pre>
+  <div class="service-summary service-summary-{{ service_state }}">
+    <span class="eyebrow">Overall</span>
+    <strong>{% if service_state == "ok" %}Ready{% else %}Attention needed{% endif %}</strong>
+    <small>{{ online_count }}/{{ tag_count }} runtime tags online{% if last_read_at %} · last read {{ last_read_at }}{% endif %}</small>
+  </div>
 </section>
 
-<section class="terminal-strip" aria-label="Flux bridge summary">
-  <span>&gt; source=postgres.latest_tag_value</span>
-  <span>&gt; stale_after={{ stale_after_seconds }}s</span>
-  <span class="terminal-ok">&gt; online={{ online_count }}</span>
-  <span>&gt; stale={{ stale_count }}</span>
-  <span>&gt; bad_quality={{ bad_quality_count }}</span>
+<section class="readiness-grid" aria-label="Flux readiness checks">
+  {% for item in readiness %}
+    <article class="readiness-card readiness-{{ item.state }}">
+      <div>
+        <span class="status-dot" aria-hidden="true"></span>
+        <p class="eyebrow">{{ item.state }}</p>
+        <h2>{{ item.label }}</h2>
+      </div>
+      <p>{{ item.detail }}</p>
+      {% if item.action_url %}<a href="{{ item.action_url }}">{{ item.action_label }}</a>{% endif %}
+    </article>
+  {% endfor %}
 </section>
 
-<section class="stage-grid" aria-label="Runtime principles">
-  <article class="stage-card">
-    <span>01</span>
-    <h2>Bulk</h2>
-    <p>Ignition reads configured tag paths in schedule buckets instead of per-component bindings.</p>
+<section class="ops-grid" aria-label="Flux operations">
+  <article class="panel action-panel bridge-panel bridge-panel-{% if bridge.online %}online{% else %}offline{% endif %}">
+    <div class="panel-header">
+      <div>
+        <p class="eyebrow">{% if bridge.online %}online{% else %}offline{% endif %}</p>
+        <h2>Live Ignition Bridge</h2>
+      </div>
+      <span class="status-pill">{% if bridge.token_set %}token set{% else %}no token{% endif %}</span>
+    </div>
+    <form method="post" class="form-stack">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_bridge">
+      <label>
+        Fluxy base URL
+        <input name="fluxy_base_url" value="{{ bridge.base_url }}" autocomplete="off">
+      </label>
+      <label>
+        Token
+        <input name="fluxy_token" type="password" placeholder="Leave blank to keep current token" autocomplete="off">
+      </label>
+      <label class="inline-check">
+        <input name="clear_fluxy_token" type="checkbox">
+        Clear stored token
+      </label>
+      <p class="form-help">Flux never renders the stored token back into the page. Blank keeps the existing token.</p>
+      {% if bridge.message %}<p class="form-help">{{ bridge.message }}{% if bridge.last_test_at %} · {{ bridge.last_test_at }}{% endif %}</p>{% endif %}
+      <div class="actions">
+        <button class="button" type="submit">Save bridge</button>
+        <button class="button button-secondary" type="submit" name="action" value="test_bridge">Test connection</button>
+      </div>
+    </form>
   </article>
-  <article class="stage-card">
-    <span>02</span>
-    <h2>Cache</h2>
-    <p>Latest values preserve value, quality, source timestamp, and read timestamp.</p>
-  </article>
-  <article class="stage-card">
-    <span>03</span>
-    <h2>Signal</h2>
-    <p>Every displayed value can be marked online, stale, bad quality, or missing.</p>
-  </article>
-  <article class="stage-card">
-    <span>04</span>
-    <h2>Control</h2>
-    <p>Control/write workflows stay in Perspective until Flux explicitly grows that boundary.</p>
+
+  <article class="panel action-panel action-panel-{% if stale_count %}warning{% else %}ok{% endif %}">
+    <div class="panel-header">
+      <div>
+        <p class="eyebrow">Runtime correction</p>
+        <h2>Stale tag recovery</h2>
+      </div>
+      <span class="status-pill">{{ stale_count }} stale</span>
+    </div>
+    {% if stale_tag_items %}
+      <p class="muted">Refresh the stale runtime tags with one block read through the configured Fluxy bridge.</p>
+      <form method="post" class="form-stack">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="refresh_stale">
+        {% for item in stale_tag_items %}<input type="hidden" name="stale_tag_id" value="{{ item.tag.id }}">{% endfor %}
+        <button class="button" type="submit">Refresh stale reads now</button>
+      </form>
+      <div class="stale-list">
+        {% for item in stale_tag_items %}
+          <div class="stale-row">
+            <div>
+              <strong>{{ item.tag.asset_name|default:"-" }} / {{ item.tag.display_name }}</strong>
+              <small>{{ item.reason }}{% if item.age_seconds %} · {{ item.age_seconds }}s old{% endif %}</small>
+            </div>
+            <a href="{{ item.admin_url }}">Inspect</a>
+          </div>
+        {% endfor %}
+        {% if stale_tag_overflow %}<p class="muted">{{ stale_tag_overflow }} more stale tags not shown.</p>{% endif %}
+      </div>
+    {% else %}
+      <p class="muted">No stale runtime tags detected. Latest reads are within the {{ stale_after_seconds }}s stale window.</p>
+    {% endif %}
   </article>
 </section>
 
