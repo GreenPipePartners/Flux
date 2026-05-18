@@ -30,7 +30,7 @@
     <span class="status-pill">{{ window_minutes }} min window</span>
   </div>
   {% if trace_chart.series %}
-    <link rel="stylesheet" href="{% static 'flux/vendor/uplot/uPlot.min.css' %}">
+    <link rel="stylesheet" href="{% static 'flux/vendor/uplot/uPlot.min.css' %}?v=trace-shared-x-1">
     <div
       class="trace-chart"
       data-trace-live-chart
@@ -41,8 +41,8 @@
       aria-label="uPlot live sample tag trend chart"
     ></div>
     {{ trace_chart|json_script:"trace-live-data" }}
-    <script src="{% static 'flux/vendor/uplot/uPlot.iife.min.js' %}"></script>
-    <script type="module" src="{% static 'flux/trace/live-page.js' %}"></script>
+    <script src="{% static 'flux/vendor/uplot/uPlot.iife.min.js' %}?v=trace-shared-x-1"></script>
+    <script type="module" src="{% static 'flux/trace/live-page.js' %}?v=trace-shared-x-1"></script>
   {% else %}
     <p>No numeric tag samples available for live trace yet.</p>
   {% endif %}

@@ -5,6 +5,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WEB_DIR="$ROOT_DIR/web/Flux"
 FIELD_CONFIG="$WEB_DIR/field/field-config.json"
 FIELD_PROJECT="$ROOT_DIR/field/Flux.FieldAgent/Flux.FieldAgent.csproj"
+FLUX_WEB_WORKERS="${FLUX_WEB_WORKERS:-8}"
+FLUX_WEB_THREADS="${FLUX_WEB_THREADS:-2}"
 
 pids=()
 
@@ -54,7 +56,8 @@ printf 'Preparing Flux database and FieldAgent config...\n'
 )
 
 printf 'Starting Flux stack...\n'
-start_service "django" bash -lc "cd '$WEB_DIR' && uv run python manage.py runserver --noreload -6 '[::]:8000'"
+"$ROOT_DIR/scripts/questdb-start.sh"
+start_service "django" bash -lc "cd '$WEB_DIR' && PYTHONPATH='src:$ROOT_DIR' uv run gunicorn flux.wsgi:application --bind='0.0.0.0:8000' --workers='$FLUX_WEB_WORKERS' --threads='$FLUX_WEB_THREADS' --timeout=120"
 wait_for_url "http://localhost:8000/" "Django"
 start_service "field" dotnet run --project "$FIELD_PROJECT" --FluxField:ConfigPath="$FIELD_CONFIG"
 start_service "demo" bash -lc "cd '$WEB_DIR' && uv run python manage.py run_sim_demo"

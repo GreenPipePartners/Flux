@@ -14,7 +14,7 @@ export function traceHeader(traceSeries, series) {
   return duplicateName ? series.fullPath : series.name;
 }
 
-export function renderPinnedTraceMarkers({ markerPanel, pinnedTraceMarkers, traceSeries, addMarkerAnnotation }) {
+export function renderPinnedTraceMarkers({ markerPanel, pinnedTraceMarkers, traceAnnotations, traceSeries, addMarkerAnnotation, submitMarkerAnnotation }) {
   markerPanel.replaceChildren();
   if (!pinnedTraceMarkers.length) {
     const emptyMessage = document.createElement("p");
@@ -63,6 +63,40 @@ export function renderPinnedTraceMarkers({ markerPanel, pinnedTraceMarkers, trac
       row.appendChild(valueCell);
     }
     tableBody.appendChild(row);
+    if (marker.annotationDraft) {
+      const draftRow = document.createElement("tr");
+      draftRow.className = "trace-annotation-draft-row";
+      const draftCell = document.createElement("td");
+      draftCell.colSpan = headers.length;
+      const form = document.createElement("form");
+      form.className = "trace-annotation-form";
+      const input = document.createElement("input");
+      input.type = "text";
+      input.placeholder = "Annotation text";
+      input.setAttribute("aria-label", `Annotation for marker ${marker.id}`);
+      const submitButton = document.createElement("button");
+      submitButton.className = "trace-copy-button";
+      submitButton.type = "submit";
+      submitButton.textContent = "Add Local";
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        submitMarkerAnnotation(marker, input.value.trim());
+      });
+      form.append(input, submitButton);
+      draftCell.appendChild(form);
+      draftRow.appendChild(draftCell);
+      tableBody.appendChild(draftRow);
+      setTimeout(() => input.focus(), 0);
+    }
+    for (const annotation of traceAnnotations.filter((item) => Number(item.markerId) === marker.id)) {
+      const annotationRow = document.createElement("tr");
+      annotationRow.className = "trace-annotation-row";
+      const annotationCell = document.createElement("td");
+      annotationCell.colSpan = headers.length;
+      annotationCell.textContent = annotation.saved ? annotation.text : `${annotation.text} (local)`;
+      annotationRow.appendChild(annotationCell);
+      tableBody.appendChild(annotationRow);
+    }
   }
   table.append(tableHead, tableBody);
   markerPanel.appendChild(table);
@@ -107,10 +141,11 @@ export function traceOverlayPlugin({ pinnedTraceMarkers, traceAnnotations }) {
             ctx.fillText(`(${marker.id})`, x + 4, u.bbox.top + 14);
           }
           ctx.setLineDash([]);
-          for (const annotation of traceAnnotations) {
+          traceAnnotations.forEach((annotation) => {
             const x = u.valToPos(Date.parse(annotation.pinnedAt) / 1000, "x", true);
-            ctx.fillText(`(${annotation.markerId}) ${annotation.text}`, x + 4, u.bbox.top + 32);
-          }
+            const sequence = Math.max(1, Number(annotation.sequence || 1));
+            ctx.fillText(annotation.text, x + 4, u.bbox.top + 32 + (sequence - 1) * 14);
+          });
           ctx.restore();
         },
       ],

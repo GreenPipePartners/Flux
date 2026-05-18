@@ -89,7 +89,9 @@ try {
     Invoke-WebCommand @("run", "python", "manage.py", "export_field_config", "--output", "field/field-config.json")
 
     Write-Host "Starting Flux stack..."
-    Start-FluxService "django" "uv" @("run", "python", "manage.py", "runserver", "--noreload", "-6", "[::]:8000") $WebDir
+    & (Join-Path $RootDir "scripts\questdb-start.ps1")
+    $env:PYTHONPATH = "$WebDir\src;$RootDir"
+    Start-FluxService "django" "uv" @("run", "waitress-serve", "--listen=*:8000", "--threads=16", "flux.wsgi:application") $WebDir
     Wait-FluxUrl "http://localhost:8000/" "Django"
     Start-FluxService "field" "dotnet" @("run", "--project", $FieldProject, "--FluxField:ConfigPath=$FieldConfig") $RootDir
     Start-FluxService "demo" "uv" @("run", "python", "manage.py", "run_sim_demo") $WebDir

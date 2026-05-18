@@ -1,4 +1,4 @@
-AUTH_TOKEN = "fluxy-auth-integration-token"  # Optional bearer token. Leave blank to disable auth.
+AUTH_TOKEN = ""  # Optional bearer token. Leave blank to disable auth.
 LOGGER_NAME = "Fluxy.WebDev"
 
 

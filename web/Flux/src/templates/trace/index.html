@@ -8,11 +8,11 @@
   <div class="panel-header">
     <div>
       <p class="eyebrow">flux.trace</p>
-      <h1>Historical Tag Trace</h1>
+      <h1>{{ trace_title|default:"Historical Tag Trace" }}</h1>
     </div>
-    <span class="status-pill">uPlot</span>
+    <span class="status-pill" data-trace-set-label>{% if trace_chart.setLabel %}{{ trace_chart.setLabel }}{% elif trace_badge %}{{ trace_badge }}{% else %}uPlot{% endif %}</span>
   </div>
-  <p>Trace uses uPlot for low-overhead historian-style inspection of local runtime samples.</p>
+  <p>{{ trace_subtitle|default:"Trace uses uPlot for low-overhead historian-style inspection of local runtime samples." }}</p>
 </section>
 
 <section class="panel trace-chart-panel">
@@ -21,21 +21,37 @@
       <p class="eyebrow">trace.uplot</p>
       <h2>Sample Tag Trend</h2>
     </div>
-    <span class="status-pill">local samples</span>
+    <span class="status-pill">latest {{ trace_chart.windowLabel|default:"4 days" }}</span>
   </div>
   <div class="trace-actions">
     <a class="button button-secondary" href="{% url 'trace:live' %}">Live Trace</a>
+    {% if trace_cycle_url %}
+      <button class="button button-secondary" type="button" data-trace-prev-set>Previous {{ trace_cycle_label|default:"Set" }}</button>
+      <button class="button button-secondary" type="button" data-trace-next-set>Next {{ trace_cycle_label|default:"Set" }}</button>
+    {% endif %}
     <button class="button button-secondary" type="button" data-reset-trace-range>Reset Range</button>
     <button class="button button-secondary" type="button" data-clear-pinned-traces>Clear Pinned Traces</button>
-    <p class="form-help">Click inside the chart to pin a vertical trace cursor. Wheel zooms; side-scroll pans; drag pans.</p>
+    <p class="form-help">{{ trace_help|default:"Click inside the chart to pin a vertical trace cursor. Drag selects an x-range to zoom. Shift-drag pans. Wheel zooms; side-scroll pans. Use Previous/Next Set or left/right arrow keys to cycle sets." }}</p>
     <p class="form-help" data-trace-status>Ready to pin trace markers.</p>
   </div>
   {% if trace_chart.series %}
-    <link rel="stylesheet" href="{% static 'flux/vendor/uplot/uPlot.min.css' %}">
-    <div class="trace-chart" data-trace-chart role="img" aria-label="uPlot sample tag trend chart"></div>
+    <link rel="stylesheet" href="{% static 'flux/vendor/uplot/uPlot.min.css' %}?v=trace-shared-x-1">
+    <div
+      class="trace-chart"
+      data-trace-chart
+      data-trace-annotation-url="{% url 'trace:annotations' %}"
+      data-trace-annotation-query-url="{% url 'trace:query-annotations' %}"
+      data-trace-csrf-token="{{ csrf_token }}"
+      {% if trace_cycle_url %}data-trace-cycle-url="{{ trace_cycle_url }}"{% endif %}
+      {% if trace_set_count %}data-trace-set-count="{{ trace_set_count }}"{% endif %}
+      {% if trace_live_refresh_seconds %}data-trace-live-refresh-seconds="{{ trace_live_refresh_seconds }}"{% endif %}
+      role="img"
+      aria-label="uPlot sample tag trend chart"
+    ></div>
     <section class="trace-marker-panel" aria-label="Pinned trace marker values">
       <div class="trace-marker-heading">
         <h3>Pinned Trace Values</h3>
+        <button class="trace-copy-button" type="button" data-send-trace-annotations aria-label="Send pending trace annotations to Ignition">Send Annotations</button>
         <button class="trace-copy-button" type="button" data-copy-pinned-traces aria-label="Copy pinned trace values as markdown">Copy</button>
       </div>
       <div data-pinned-trace-table>
@@ -43,10 +59,14 @@
       </div>
     </section>
     {{ trace_chart|json_script:"trace-data" }}
-    <script src="{% static 'flux/vendor/uplot/uPlot.iife.min.js' %}"></script>
-    <script type="module" src="{% static 'flux/trace/historical-page.js' %}"></script>
+    <script src="{% static 'flux/vendor/uplot/uPlot.iife.min.js' %}?v=trace-shared-x-1"></script>
+    <script type="module" src="{% static 'flux/trace/historical-page.js' %}?v=trace-shared-x-1"></script>
   {% else %}
-    <p>No numeric tag samples available for uPlot yet.</p>
+    {% if trace_error %}
+      <p class="form-help">Trace query failed: {{ trace_error }}</p>
+    {% else %}
+      <p>No numeric tag samples available for uPlot yet.</p>
+    {% endif %}
   {% endif %}
 </section>
 

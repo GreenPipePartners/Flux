@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 import dj_database_url
@@ -5,6 +6,9 @@ import environ
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[4]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 env = environ.Env(
     DJANGO_DEBUG=(bool, True),

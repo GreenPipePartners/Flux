@@ -8,8 +8,10 @@ from django.utils import timezone
 
 from flux.base.runtime import RuntimeTag
 from flux.sim.live_extract import datasource_info
+from flux.trace.models import TraceProfile
 
 from dashboard.services import bridge_config, dashboard_runtime_state, fluxy_client
+from trace.questdb_data_plane import questdb_connect
 
 
 class Command(BaseCommand):
@@ -57,6 +59,30 @@ class Command(BaseCommand):
             bridge_online = True
             bridge_message = f"Connected to Ignition {version.version}."
 
+        questdb = {
+            "ok": False,
+            "dsn": os.getenv("QUESTDB_DSN", "postgresql://admin:quest@localhost:8812/qdb"),
+            "trace_points": 0,
+            "latest_timestamp": None,
+            "nav_well_profiles": TraceProfile.objects.filter(key__startswith="nav-well-").count(),
+            "error": "",
+        }
+        try:
+            with questdb_connect() as connection:
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT count(), max(ts) FROM trace_points")
+                    trace_points, latest_timestamp = cursor.fetchone()
+        except Exception as exc:
+            questdb["error"] = str(exc)
+        else:
+            questdb.update(
+                {
+                    "ok": bool(trace_points and latest_timestamp),
+                    "trace_points": int(trace_points or 0),
+                    "latest_timestamp": latest_timestamp.isoformat() if latest_timestamp else None,
+                }
+            )
+
         payload = {
             "bridge": {
                 "base_url": bridge.base_url,
@@ -75,5 +101,6 @@ class Command(BaseCommand):
                 "latest_read_age_seconds": latest_read_age_seconds,
             },
             "historian": historian,
+            "questdb": questdb,
         }
         self.stdout.write(json.dumps(payload, sort_keys=True))

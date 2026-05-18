@@ -1,8 +1,13 @@
 export function traceSeriesFromPayload(payload) {
-  return payload.series.map((series, traceIndex) => ({ ...series, traceIndex }));
+  const series = payload.series.map((item, traceIndex) => ({ ...item, axisGroups: payload.axisGroups || [], traceIndex }));
+  series.sharedX = payload.x || null;
+  return series;
 }
 
 export function alignTracePayload(seriesList) {
+  if (seriesList.sharedX) {
+    return { times: seriesList.sharedX, data: [seriesList.sharedX, ...seriesList.map((series) => series.y)] };
+  }
   const seen = new Set();
   const times = [];
   for (const series of seriesList) {

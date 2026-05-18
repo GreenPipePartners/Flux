@@ -48,6 +48,7 @@ flux ignition open
 `flux-stack.service` runs the local development stack in the background:
 
 - Django web app on `http://localhost:8000/`
+- QuestDB Trace data plane on `postgresql://admin:quest@localhost:8812/qdb`
 - FieldAgent OPC UA simulator on `opc.tcp://localhost:4840/flux/field`
 - demo reader that reads Ignition through Fluxy and writes latest values into Flux
 
@@ -58,7 +59,9 @@ The launcher intentionally:
 - runs migrations
 - repairs Postgres sequences for copied legacy IDs
 - exports FieldAgent config
-- starts Django with `--noreload -6 [::]:8000` so `localhost` works on IPv4 and IPv6
+- starts QuestDB from `.runtime/questdb-dist` with data in `.runtime/questdb-data`
+- starts Django through Gunicorn on Linux with `FLUX_WEB_WORKERS=8` and `FLUX_WEB_THREADS=2` by default
+- starts Django through Waitress on Windows for native compatibility
 - waits until Django responds before declaring the stack ready
 - keeps all child services under one cleanup boundary
 
@@ -115,6 +118,7 @@ The health check currently covers:
 - runtime tag count, stale count, bad quality count, and latest read age
 - Live Ignition Bridge token/config and live Ignition version probe
 - historian datasource type/status
+- QuestDB Trace data-plane reachability, `trace_points` count, and latest timestamp
 - Ignition Gateway and Fluxy WebDev readiness
 
 Architecture boundary:
@@ -124,6 +128,64 @@ Architecture boundary:
 - `dashboard.services` owns runtime/bridge state calculations used by both the dashboard and doctor-state command.
 - Fluxy owns Gateway and datasource probes.
 - Django request handlers should not directly own long-lived process supervision.
+
+## Trace Worker
+
+Flux Trace has a dedicated `flux.serve` worker command for keeping local rolling-history cache current from Ignition/Fluxy.
+
+Run one generic cache sync:
+
+```bash
+cd web/Flux
+uv run python manage.py flux_trace_worker --once
+```
+
+Run one navigation-well live cycle for the first ten seeded wells:
+
+```bash
+cd web/Flux
+uv run python manage.py flux_trace_worker --once --nav-well-live --nav-well-limit 10
+```
+
+Run continuously every minute:
+
+```bash
+cd web/Flux
+uv run python manage.py flux_trace_worker --nav-well-live --nav-well-limit 10 --interval 60
+```
+
+The dedicated Trace worker performs service/process work. Trace views should only read local cache payloads.
+
+## QuestDB Trace Data Plane
+
+Navigation-well Trace uses QuestDB as its only HTTP payload data plane. The Postgres/local ORM cache remains the control plane and source/export staging area; browser payloads are served from QuestDB.
+
+Start QuestDB directly:
+
+```bash
+scripts/questdb-start.sh
+```
+
+On Windows:
+
+```powershell
+scripts\questdb-start.ps1
+```
+
+The scripts download QuestDB `9.3.5` into `.runtime/questdb-dist` when missing and store data under `.runtime/questdb-data`. Override with `QUESTDB_VERSION`, `FLUX_QUESTDB_DIST`, or `FLUX_QUESTDB_DATA` if needed.
+
+Export current nav-well Trace cache rows into QuestDB:
+
+```bash
+cd web/Flux
+uv run python manage.py sync_trace_questdb --limit 10 --replace
+```
+
+The active nav-well payload endpoint is:
+
+```text
+http://localhost:8000/trace/wells/payload/?set=1&window_minutes=10080&step_minutes=7
+```
 
 Known good output ends with:
 

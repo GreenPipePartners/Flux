@@ -119,7 +119,7 @@ Apply migrations after pulling these changes:
 uv run python manage.py migrate sim
 ```
 
-## Flux Trace Trial
+## Flux Trace
 
 `flux.trace` uses uPlot for visualizing sample tag history. uPlot assets are vendored locally under `src/static/flux/vendor/uplot/`, and Trace behavior is split into static ES modules under `src/static/flux/trace/`.
 
@@ -133,9 +133,21 @@ The current trace uses local sample tag data and returns a renderer-neutral shap
 }
 ```
 
-The intended next step is a Fluxy historian adapter that returns the same shape from Ignition history, so the chart does not care whether data came from local samples or a live historian query.
+Trace is now a first-class operating space. Its fast path is configured tags plus `TraceSignal` significance, synced from Ignition historian into local `TraceCachePoint` rows, then rendered from the local rolling cache.
 
 See `../../docs/trace-architecture.md`.
+
+Seed the first ten navigation wells through the Ignition-backed Trace path:
+
+```bash
+uv run python manage.py seed_nav_well_trace --limit 10 --configure-ignition --inject-history --update-live --sync-cache
+```
+
+Then open:
+
+```text
+http://localhost:8000/trace/wells/
+```
 
 ## Live Extraction Trial
 

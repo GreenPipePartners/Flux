@@ -60,12 +60,14 @@ export function dragPanPlugin(onDragState = () => {}) {
     hooks: {
       ready: [(u) => {
         u.over.addEventListener("mousedown", (event) => {
+          if (!event.shiftKey) return;
           startX = event.clientX;
           startMin = u.scales.x.min;
           startMax = u.scales.x.max;
         });
         window.addEventListener("mousemove", (event) => {
           if (startX === null) return;
+          if (!event.shiftKey) return;
           const delta = event.clientX - startX;
           if (Math.abs(delta) > 3) onDragState(true);
           const range = startMax - startMin;
