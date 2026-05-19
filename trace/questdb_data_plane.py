@@ -88,9 +88,9 @@ def export_trace_cache_to_questdb(*, profile_keys: list[str], replace: bool = Fa
         with connection.cursor() as cursor:
             batch = []
             for signal_id, timestamp, value, quality in rows:
-                    batch.append((signal_id, str(signal_id), timestamp, value, quality or "Good"))
-                    if len(batch) >= batch_size:
-                        cursor.executemany("INSERT INTO trace_points (signal_id, signal_key, ts, value, quality) VALUES (%s, %s, %s, %s, %s)", batch)
+                batch.append((signal_id, str(signal_id), timestamp, value, quality or "Good"))
+                if len(batch) >= batch_size:
+                    cursor.executemany("INSERT INTO trace_points (signal_id, signal_key, ts, value, quality) VALUES (%s, %s, %s, %s, %s)", batch)
                     total += len(batch)
                     batch = []
             if batch:

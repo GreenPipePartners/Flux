@@ -103,6 +103,7 @@ def seed_nav_well_trace_config(
                         "display_name": spec.label,
                         "asset_name": well.label,
                         "engineering_units": spec.unit,
+                        "category": RuntimeTag.Category.TRACE_STRESS,
                         "schedule": schedule,
                         "enabled": True,
                     },

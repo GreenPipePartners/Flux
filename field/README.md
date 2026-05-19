@@ -103,3 +103,5 @@ Current implementation status:
 - Bool, int, float, and string values are generated from configured simulation settings.
 - Values update at each tag's `update_rate_ms`.
 - Anonymous/no-security OPC UA access is enabled for the first local integration pass.
+- FieldAgent config can carry per-tag `behavior`, `mode_config`, and `metadata` exported from `SimDeviceTag` catalog rows.
+- Runtime tag-mode write behavior is not implemented in FieldAgent yet. OPC nodes are still read-oriented simulated values, so metadata is available for the next server behavior pass without pretending the C# runtime honors `ignores_write`, `slow_response`, or `write_to_other_tag_response` today.

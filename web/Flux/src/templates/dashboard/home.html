@@ -17,7 +17,8 @@
   <div class="service-summary service-summary-{{ service_state }}">
     <span class="eyebrow">Overall</span>
     <strong>{% if service_state == "ok" %}Ready{% else %}Attention needed{% endif %}</strong>
-    <small>{{ online_count }}/{{ tag_count }} runtime tags online{% if last_read_at %} · last read {{ last_read_at }}{% endif %}</small>
+    <small>{{ online_count }}/{{ tag_count }} interface runtime tags online{% if last_read_at %} · last read {{ last_read_at }}{% endif %}</small>
+    {% if excluded_runtime_tag_count %}<small>{{ excluded_runtime_tag_count }} trial/stress tags hidden from interface health</small>{% endif %}
   </div>
 </section>
 
@@ -98,6 +99,35 @@
       </div>
     {% else %}
       <p class="muted">No stale runtime tags detected. Latest reads are within the {{ stale_after_seconds }}s stale window.</p>
+    {% endif %}
+  </article>
+
+  <article class="panel action-panel action-panel-{% if device_status.running_endpoint_count %}ok{% else %}warning{% endif %}">
+    <div class="panel-header">
+      <div>
+        <p class="eyebrow">Device status</p>
+        <h2>FieldAgent Devices</h2>
+      </div>
+      <span class="status-pill">{{ device_status.running_endpoint_count }}/{{ device_status.enabled_endpoint_count }} endpoints running</span>
+    </div>
+    <p class="muted">
+      {{ device_status.enabled_device_count }} enabled devices, {{ device_status.enabled_tag_count }} enabled field tags{% if device_status.latest_seen_at %} · latest heartbeat {{ device_status.latest_seen_at }}{% endif %}
+    </p>
+    {% if device_status.endpoint_items %}
+      <div class="stale-list">
+        {% for item in device_status.endpoint_items %}
+          <div class="stale-row">
+            <div>
+              <strong>{{ item.endpoint.name }}</strong>
+              <small>{{ item.endpoint.status }} · {{ item.enabled_device_count }} devices · {{ item.enabled_tag_count }} tags{% if item.age_seconds != None %} · seen {{ item.age_seconds }}s ago{% endif %}</small>
+              {% if item.endpoint.last_error %}<small>{{ item.endpoint.last_error }}</small>{% endif %}
+            </div>
+            <a href="{% url 'admin:base_fieldendpoint_change' item.endpoint.id %}">Inspect</a>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="muted">No FieldAgent endpoints configured yet.</p>
     {% endif %}
   </article>
 </section>

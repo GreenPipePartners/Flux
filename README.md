@@ -28,6 +28,7 @@ Ignition Gateway: http://localhost:8088/web/home
 Major docs:
 
 - `docs/operator-guide.md`: CLI, background service, dashboard, and health checks.
+- `docs/operator-guide.md#field-simulation-operator-workflow`: tag_data import, materialize, supervised FieldAgent, Fluxy/Ignition config, and doctor workflow.
 - `docs/flux-architecture.md`: system boundaries and ownership.
 - `docs/ignition-dev-cell.md`: managed local Ignition dev-cell workflow.
 - `docs/live-extraction.md`: live-to-sim tag/history extraction and cleanup limits.

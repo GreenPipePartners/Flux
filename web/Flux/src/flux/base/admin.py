@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import FieldAgentHeartbeat, FieldDevice, FieldEndpoint, FieldNode, FieldTag, TagNode, TagProvider, TagSelection
+from .models import FieldAgentHeartbeat, FieldDevice, FieldEndpoint, FieldNode, FieldTag, SimDevice, SimDeviceTag, SimDriver, TagNode, TagProvider, TagSelection
 
 
 @admin.register(TagProvider)
@@ -24,6 +24,36 @@ class TagSelectionAdmin(admin.ModelAdmin):
     list_filter = ("purpose", "enabled", "provider")
     search_fields = ("provider__name", "path")
     list_select_related = ("provider",)
+
+
+@admin.register(SimDriver)
+class SimDriverAdmin(admin.ModelAdmin):
+    list_display = ("key", "label", "strategy_key")
+    list_filter = ("strategy_key",)
+    search_fields = ("key", "label", "ignition_driver_names")
+
+
+class SimDeviceTagInline(admin.TabularInline):
+    model = SimDeviceTag
+    extra = 0
+    fields = ("source_path", "tag_name", "data_type", "value_source", "address_strategy", "enabled")
+
+
+@admin.register(SimDevice)
+class SimDeviceAdmin(admin.ModelAdmin):
+    list_display = ("name", "provider", "driver", "mode", "response_delay_ms", "enabled", "source_status")
+    list_filter = ("enabled", "mode", "driver", "provider")
+    search_fields = ("name", "provider__name", "driver__label", "source_status")
+    list_select_related = ("provider", "driver")
+    inlines = (SimDeviceTagInline,)
+
+
+@admin.register(SimDeviceTag)
+class SimDeviceTagAdmin(admin.ModelAdmin):
+    list_display = ("source_path", "device", "provider", "data_type", "value_source", "address_strategy", "enabled")
+    list_filter = ("enabled", "provider", "data_type", "value_source", "address_strategy")
+    search_fields = ("source_path", "tag_name", "opc_item_path", "device__name")
+    list_select_related = ("provider", "device", "tag_node")
 
 
 class FieldDeviceInline(admin.TabularInline):

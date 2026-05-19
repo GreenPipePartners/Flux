@@ -96,6 +96,19 @@ def stale_tag_item(tag: RuntimeTag, reason: str, age_seconds: int | None) -> dic
     }
 
 
+def interface_runtime_tags():
+    return (
+        RuntimeTag.objects.select_related("latest_value", "schedule")
+        .filter(enabled=True)
+        .exclude(category=RuntimeTag.Category.TRACE_STRESS)
+        .order_by("asset_name", "display_name")
+    )
+
+
+def excluded_interface_runtime_tag_count() -> int:
+    return RuntimeTag.objects.filter(enabled=True, category=RuntimeTag.Category.TRACE_STRESS).count()
+
+
 def dashboard_runtime_state(tags) -> dict[str, object]:
     now = timezone.now()
     stale_after_seconds = settings.STALE_AFTER_SECONDS
@@ -115,6 +128,9 @@ def dashboard_runtime_state(tags) -> dict[str, object]:
             last_read_at = value.read_at
         if value.quality_code.lower() != "good":
             bad_quality_count += 1
+            stale_count += 1
+            stale_tag_items.append(stale_tag_item(tag, "Bad quality: %s" % value.quality_code, 0))
+            continue
         if value.is_stale(now, stale_after_seconds):
             stale_count += 1
             stale_tag_items.append(
@@ -178,6 +194,54 @@ def dashboard_readiness(state: dict[str, object]) -> list[ReadinessItem]:
             "/sim/",
         ),
     ]
+
+
+def field_device_status() -> dict[str, object]:
+    endpoints = list(FieldEndpoint.objects.prefetch_related("devices__tags", "heartbeats").order_by("name"))
+    now = timezone.now()
+    endpoint_items = []
+    enabled_endpoint_count = 0
+    running_endpoint_count = 0
+    enabled_device_count = 0
+    enabled_tag_count = 0
+    latest_seen_at = None
+
+    for endpoint in endpoints:
+        devices = list(endpoint.devices.all())
+        heartbeats = list(endpoint.heartbeats.all())
+        latest_heartbeat = max((heartbeat.last_seen_at for heartbeat in heartbeats), default=None)
+        seen_at = endpoint.last_seen_at or latest_heartbeat
+        if seen_at is not None and (latest_seen_at is None or seen_at > latest_seen_at):
+            latest_seen_at = seen_at
+        if endpoint.enabled:
+            enabled_endpoint_count += 1
+        if endpoint.enabled and endpoint.status == FieldEndpoint.Status.RUNNING:
+            running_endpoint_count += 1
+        endpoint_enabled_devices = [device for device in devices if device.enabled]
+        endpoint_enabled_tag_count = sum(tag.enabled for device in endpoint_enabled_devices for tag in device.tags.all())
+        enabled_device_count += len(endpoint_enabled_devices)
+        enabled_tag_count += endpoint_enabled_tag_count
+        age_seconds = int((now - seen_at).total_seconds()) if seen_at else None
+        endpoint_items.append(
+            {
+                "endpoint": endpoint,
+                "enabled_device_count": len(endpoint_enabled_devices),
+                "enabled_tag_count": endpoint_enabled_tag_count,
+                "latest_seen_at": seen_at,
+                "age_seconds": age_seconds,
+                "online": endpoint.enabled and endpoint.status == FieldEndpoint.Status.RUNNING,
+            }
+        )
+
+    return {
+        "endpoint_count": len(endpoints),
+        "enabled_endpoint_count": enabled_endpoint_count,
+        "running_endpoint_count": running_endpoint_count,
+        "enabled_device_count": enabled_device_count,
+        "enabled_tag_count": enabled_tag_count,
+        "latest_seen_at": latest_seen_at,
+        "endpoint_items": endpoint_items,
+    }
 
 
 def refresh_runtime_tags(tags: list[RuntimeTag]) -> int:

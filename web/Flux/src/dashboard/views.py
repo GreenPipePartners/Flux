@@ -9,6 +9,9 @@ from .services import (
     bridge_config,
     dashboard_readiness,
     dashboard_runtime_state,
+    excluded_interface_runtime_tag_count,
+    field_device_status,
+    interface_runtime_tags,
     refresh_runtime_tags,
     test_bridge,
     update_bridge_config,
@@ -53,13 +56,12 @@ def home(request):
                 messages.success(request, f"Refreshed {refreshed} stale runtime tags from Ignition.")
             return redirect("dashboard:home")
 
-    tags = RuntimeTag.objects.select_related("latest_value", "schedule").order_by(
-        "asset_name", "display_name"
-    )
+    tags = interface_runtime_tags()
     runtime_state = dashboard_runtime_state(tags)
     readiness = dashboard_readiness(runtime_state)
     service_state = "ok" if all(item.state == "ok" for item in readiness) else "warning"
     bridge = bridge_config()
+    device_status = field_device_status()
 
     return render(
         request,
@@ -72,10 +74,12 @@ def home(request):
             "stale_after_seconds": runtime_state["stale_after_seconds"],
             "tag_count": runtime_state["tag_count"],
             "last_read_at": runtime_state["last_read_at"],
+            "excluded_runtime_tag_count": excluded_interface_runtime_tag_count(),
             "readiness": readiness,
             "service_state": service_state,
             "stale_tag_items": runtime_state["stale_tag_items"][:12],
             "stale_tag_overflow": max(runtime_state["stale_count"] - 12, 0),
+            "device_status": device_status,
             "bridge": {
                 "base_url": bridge.base_url,
                 "token_set": bool(bridge.token),

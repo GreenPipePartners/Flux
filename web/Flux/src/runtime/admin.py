@@ -11,8 +11,8 @@ class TagScheduleAdmin(admin.ModelAdmin):
 
 @admin.register(RuntimeTag)
 class RuntimeTagAdmin(admin.ModelAdmin):
-    list_display = ("display_name", "asset_name", "provider", "path", "schedule", "balancer_code", "enabled")
-    list_filter = ("enabled", "schedule", "provider", "balancer_code")
+    list_display = ("display_name", "asset_name", "provider", "path", "category", "schedule", "balancer_code", "enabled")
+    list_filter = ("enabled", "category", "schedule", "provider", "balancer_code")
     search_fields = ("display_name", "asset_name", "provider", "path")
 
 

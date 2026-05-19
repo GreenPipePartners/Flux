@@ -49,6 +49,13 @@ Ignition dev cell:
   flux ignition request-scan  Ask Ignition to rescan the project
   flux ignition open          Open the Ignition Gateway home page
 
+Field simulation:
+  flux field import-tag-data   Import tag_data inventory + provider export
+  flux field import-live       Import live Ignition provider + device list
+  flux field materialize       Materialize imported sim catalog into FieldAgent config
+  flux field configure-ignition Configure Ignition OPC UA connections and OPC tags
+  flux field supervisor        Run supervised per-device FieldAgent processes
+
 First local setup:
   1. Run: flux install-service
   2. Run: flux start
@@ -83,6 +90,10 @@ def flux_env() -> dict[str, str]:
 
 def run_uv_fluxy(args: list[str]) -> int:
     return subprocess.call(["uv", "run", "--project", "fluxy", *args], cwd=ROOT_DIR, env=flux_env())
+
+
+def run_manage(args: list[str]) -> int:
+    return subprocess.call(["uv", "run", "python", "manage.py", *args], cwd=WEB_DIR, env=flux_env())
 
 
 def capture(command: list[str], *, cwd: Path = ROOT_DIR) -> subprocess.CompletedProcess[str]:
@@ -160,13 +171,16 @@ def doctor() -> int:
 
         latest_age = runtime["latest_read_age_seconds"]
         latest_detail = "no reads yet" if latest_age is None else f"latest read {latest_age}s ago"
+        hidden_count = runtime.get("excluded_interface_tag_count", 0)
+        hidden_detail = f", {hidden_count} hidden trial/stress" if hidden_count else ""
         runtime_ok = runtime["tag_count"] > 0 and runtime["stale_count"] == 0 and runtime["bad_quality_count"] == 0
         print_check(
             runtime_ok,
             "Runtime reads",
-            "%s tags, %s online, %s stale, %s bad quality, %s"
+            "%s tags%s, %s online, %s stale, %s bad quality, %s"
             % (
                 runtime["tag_count"],
+                hidden_detail,
                 runtime["online_count"],
                 runtime["stale_count"],
                 runtime["bad_quality_count"],
@@ -324,6 +338,79 @@ def ignition_info() -> int:
     return 0
 
 
+def field_import_tag_data(args: argparse.Namespace) -> int:
+    command = [
+        "import_tag_data_catalog",
+        args.provider,
+        "--devices",
+        args.devices,
+        "--tags",
+        args.tags,
+    ]
+    if args.skip_raw_config:
+        command.append("--skip-raw-config")
+    return run_manage(command)
+
+
+def field_import_live(args: argparse.Namespace) -> int:
+    command = [
+        "import_live_tag_catalog",
+        args.source_provider,
+        "--base-url",
+        args.base_url,
+    ]
+    token = args.token if args.token is not None else flux_env().get("FLUXY_TOKEN")
+    if token:
+        command.extend(["--token", token])
+    if args.provider:
+        command.extend(["--provider", args.provider])
+    if args.skip_raw_config:
+        command.append("--skip-raw-config")
+    return run_manage(command)
+
+
+def field_materialize(args: argparse.Namespace) -> int:
+    command = ["materialize_sim_field_config"]
+    if args.provider:
+        command.extend(["--provider", args.provider])
+    return run_manage(command)
+
+
+def field_configure_ignition(args: argparse.Namespace) -> int:
+    command = [
+        "configure_field_ignition",
+        "--base-url",
+        args.base_url,
+        "--tag-provider",
+        args.tag_provider,
+        "--tag-folder",
+        args.tag_folder,
+        "--collision-policy",
+        args.collision_policy,
+    ]
+    token = args.token if args.token is not None else flux_env().get("FLUXY_TOKEN")
+    if token:
+        command.extend(["--token", token])
+    if args.project_location:
+        command.extend(["--project-location", args.project_location])
+    if args.no_cleanup:
+        command.append("--no-cleanup")
+    return run_manage(command)
+
+
+def field_supervisor(args: argparse.Namespace) -> int:
+    command = ["flux_field_supervisor", "--runtime-dir", args.runtime_dir]
+    if args.once:
+        command.append("--once")
+    if args.dry_run:
+        command.append("--dry-run")
+    if args.base_port is not None:
+        command.extend(["--base-port", str(args.base_port)])
+    if args.project_path:
+        command.extend(["--project-path", args.project_path])
+    return run_manage(command)
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Flux local development helper.")
     subparsers = parser.add_subparsers(dest="command")
@@ -357,6 +444,41 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     scan.add_argument("--fluxy-base-url", default=flux_env().get("FLUXY_BASE_URL", DEFAULT_FLUXY_BASE_URL))
     scan.add_argument("--token", default=None)
     ignition_subparsers.add_parser("open", help="Open the Ignition Gateway home page")
+
+    field = subparsers.add_parser("field", help="Manage Flux FieldAgent simulation workflow")
+    field_subparsers = field.add_subparsers(dest="field_command")
+
+    import_tags = field_subparsers.add_parser("import-tag-data", help="Import tag_data inventory and provider JSON")
+    import_tags.add_argument("provider", help="Provider name to import, for example Tag_02")
+    import_tags.add_argument("--devices", required=True, help="Path to device inventory text file")
+    import_tags.add_argument("--tags", required=True, help="Path to Ignition provider JSON export")
+    import_tags.add_argument("--skip-raw-config", action="store_true")
+
+    import_live = field_subparsers.add_parser("import-live", help="Import live Ignition provider export and device list")
+    import_live.add_argument("source_provider", help="Ignition provider name to export, for example default")
+    import_live.add_argument("--provider", help="Flux catalog provider name. Defaults to source_provider.")
+    import_live.add_argument("--base-url", default=flux_env().get("FLUXY_BASE_URL", DEFAULT_FLUXY_BASE_URL))
+    import_live.add_argument("--token", default=None)
+    import_live.add_argument("--skip-raw-config", action="store_true")
+
+    materialize = field_subparsers.add_parser("materialize", help="Materialize enabled sim devices into FieldAgent config")
+    materialize.add_argument("--provider", help="Optional provider name to materialize, for example Tag_02")
+
+    configure = field_subparsers.add_parser("configure-ignition", help="Configure Ignition for enabled FieldAgent endpoints")
+    configure.add_argument("--base-url", default=flux_env().get("FLUXY_BASE_URL", DEFAULT_FLUXY_BASE_URL))
+    configure.add_argument("--token", default=None)
+    configure.add_argument("--project-location", default=flux_env().get("FLUXY_PROJECT_LOCATION"))
+    configure.add_argument("--tag-provider", default="default")
+    configure.add_argument("--tag-folder", default="FieldAgent")
+    configure.add_argument("--collision-policy", default="o", choices=["a", "m", "o", "i"])
+    configure.add_argument("--no-cleanup", action="store_true")
+
+    supervisor = field_subparsers.add_parser("supervisor", help="Run supervised per-device FieldAgent processes")
+    supervisor.add_argument("--runtime-dir", default=str(ROOT_DIR / ".runtime" / "field-agent"))
+    supervisor.add_argument("--once", action="store_true")
+    supervisor.add_argument("--dry-run", action="store_true")
+    supervisor.add_argument("--base-port", type=int, default=None)
+    supervisor.add_argument("--project-path", default=None)
     return parser.parse_args(argv)
 
 
@@ -392,6 +514,18 @@ def main(argv: list[str] | None = None) -> int:
             return ignition_request_scan(args)
         if ignition_command == "open":
             return open_url(flux_env()["IGNITION_GATEWAY_URL"].rstrip("/") + "/web/home")
+    if command == "field":
+        field_command = args.field_command or "materialize"
+        if field_command == "import-tag-data":
+            return field_import_tag_data(args)
+        if field_command == "import-live":
+            return field_import_live(args)
+        if field_command == "materialize":
+            return field_materialize(args)
+        if field_command == "configure-ignition":
+            return field_configure_ignition(args)
+        if field_command == "supervisor":
+            return field_supervisor(args)
     raise AssertionError(f"Unhandled command: {command}")
 
 

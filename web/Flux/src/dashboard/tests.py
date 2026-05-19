@@ -7,8 +7,9 @@ from io import StringIO
 from unittest.mock import patch
 
 from .models import IgnitionBridgeConfig
-from .services import dashboard_readiness, dashboard_runtime_state
+from .services import dashboard_readiness, dashboard_runtime_state, excluded_interface_runtime_tag_count, field_device_status, interface_runtime_tags
 
+from flux.base.models import FieldDevice, FieldEndpoint, FieldTag
 from flux.base.runtime import LatestTagValue, RuntimeTag, TagSchedule
 
 
@@ -141,8 +142,50 @@ class DashboardReadinessTests(TestCase):
 
         state = dashboard_runtime_state(tags)
 
-        self.assertEqual(state["online_count"], 1)
+        self.assertEqual(state["online_count"], 0)
+        self.assertEqual(state["stale_count"], 1)
         self.assertEqual(state["bad_quality_count"], 1)
+        self.assertEqual(state["stale_tag_items"][0]["reason"], "Bad quality: Bad_NotConnected")
+
+    def test_interface_runtime_tags_excludes_trace_stress_tags(self):
+        self.create_tag("Live", read_age_seconds=10)
+        RuntimeTag.objects.create(
+            provider="default",
+            path="FluxTraceNavWells/1/PressureA",
+            display_name="Pressure A",
+            category=RuntimeTag.Category.TRACE_STRESS,
+            schedule=self.schedule,
+        )
+        RuntimeTag.objects.create(
+            provider="default",
+            path="FluxTraceOilfieldLive1/PressureA",
+            display_name="Oilfield Pressure A",
+            category=RuntimeTag.Category.TRACE_STRESS,
+            schedule=self.schedule,
+        )
+
+        tags = list(interface_runtime_tags())
+
+        self.assertEqual([tag.path for tag in tags], ["Demo/Live"])
+        self.assertEqual(excluded_interface_runtime_tag_count(), 2)
+
+    def test_field_device_status_summarizes_endpoints_devices_and_tags(self):
+        FieldEndpoint.objects.all().delete()
+        endpoint = FieldEndpoint.objects.create(
+            name="FieldAgent",
+            status=FieldEndpoint.Status.RUNNING,
+            last_seen_at=timezone.now(),
+        )
+        device = FieldDevice.objects.create(endpoint=endpoint, name="DeviceA", device_type="Simulator")
+        FieldTag.objects.create(device=device, name="Pressure", data_type=FieldTag.DataType.FLOAT)
+
+        status = field_device_status()
+
+        self.assertEqual(status["enabled_endpoint_count"], 1)
+        self.assertEqual(status["running_endpoint_count"], 1)
+        self.assertEqual(status["enabled_device_count"], 1)
+        self.assertEqual(status["enabled_tag_count"], 1)
+        self.assertEqual(status["endpoint_items"][0]["endpoint"], endpoint)
 
     @patch("dashboard.services.port_is_open", return_value=True)
     def test_readiness_reports_latest_reads_ok_when_clean(self, _port):
@@ -217,4 +260,5 @@ class FluxDoctorStateCommandTests(TestCase):
         self.assertTrue(payload["bridge"]["token_set"])
         self.assertEqual(payload["runtime"]["tag_count"], 1)
         self.assertEqual(payload["runtime"]["stale_count"], 0)
+        self.assertEqual(payload["runtime"]["excluded_interface_tag_count"], 0)
         self.assertEqual(payload["historian"]["db_type"], "POSTGRES")

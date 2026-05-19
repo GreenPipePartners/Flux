@@ -122,6 +122,24 @@ uv run --with ../fluxy flux-sim-configure-ignition \
   --selected-paths-file selected-paths.json
 ```
 
+## Tag Behavior Modes
+
+The Django `/sim/` behavior table stores behavior-specific options in `SimTag.mode_config` and the simulator core executes them through `flux_sim.tag_mode` strategies.
+
+Device mode and tag mode are intentionally separate scopes:
+
+- `SimDevice.mode` is device/server behavior. `standard` produces normal request behavior and does not emit delay metadata. `slow_network` carries `response_delay_ms` through materialized `FieldDevice.config` and generated FieldAgent JSON as deterministic metadata for the runtime delay implementation.
+- Tag behavior mode is per-tag write behavior. It controls how individual tag writes are applied and does not imply server/request latency.
+
+The current C# FieldAgent config type does not consume device delay fields yet. Generated JSON preserves `mode`, `response_delay_ms`, and `metadata` so the next runtime step can implement request-level delay without reworking the Django materialization boundary.
+
+- `immediate`: writes the generated value directly.
+- `slow_response`: delays visible value changes by `response_delay_seconds`.
+- `ignores_write`: keeps the current value after initial materialization.
+- `write_to_other_tag_response`: writes the source tag normally and optionally emits a side write to `response_tag_path` with `response_value` when the generated source value equals `trigger_value`.
+
+For `write_to_other_tag_response`, enter `response_value` and `trigger_value` as JSON values in the UI when you need booleans, numbers, arrays, or objects. Blank `trigger_value` means the response write fires for every source write. Blank `response_tag_path` is rejected to avoid storing an inert mode configuration.
+
 ## Closed Loop Trials
 
 The preserved-tree integration test exercises the full add/read/delete/read lifecycle against live Ignition and FieldAgent:

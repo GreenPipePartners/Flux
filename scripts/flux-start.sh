@@ -5,6 +5,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WEB_DIR="$ROOT_DIR/web/Flux"
 FIELD_CONFIG="$WEB_DIR/field/field-config.json"
 FIELD_PROJECT="$ROOT_DIR/field/Flux.FieldAgent/Flux.FieldAgent.csproj"
+FIELD_RUNTIME_DIR="$ROOT_DIR/.runtime/field-agent"
+FLUX_FIELD_AGENT_MODE="${FLUX_FIELD_AGENT_MODE:-legacy}"
 FLUX_WEB_WORKERS="${FLUX_WEB_WORKERS:-8}"
 FLUX_WEB_THREADS="${FLUX_WEB_THREADS:-2}"
 
@@ -47,19 +49,34 @@ wait_for_url() {
 
 trap cleanup EXIT INT TERM
 
+case "$FLUX_FIELD_AGENT_MODE" in
+  legacy|supervised)
+    ;;
+  *)
+    printf 'Unsupported FLUX_FIELD_AGENT_MODE=%s. Use legacy or supervised.\n' "$FLUX_FIELD_AGENT_MODE" >&2
+    exit 2
+    ;;
+esac
+
 printf 'Preparing Flux database and FieldAgent config...\n'
 (
   cd "$WEB_DIR"
   uv run python manage.py migrate
   uv run python manage.py repair_sequences base
-  uv run python manage.py export_field_config --output field/field-config.json
+  if [[ "$FLUX_FIELD_AGENT_MODE" == "legacy" ]]; then
+    uv run python manage.py export_field_config --output field/field-config.json
+  fi
 )
 
 printf 'Starting Flux stack...\n'
 "$ROOT_DIR/scripts/questdb-start.sh"
 start_service "django" bash -lc "cd '$WEB_DIR' && PYTHONPATH='src:$ROOT_DIR' uv run gunicorn flux.wsgi:application --bind='0.0.0.0:8000' --workers='$FLUX_WEB_WORKERS' --threads='$FLUX_WEB_THREADS' --timeout=120"
 wait_for_url "http://localhost:8000/" "Django"
-start_service "field" dotnet run --project "$FIELD_PROJECT" --FluxField:ConfigPath="$FIELD_CONFIG"
+if [[ "$FLUX_FIELD_AGENT_MODE" == "supervised" ]]; then
+  start_service "field-supervisor" bash -lc "cd '$WEB_DIR' && PYTHONPATH='src:$ROOT_DIR' uv run python manage.py flux_field_supervisor --runtime-dir '$FIELD_RUNTIME_DIR' --project-path '$FIELD_PROJECT'"
+else
+  start_service "field" dotnet run --project "$FIELD_PROJECT" --FluxField:ConfigPath="$FIELD_CONFIG"
+fi
 start_service "demo" bash -lc "cd '$WEB_DIR' && uv run python manage.py run_sim_demo"
 
 printf '\nFlux stack is running. Open http://localhost:8000/live/ or http://localhost:8000/sim/.\n'

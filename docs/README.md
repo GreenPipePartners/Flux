@@ -24,6 +24,16 @@ flux start
 flux doctor
 ```
 
+Current field simulation loop from `tag_data/`:
+
+```bash
+flux field import-tag-data Tag_02 --devices "tag_data/tag_data/tag_02 devices.txt" --tags tag_data/tag_data/tags02.json
+flux field materialize --provider Tag_02
+FLUX_FIELD_AGENT_MODE=supervised flux start
+flux field configure-ignition --tag-provider default --tag-folder FieldAgent
+flux doctor
+```
+
 Main local URLs:
 
 ```text

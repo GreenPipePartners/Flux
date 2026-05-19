@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from flux_sim.tag_mode import TagModeKind
 
 
 class SimSchedule(models.Model):
@@ -26,12 +27,21 @@ class SimTag(models.Model):
         INT_RAMP = "int_ramp", "Integer ramp"
         FLOAT_WAVE = "float_wave", "Float wave"
 
+    class Behavior(models.TextChoices):
+        IMMEDIATE = TagModeKind.IMMEDIATE, "Immediate"
+        SLOW_RESPONSE = TagModeKind.SLOW_RESPONSE, "Slow response"
+        IGNORES_WRITE = TagModeKind.IGNORES_WRITE, "Ignores tag write"
+        WRITE_TO_OTHER_TAG_RESPONSE = TagModeKind.WRITE_TO_OTHER_TAG_RESPONSE, "Write to other tag response"
+
     provider = models.CharField(max_length=120, default="default")
     folder_path = models.CharField(max_length=1000, default="FluxSim")
     name = models.CharField(max_length=255)
     display_name = models.CharField(max_length=255, blank=True)
     data_type = models.CharField(max_length=20, choices=DataType.choices)
     pattern = models.CharField(max_length=40, choices=Pattern.choices)
+    behavior = models.CharField(max_length=40, choices=Behavior.choices, default=Behavior.IMMEDIATE)
+    response_delay_seconds = models.PositiveIntegerField(default=0)
+    mode_config = models.JSONField(blank=True, null=True)
     schedule = models.ForeignKey(SimSchedule, on_delete=models.PROTECT, related_name="tags")
     enabled = models.BooleanField(default=True)
     baseline = models.FloatField(default=0.0)
@@ -40,6 +50,8 @@ class SimTag(models.Model):
     period_samples = models.PositiveIntegerField(default=10)
     history_enabled = models.BooleanField(default=True)
     last_value = models.JSONField(blank=True, null=True)
+    pending_value = models.JSONField(blank=True, null=True)
+    pending_apply_at = models.DateTimeField(blank=True, null=True)
     last_write_at = models.DateTimeField(blank=True, null=True)
     next_write_at = models.DateTimeField(default=timezone.now, db_index=True)
     sample_index = models.PositiveBigIntegerField(default=0)

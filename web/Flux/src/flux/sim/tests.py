@@ -10,11 +10,13 @@ from django.core.management import call_command
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.utils import timezone
-from flux.base.models import TagNode, TagProvider
+from flux.base.models import FieldDevice, FieldEndpoint, FieldTag, SimDevice, SimDeviceTag, SimDriver, TagNode, TagProvider
 
 from .engine import configure_enabled_tags, delete_configured_tags, run_history_backfill, value_for_tag, write_due_tags
 from .models import SimHistoryBackfill, SimProviderSelection, SimSchedule, SimTag
 from .provider_tree import build_imported_provider_tree, selected_source_paths
+from .templatetags.sim_json import json_input_value
+from .views import parse_json_value, write_to_other_mode_config
 
 
 class SimModelTests(TestCase):
@@ -40,6 +42,39 @@ class SimModelTests(TestCase):
         self.assertContains(response, "[ACM02]")
         self.assertContains(response, "Area/Device01")
         self.assertContains(response, "Enable Folder")
+
+    def test_sim_index_renders_catalog_and_runtime_counts(self):
+        provider = TagProvider.objects.create(name="Tag_02", source="json_upload", source_sha256="abc")
+        TagNode.objects.create(provider=provider, path="Area/RTU_01/PV", name="PV", tag_type="AtomicTag", value_source="opc")
+        TagNode.objects.create(provider=provider, path="Area/RTU_01/SP", name="SP", tag_type="AtomicTag", value_source="opc")
+        driver = SimDriver.objects.create(key="opc_ua", label="OPC UA", strategy_key="acm")
+        sim_device = SimDevice.objects.create(provider=provider, name="RTU_01", driver=driver, enabled=True)
+        SimDeviceTag.objects.create(
+            provider=provider,
+            device=sim_device,
+            source_path="Area/RTU_01/PV",
+            tag_name="PV",
+            data_type="Float4",
+            enabled=True,
+        )
+        endpoint = FieldEndpoint.objects.create(name="sim-tag_02-rtu_01", enabled=True)
+        field_device = FieldDevice.objects.create(
+            endpoint=endpoint,
+            name="RTU_01",
+            device_type="OPC UA",
+            description="Materialized from SimDevice catalog %s" % sim_device.id,
+        )
+        FieldTag.objects.create(device=field_device, name="PV", data_type=FieldTag.DataType.FLOAT, enabled=True)
+
+        response = self.client.get("/sim/")
+
+        self.assertContains(response, "Catalog and Runtime")
+        self.assertContains(response, "1 providers")
+        self.assertContains(response, "2 nodes, 2 OPC tags")
+        self.assertContains(response, "1 devices, 1 device tags in the sim catalog")
+        self.assertContains(response, "1 unreferenced OPC tags")
+        self.assertContains(response, "1 FieldAgent endpoints")
+        self.assertContains(response, "1 devices, 1 field tags materialized")
 
     def test_imported_provider_tree_uses_checkboxes_and_folder_icon(self):
         with TemporaryDirectory() as temp_dir:
@@ -212,6 +247,227 @@ class SimModelTests(TestCase):
         self.assertEqual(tag.sample_index, 1)
         self.assertEqual(tag.last_value, 0)
         self.assertEqual(tag.next_write_at, now + timedelta(seconds=1))
+
+    def test_slow_response_tag_delays_changed_value(self):
+        SimTag.objects.update(enabled=False)
+        fx = FakeFluxy()
+        fast = SimSchedule.objects.create(name="fast", interval_seconds=1)
+        now = timezone.now()
+        tag = SimTag.objects.create(
+            name="SlowTag",
+            folder_path="WriteTest",
+            data_type=SimTag.DataType.INT4,
+            pattern=SimTag.Pattern.INT_RAMP,
+            behavior=SimTag.Behavior.SLOW_RESPONSE,
+            response_delay_seconds=5,
+            schedule=fast,
+            next_write_at=now,
+        )
+
+        first = write_due_tags(fx, now=now)
+        tag.refresh_from_db()
+
+        self.assertEqual(first, 1)
+        self.assertEqual(fx.tag.writes[-1]["values"], [0])
+        self.assertEqual(tag.last_value, 0)
+        self.assertIsNone(tag.pending_value)
+
+        tag.next_write_at = now + timedelta(seconds=1)
+        tag.save(update_fields=["next_write_at"])
+        second = write_due_tags(fx, now=now + timedelta(seconds=1))
+        tag.refresh_from_db()
+
+        self.assertEqual(second, 1)
+        self.assertEqual(fx.tag.writes[-1]["values"], [0])
+        self.assertEqual(tag.pending_value, 1)
+        self.assertEqual(tag.pending_apply_at, now + timedelta(seconds=6))
+
+        tag.next_write_at = now + timedelta(seconds=6)
+        tag.save(update_fields=["next_write_at"])
+        third = write_due_tags(fx, now=now + timedelta(seconds=6))
+        tag.refresh_from_db()
+
+        self.assertEqual(third, 1)
+        self.assertEqual(fx.tag.writes[-1]["values"], [1])
+        self.assertEqual(tag.last_value, 1)
+        self.assertIsNone(tag.pending_value)
+
+    def test_set_behavior_view_updates_delay_and_clears_pending_state(self):
+        fast = SimSchedule.objects.create(name="fast", interval_seconds=1)
+        tag = SimTag.objects.create(
+            name="SlowTag",
+            folder_path="WriteTest",
+            data_type=SimTag.DataType.INT4,
+            pattern=SimTag.Pattern.INT_RAMP,
+            pending_value=12,
+            pending_apply_at=timezone.now(),
+            schedule=fast,
+        )
+
+        response = self.client.post(
+            "/sim/set-behavior/",
+            {"tag_id": tag.id, "behavior": SimTag.Behavior.SLOW_RESPONSE, "response_delay_seconds": "30"},
+        )
+        tag.refresh_from_db()
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(tag.behavior, SimTag.Behavior.SLOW_RESPONSE)
+        self.assertEqual(tag.response_delay_seconds, 30)
+        self.assertIsNone(tag.pending_value)
+        self.assertIsNone(tag.pending_apply_at)
+
+    def test_set_behavior_view_stores_write_to_other_config(self):
+        fast = SimSchedule.objects.create(name="fast", interval_seconds=1)
+        tag = SimTag.objects.create(
+            name="SourceTag",
+            folder_path="WriteTest",
+            data_type=SimTag.DataType.INT4,
+            pattern=SimTag.Pattern.INT_RAMP,
+            schedule=fast,
+        )
+
+        response = self.client.post(
+            "/sim/set-behavior/",
+            {
+                "tag_id": tag.id,
+                "behavior": SimTag.Behavior.WRITE_TO_OTHER_TAG_RESPONSE,
+                "response_tag_path": "[default]WriteTest/ResponseTag",
+                "response_value": "10",
+                "trigger_value": "1",
+            },
+        )
+        tag.refresh_from_db()
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(tag.mode_config["response_tag_path"], "[default]WriteTest/ResponseTag")
+        self.assertEqual(tag.mode_config["response_value"], 10)
+        self.assertEqual(tag.mode_config["trigger_value"], 1)
+
+    def test_write_to_other_mode_config_omits_blank_optional_trigger(self):
+        mode_config = write_to_other_mode_config(
+            {
+                "response_tag_path": " [default]WriteTest/ResponseTag ",
+                "response_value": "true",
+                "trigger_value": "",
+            }
+        )
+
+        self.assertEqual(
+            mode_config,
+            {"response_tag_path": "[default]WriteTest/ResponseTag", "response_value": True},
+        )
+
+    def test_write_to_other_mode_config_rejects_blank_response_tag_path(self):
+        mode_config = write_to_other_mode_config({"response_tag_path": " ", "response_value": "10"})
+
+        self.assertIsNone(mode_config)
+
+    def test_set_behavior_view_rejects_write_to_other_without_response_tag_path(self):
+        fast = SimSchedule.objects.create(name="fast", interval_seconds=1)
+        tag = SimTag.objects.create(
+            name="SourceTag",
+            folder_path="WriteTest",
+            data_type=SimTag.DataType.INT4,
+            pattern=SimTag.Pattern.INT_RAMP,
+            schedule=fast,
+        )
+
+        response = self.client.post(
+            "/sim/set-behavior/",
+            {
+                "tag_id": tag.id,
+                "behavior": SimTag.Behavior.WRITE_TO_OTHER_TAG_RESPONSE,
+                "response_tag_path": " ",
+                "response_value": "10",
+            },
+        )
+        tag.refresh_from_db()
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(tag.behavior, SimTag.Behavior.IMMEDIATE)
+        self.assertIsNone(tag.mode_config)
+
+    def test_json_input_value_round_trips_json_types_from_ui(self):
+        values = [True, False, 10, 1.5, ["a", 1], {"enabled": True}]
+
+        for value in values:
+            with self.subTest(value=value):
+                self.assertEqual(parse_json_value(json_input_value(value)), value)
+
+    def test_ignores_write_tag_keeps_current_value_after_initialization(self):
+        SimTag.objects.update(enabled=False)
+        fx = FakeFluxy()
+        fast = SimSchedule.objects.create(name="fast", interval_seconds=1)
+        now = timezone.now()
+        tag = SimTag.objects.create(
+            name="IgnoredTag",
+            folder_path="WriteTest",
+            data_type=SimTag.DataType.INT4,
+            pattern=SimTag.Pattern.INT_RAMP,
+            behavior=SimTag.Behavior.IGNORES_WRITE,
+            schedule=fast,
+            next_write_at=now,
+        )
+
+        write_due_tags(fx, now=now)
+        tag.refresh_from_db()
+        self.assertEqual(fx.tag.writes[-1]["values"], [0])
+        self.assertEqual(tag.last_value, 0)
+
+        tag.next_write_at = now + timedelta(seconds=1)
+        tag.save(update_fields=["next_write_at"])
+        write_due_tags(fx, now=now + timedelta(seconds=1))
+        tag.refresh_from_db()
+
+        self.assertEqual(fx.tag.writes[-1]["values"], [0])
+        self.assertEqual(tag.last_value, 0)
+
+    def test_write_to_other_tag_response_writes_primary_and_response_tag(self):
+        SimTag.objects.update(enabled=False)
+        fx = FakeFluxy()
+        fast = SimSchedule.objects.create(name="fast", interval_seconds=1)
+        now = timezone.now()
+        SimTag.objects.create(
+            name="SourceTag",
+            folder_path="WriteTest",
+            data_type=SimTag.DataType.INT4,
+            pattern=SimTag.Pattern.INT_RAMP,
+            behavior=SimTag.Behavior.WRITE_TO_OTHER_TAG_RESPONSE,
+            mode_config={"response_tag_path": "[default]WriteTest/ResponseTag", "response_value": 10},
+            schedule=fast,
+            next_write_at=now,
+        )
+
+        written = write_due_tags(fx, now=now)
+
+        self.assertEqual(written, 1)
+        self.assertEqual(fx.tag.writes[-1]["tag_paths"], ["[default]WriteTest/SourceTag", "[default]WriteTest/ResponseTag"])
+        self.assertEqual(fx.tag.writes[-1]["values"], [0, 10])
+
+    def test_write_to_other_tag_response_respects_trigger_value(self):
+        SimTag.objects.update(enabled=False)
+        fx = FakeFluxy()
+        fast = SimSchedule.objects.create(name="fast", interval_seconds=1)
+        now = timezone.now()
+        tag = SimTag.objects.create(
+            name="SourceTag",
+            folder_path="WriteTest",
+            data_type=SimTag.DataType.INT4,
+            pattern=SimTag.Pattern.INT_RAMP,
+            behavior=SimTag.Behavior.WRITE_TO_OTHER_TAG_RESPONSE,
+            mode_config={"response_tag_path": "[default]WriteTest/ResponseTag", "response_value": 10, "trigger_value": 1},
+            schedule=fast,
+            next_write_at=now,
+        )
+
+        write_due_tags(fx, now=now)
+        tag.refresh_from_db()
+        tag.next_write_at = now + timedelta(seconds=1)
+        tag.save(update_fields=["next_write_at"])
+        write_due_tags(fx, now=now + timedelta(seconds=1))
+
+        self.assertEqual(fx.tag.writes[0]["tag_paths"], ["[default]WriteTest/SourceTag"])
+        self.assertEqual(fx.tag.writes[1]["tag_paths"], ["[default]WriteTest/SourceTag", "[default]WriteTest/ResponseTag"])
 
     def test_configure_enabled_tags_groups_by_folder(self):
         SimTag.objects.update(enabled=False)

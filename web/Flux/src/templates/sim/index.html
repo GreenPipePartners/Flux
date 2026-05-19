@@ -1,4 +1,5 @@
 {% extends "flux/base.html" %}
+{% load sim_json %}
 
 {% block title %}Flux Sim{% endblock %}
 
@@ -12,6 +13,35 @@
     <span class="status-pill">scheduled values</span>
   </div>
   <p>Flux Sim configures simulated Ignition memory tags, writes values on schedules, and can backfill historian data.</p>
+</section>
+
+<section class="panel" aria-label="Sim catalog status">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">supervisor status</p>
+      <h1>Catalog and Runtime</h1>
+    </div>
+    <span class="status-pill">{{ catalog_status.runtime_device_count }} materialized devices</span>
+  </div>
+  <div class="stage-grid">
+    <article class="stage-card">
+      <span>Imported catalog</span>
+      <h2>{{ catalog_status.provider_count }} providers</h2>
+      <p>{{ catalog_status.node_count }} nodes, {{ catalog_status.opc_tag_count }} OPC tags.</p>
+      <p>{{ catalog_status.device_count }} devices, {{ catalog_status.tag_count }} device tags in the sim catalog.</p>
+    </article>
+    <article class="stage-card">
+      <span>Coverage</span>
+      <h2>{{ catalog_status.enabled_device_count }} enabled devices</h2>
+      <p>{{ catalog_status.enabled_tag_count }} enabled device tags.</p>
+      <p>{{ catalog_status.unreferenced_opc_tag_count }} unreferenced OPC tags, {{ catalog_status.unknown_status_device_count }} devices with unknown status.</p>
+    </article>
+    <article class="stage-card">
+      <span>Materialized runtime</span>
+      <h2>{{ catalog_status.runtime_endpoint_count }} FieldAgent endpoints</h2>
+      <p>{{ catalog_status.runtime_device_count }} devices, {{ catalog_status.runtime_tag_count }} field tags materialized.</p>
+    </article>
+  </div>
 </section>
 
 <section class="panel">
@@ -155,7 +185,7 @@
             <ul class="sim-tree-list">
               {% for tag in provider.root_tags %}
                 <li class="sim-tree-leaf">
-                  <span>{{ tag.name }} <small>{{ tag.data_type }}</small></span>
+                  <span>{{ tag.name }} <small>{{ tag.data_type }} · {{ tag.get_behavior_display }}{% if tag.behavior == "slow_response" %} {{ tag.response_delay_seconds }}s{% endif %}</small></span>
                   <form method="post" action="{% url 'sim:set_enabled' %}">
                     {% csrf_token %}
                     <input type="hidden" name="scope" value="tag">
@@ -170,6 +200,48 @@
         </article>
       {% endfor %}
     </div>
+  {% else %}
+    <p>No simulated tags configured yet.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">tag behavior</p>
+      <h1>Behavior Configuration</h1>
+    </div>
+    <span class="status-pill">strategy</span>
+  </div>
+  <p>Choose how each simulated tag applies its generated target value. Slow response keeps the prior value visible until the configured delay expires. Ignores tag write keeps the current value after initialization. Write-to-other emits a configured side write when the source value matches the optional trigger.</p>
+  {% if tags %}
+    <table>
+      <thead><tr><th>Tag</th><th>Behavior</th><th>Options</th><th>Pending</th><th></th></tr></thead>
+      <tbody>
+        {% for tag in tags %}
+          <tr>
+            <td>{{ tag.tag_path }}</td>
+            <td colspan="4">
+              <form method="post" action="{% url 'sim:set_behavior' %}" class="inline-form">
+                {% csrf_token %}
+                <input type="hidden" name="tag_id" value="{{ tag.id }}">
+                <select name="behavior">
+                  {% for value, label in behavior_choices %}
+                    <option value="{{ value }}" {% if tag.behavior == value %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+                <input name="response_delay_seconds" type="number" min="0" step="1" value="{{ tag.response_delay_seconds }}" aria-label="Response delay seconds" title="Slow-response delay seconds">
+                <input name="response_tag_path" value="{{ tag.mode_config.response_tag_path|default:'' }}" placeholder="response tag path" aria-label="Response tag path">
+                <input name="response_value" value="{{ tag.mode_config.response_value|json_input_value }}" placeholder="JSON response value" aria-label="Response value">
+                <input name="trigger_value" value="{{ tag.mode_config.trigger_value|json_input_value }}" placeholder="optional JSON trigger" aria-label="Trigger value">
+                <span>{% if tag.pending_apply_at %}{{ tag.pending_value }} at {{ tag.pending_apply_at }}{% else %}-{% endif %}</span>
+                <button class="button" type="submit">Save</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   {% else %}
     <p>No simulated tags configured yet.</p>
   {% endif %}
@@ -200,13 +272,14 @@
   <div class="panel-header"><h1>Simulated Tags</h1></div>
   {% if tags %}
     <table>
-      <thead><tr><th>Path</th><th>Type</th><th>Pattern</th><th>Schedule</th><th>Last Value</th><th>Next Write</th></tr></thead>
+      <thead><tr><th>Path</th><th>Type</th><th>Pattern</th><th>Behavior</th><th>Schedule</th><th>Last Value</th><th>Next Write</th></tr></thead>
       <tbody>
         {% for tag in tags %}
           <tr>
             <td>{{ tag.tag_path }}</td>
             <td>{{ tag.data_type }}</td>
             <td>{{ tag.pattern }}</td>
+            <td>{{ tag.get_behavior_display }}{% if tag.behavior == "slow_response" %} {{ tag.response_delay_seconds }}s{% endif %}</td>
             <td>{{ tag.schedule.interval_seconds }}s</td>
             <td>{{ tag.last_value|default:"-" }}</td>
             <td>{{ tag.next_write_at }}</td>

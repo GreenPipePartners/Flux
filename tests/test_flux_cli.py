@@ -35,3 +35,108 @@ def test_print_check_formats_status(capsys):
     assert "[OK] Example: ready" in output
     assert "[FAIL] Example: broken" in output
     assert "fix: flux start" in output
+
+
+def test_field_import_tag_data_wraps_manage_command(monkeypatch):
+    flux = load_flux_cli()
+    calls = []
+
+    def fake_call(command, cwd=None, env=None):
+        calls.append((command, cwd, env))
+        return 0
+
+    monkeypatch.setattr(flux.subprocess, "call", fake_call)
+
+    status = flux.main(
+        [
+            "field",
+            "import-tag-data",
+            "Tag_02",
+            "--devices",
+            "tag_data/tag_data/tag_02 devices.txt",
+            "--tags",
+            "tag_data/tag_data/tags02.json",
+        ]
+    )
+
+    assert status == 0
+    assert calls[0][0][:4] == ["uv", "run", "python", "manage.py"]
+    assert calls[0][0][4:] == [
+        "import_tag_data_catalog",
+        "Tag_02",
+        "--devices",
+        "tag_data/tag_data/tag_02 devices.txt",
+        "--tags",
+        "tag_data/tag_data/tags02.json",
+    ]
+    assert calls[0][1] == flux.WEB_DIR
+
+
+def test_field_import_live_wraps_manage_command(monkeypatch):
+    flux = load_flux_cli()
+    calls = []
+
+    def fake_call(command, cwd=None, env=None):
+        calls.append((command, cwd, env))
+        return 0
+
+    monkeypatch.setattr(flux.subprocess, "call", fake_call)
+
+    status = flux.main(
+        [
+            "field",
+            "import-live",
+            "default",
+            "--provider",
+            "Live_01",
+            "--base-url",
+            "http://gateway/flux",
+            "--token",
+            "secret",
+        ]
+    )
+
+    assert status == 0
+    assert calls[0][0][:5] == ["uv", "run", "python", "manage.py", "import_live_tag_catalog"]
+    assert calls[0][0][5:] == [
+        "default",
+        "--base-url",
+        "http://gateway/flux",
+        "--token",
+        "secret",
+        "--provider",
+        "Live_01",
+    ]
+    assert calls[0][1] == flux.WEB_DIR
+
+
+def test_field_configure_ignition_wraps_manage_command(monkeypatch):
+    flux = load_flux_cli()
+    calls = []
+
+    def fake_call(command, cwd=None, env=None):
+        calls.append((command, cwd, env))
+        return 0
+
+    monkeypatch.setattr(flux.subprocess, "call", fake_call)
+
+    status = flux.main(
+        [
+            "field",
+            "configure-ignition",
+            "--base-url",
+            "http://gateway/system/webdev/flux",
+            "--token",
+            "secret",
+            "--tag-provider",
+            "default",
+            "--tag-folder",
+            "FieldAgent",
+        ]
+    )
+
+    assert status == 0
+    assert calls[0][0][:5] == ["uv", "run", "python", "manage.py", "configure_field_ignition"]
+    assert "--token" in calls[0][0]
+    assert "secret" in calls[0][0]
+    assert calls[0][1] == flux.WEB_DIR

@@ -29,7 +29,7 @@
         <ul class="sim-tree-list">
           {% for tag in folder.tags %}
             <li class="sim-tree-leaf">
-              <span>{{ tag.name }} <small>{{ tag.data_type }} · {{ tag.pattern }}</small></span>
+              <span>{{ tag.name }} <small>{{ tag.data_type }} · {{ tag.pattern }} · {{ tag.get_behavior_display }}{% if tag.behavior == "slow_response" %} {{ tag.response_delay_seconds }}s{% endif %}</small></span>
               <form method="post" action="{% url 'sim:set_enabled' %}">
                 {% csrf_token %}
                 <input type="hidden" name="scope" value="tag">

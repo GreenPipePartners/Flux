@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Flux.FieldAgent;
@@ -34,8 +35,29 @@ public sealed class FieldDeviceConfig
     [JsonPropertyName("browse_path")]
     public string BrowsePath { get; set; } = "";
 
+    [JsonPropertyName("mode")]
+    public string Mode { get; set; } = "";
+
+    [JsonPropertyName("response_delay_ms")]
+    public int ResponseDelayMs { get; set; }
+
     [JsonPropertyName("tags")]
     public List<FieldTagConfig> Tags { get; set; } = [];
+}
+
+internal static class FieldLatency
+{
+    public static TimeSpan RequestDelay(FieldConfig config)
+    {
+        var delayMs = config.Endpoints
+            .SelectMany(endpoint => endpoint.Devices)
+            .Where(device => string.Equals(device.Mode, "slow_network", StringComparison.OrdinalIgnoreCase))
+            .Select(device => device.ResponseDelayMs)
+            .DefaultIfEmpty(0)
+            .Max();
+
+        return delayMs > 0 ? TimeSpan.FromMilliseconds(delayMs) : TimeSpan.Zero;
+    }
 }
 
 public sealed class FieldTagConfig
@@ -69,4 +91,13 @@ public sealed class FieldTagConfig
 
     [JsonPropertyName("initial_value")]
     public string InitialValue { get; set; } = "";
+
+    [JsonPropertyName("behavior")]
+    public string Behavior { get; set; } = "immediate";
+
+    [JsonPropertyName("mode_config")]
+    public Dictionary<string, JsonElement>? ModeConfig { get; set; }
+
+    [JsonPropertyName("metadata")]
+    public Dictionary<string, JsonElement>? Metadata { get; set; }
 }

@@ -7,6 +7,7 @@ from typing import Any, Protocol
 
 from django.db import transaction
 from django.utils import timezone
+from flux_sim.tag_mode import TagModeConfig, value_to_write
 
 from .models import SimHistoryBackfill, SimTag
 
@@ -116,24 +117,50 @@ def write_due_tags(fx: FluxyLike, *, now=None, batch_size: int = 500) -> int:
     if not due_tags:
         return 0
 
-    values = [value_for_tag(tag, tag.sample_index) for tag in due_tags]
-    fx.tag.write_blocking([tag.tag_path for tag in due_tags], values)
+    results = [behavior_result_for_tag(tag, value_for_tag(tag, tag.sample_index), now=now) for tag in due_tags]
+    tag_paths = [tag.tag_path for tag in due_tags]
+    primary_values = [result.value for result in results]
+    values = list(primary_values)
+    for result in results:
+        for side_write in result.side_writes:
+            tag_paths.append(side_write.tag_path)
+            values.append(side_write.value)
+    fx.tag.write_blocking(tag_paths, values)
 
     with transaction.atomic():
-        for tag, value in zip(due_tags, values, strict=True):
+        for tag, value, result in zip(due_tags, primary_values, results, strict=True):
             tag.last_value = value
+            tag.pending_value = result.pending_value
+            tag.pending_apply_at = result.pending_apply_at
             tag.last_write_at = now
             tag.next_write_at = now + timedelta(seconds=tag.schedule.interval_seconds)
             tag.sample_index += 1
             tag.save(
                 update_fields=[
                     "last_value",
+                    "pending_value",
+                    "pending_apply_at",
                     "last_write_at",
                     "next_write_at",
                     "sample_index",
                 ]
             )
     return len(due_tags)
+
+
+def behavior_result_for_tag(tag: SimTag, target_value: Any, *, now) -> Any:
+    return value_to_write(
+        target_value,
+        now=now,
+        config=TagModeConfig(
+            kind=tag.behavior,
+            response_delay_seconds=tag.response_delay_seconds,
+            last_value=tag.last_value,
+            pending_value=tag.pending_value,
+            pending_apply_at=tag.pending_apply_at,
+            mode_config=tag.mode_config or {},
+        ),
+    )
 
 
 def run_history_backfill(fx: FluxyLike, backfill: SimHistoryBackfill) -> int:

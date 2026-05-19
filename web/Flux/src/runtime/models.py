@@ -18,11 +18,17 @@ class TagSchedule(models.Model):
 
 
 class RuntimeTag(models.Model):
+    class Category(models.TextChoices):
+        PRODUCTION = "production", "Production runtime"
+        SIMULATION = "simulation", "Simulation"
+        TRACE_STRESS = "trace_stress", "Trace stress"
+
     provider = models.CharField(max_length=120)
     path = models.CharField(max_length=1000)
     display_name = models.CharField(max_length=255)
     asset_name = models.CharField(max_length=255, blank=True)
     engineering_units = models.CharField(max_length=40, blank=True)
+    category = models.CharField(max_length=40, choices=Category.choices, default=Category.PRODUCTION)
     schedule = models.ForeignKey(TagSchedule, on_delete=models.PROTECT, related_name="tags")
     balancer_code = models.PositiveSmallIntegerField(default=1)
     enabled = models.BooleanField(default=True)

@@ -34,6 +34,7 @@ def ensure_demo_runtime_config() -> list[RuntimeTag]:
                 "display_name": display_name,
                 "asset_name": f"{field_tag.device.device_type}: {field_tag.device.name}",
                 "engineering_units": engineering_units,
+                "category": RuntimeTag.Category.SIMULATION,
                 "schedule": schedule,
                 "enabled": True,
             },

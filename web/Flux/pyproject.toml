@@ -45,6 +45,7 @@ DJANGO_SETTINGS_MODULE = "flux.settings"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 pythonpath = ["src"]
 markers = [
+    "acceptance: env-gated acceptance tests that may import real project data files",
     "e2e: browser end-to-end tests",
     "integration: tests that require live Ignition/OPC services",
 ]

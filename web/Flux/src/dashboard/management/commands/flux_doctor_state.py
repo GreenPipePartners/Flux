@@ -6,11 +6,10 @@ import os
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from flux.base.runtime import RuntimeTag
 from flux.sim.live_extract import datasource_info
 from flux.trace.models import TraceProfile
 
-from dashboard.services import bridge_config, dashboard_runtime_state, fluxy_client
+from dashboard.services import bridge_config, dashboard_runtime_state, excluded_interface_runtime_tag_count, fluxy_client, interface_runtime_tags
 from trace.questdb_data_plane import questdb_connect
 
 
@@ -21,7 +20,7 @@ class Command(BaseCommand):
         parser.add_argument("--historian-database", default=os.getenv("FLUX_HISTORIAN_DATABASE", "FluxyPostgres"))
 
     def handle(self, *args, **options):
-        tags = list(RuntimeTag.objects.select_related("latest_value", "schedule").filter(enabled=True).order_by("id"))
+        tags = list(interface_runtime_tags().order_by("id"))
         runtime_state = dashboard_runtime_state(tags)
         bridge = bridge_config()
         latest_read_age_seconds = None
@@ -99,6 +98,7 @@ class Command(BaseCommand):
                 "stale_after_seconds": runtime_state["stale_after_seconds"],
                 "latest_read_at": runtime_state["last_read_at"].isoformat() if runtime_state["last_read_at"] else None,
                 "latest_read_age_seconds": latest_read_age_seconds,
+                "excluded_interface_tag_count": excluded_interface_runtime_tag_count(),
             },
             "historian": historian,
             "questdb": questdb,

@@ -20,6 +20,8 @@ Project export:   web/ignition_flux_project
 Fluxy token:      FLUXY_TOKEN from web/Flux/.env
 ```
 
+`FLUXY_TOKEN` is the Fluxy WebDev bearer token, not an Ignition Gateway user password. See `../fluxy/docs/auth.md` for the protected-bridge workflow.
+
 Override with environment variables when needed:
 
 ```bash

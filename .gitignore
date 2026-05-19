@@ -16,6 +16,7 @@ node_modules/
 .opencode/
 .env
 web/Flux/.env
+.runtime/
 
 # .NET build and local OPC UA certificate state
 bin/
@@ -23,6 +24,7 @@ obj/
 pki/
 
 # Local/generated project data
+tag_data/
 dev_tag_builder/out/
 local_source_exports/
 tags02.json

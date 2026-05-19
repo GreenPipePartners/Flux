@@ -3,6 +3,7 @@ import time
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import OperationalError
+from httpx import HTTPError
 
 from flux.base.runtime import advance_balancer_code, scheduler_config
 from flux.sim.demo import configure_demo_ignition_tags, ensure_demo_runtime_config, read_demo_runtime_values
@@ -69,7 +70,7 @@ class Command(BaseCommand):
                 )
                 time.sleep(delay)
             except Exception as exc:
-                if exc.__class__.__name__ != "FluxyError":
+                if exc.__class__.__name__ != "FluxyError" and not isinstance(exc, HTTPError):
                     raise
                 self.stderr.write("Flux simulation demo read failed; will retry next interval: %s" % exc)
                 return None
