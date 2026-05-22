@@ -46,10 +46,11 @@ def test_live_one_device_closed_loop_opc_read_changes_and_cleans_up(tmp_path):
 
     endpoint, device, tag = create_unique_closed_loop_device(unique)
     spec = process_spec(
-        device,
+        endpoint,
         runtime_dir=tmp_path / "runtime",
         base_port=base_port,
         project_path=project_path,
+        host=public_host,
     )
 
     try:
@@ -161,9 +162,11 @@ def run_one_device_closed_loop(
             collision_policy="o",
         )
         wait_opc(fx, connection_name)
-        initial = fx.tag.read_blocking(tag_path)
-        if "Good" not in initial.quality:
-            pytest.fail("Initial read for %s was not Good: %s" % (tag_path, initial.quality))
+        initial = wait_for_good_tag_value(
+            fx,
+            tag_path,
+            float(os.getenv("FLUX_LIVE_CLOSED_LOOP_INITIAL_READ_TIMEOUT_SECONDS", "30")),
+        )
         changed = wait_change(
             fx,
             tag_path,
@@ -236,6 +239,23 @@ def wait_for_tag_value_change(fx, tag_path, initial_value, timeout_seconds):
     pytest.fail(
         "Tag %s did not change from %r within %.1fs; last_value=%r last_quality=%r"
         % (tag_path, initial_value, timeout_seconds, last_value, last_quality)
+    )
+
+
+def wait_for_good_tag_value(fx, tag_path, timeout_seconds):
+    deadline = time.monotonic() + timeout_seconds
+    last_value = None
+    last_quality = None
+    while time.monotonic() < deadline:
+        value = fx.tag.read_blocking(tag_path)
+        last_value = value.value
+        last_quality = value.quality
+        if "Good" in value.quality:
+            return value
+        time.sleep(0.5)
+    pytest.fail(
+        "Tag %s did not read Good within %.1fs; last_value=%r last_quality=%r"
+        % (tag_path, timeout_seconds, last_value, last_quality)
     )
 
 

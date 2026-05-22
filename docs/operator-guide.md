@@ -64,7 +64,7 @@ This is the local operator path from a checked-in `tag_data` export to Ignition-
 - Django web app on `http://localhost:8000/`
 - QuestDB Trace data plane on `postgresql://admin:quest@localhost:8812/qdb`
 - FieldAgent OPC UA adapter process or processes, depending on `FLUX_FIELD_AGENT_MODE`
-- demo reader that reads Ignition through Fluxy and writes latest values into Flux
+- Fluxolot live sampler that reads Ignition through Fluxy and writes latest values into Flux
 
 The service runs `scripts/flux-start.sh`.
 

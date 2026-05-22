@@ -16,10 +16,18 @@ flux start
 flux doctor
 ```
 
+Local docs server:
+
+```bash
+flux docs serve
+flux docs open
+```
+
 Main local URLs:
 
 ```text
 Flux web UI:      http://localhost:8000/
+Docs server:      http://localhost:8001/
 Live view:        http://localhost:8000/live/
 Trace:            http://localhost:8000/trace/
 Ignition Gateway: http://localhost:8088/web/home

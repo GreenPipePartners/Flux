@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import ServeCommand, ServeHeartbeat
+from .models import ServeCommand, ServeHeartbeat, ServeServiceSnapshot
 
 
 @admin.register(ServeHeartbeat)
@@ -15,3 +15,10 @@ class ServeCommandAdmin(admin.ModelAdmin):
     list_display = ("command", "status", "requested_by", "requested_at", "completed_at")
     list_filter = ("status", "command")
     search_fields = ("command", "error")
+
+
+@admin.register(ServeServiceSnapshot)
+class ServeServiceSnapshotAdmin(admin.ModelAdmin):
+    list_display = ("service_key", "category", "desired_state", "observed_state", "severity", "last_checked_at")
+    list_filter = ("category", "desired_state", "observed_state", "severity")
+    search_fields = ("service_key", "display_name", "summary", "last_error")

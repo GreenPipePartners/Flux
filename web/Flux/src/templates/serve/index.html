@@ -1,61 +1,92 @@
 {% extends "flux/base.html" %}
+{% load nav_extras %}
 
 {% block title %}Flux Serve{% endblock %}
 
 {% block content %}
-<section class="panel">
+{% if request.GET.card == "serve-platform" %}{% firstof request.GET.mode "detail" as serve_platform_mode %}{% else %}{% firstof "detail" as serve_platform_mode %}{% endif %}
+<section id="serve-platform-comp-card" class="panel comp-card" data-comp-card data-comp-card-mode="{{ serve_platform_mode }}">
+  {% include "flux/partials/link_copy.html" with link=platform_link label="Flux Serve Platform" %}
   <div class="panel-header">
     <div>
       <p class="eyebrow">flux.serve</p>
       <h1>Service Platform</h1>
     </div>
-    <span class="status-pill">wrapper boundary</span>
+    {% if snapshot_status.total_count %}
+      <span class="status-pill {% if snapshot_status.error_count %}status-failed{% endif %}">{{ snapshot_status.ok_count }}/{{ snapshot_status.total_count }} services healthy</span>
+    {% else %}
+      <span class="status-pill">{{ serve_status.running_count }}/{{ serve_status.total_count }} services running</span>
+    {% endif %}
   </div>
-  <p>Flux Serve coordinates Windows service wrappers, Linux systemd units, worker heartbeats, and approved service commands.</p>
-</section>
-
-<section class="stage-grid">
-  <article class="stage-card">
-    <span>WIN</span>
-    <h2>.NET 10</h2>
-    <p>Windows service wrapper supervises the Python Flux worker and reports health.</p>
-  </article>
-  <article class="stage-card">
-    <span>LIN</span>
-    <h2>systemd</h2>
-    <p>Linux deployments use native unit files for web and worker lifecycles.</p>
-  </article>
-  <article class="stage-card">
-    <span>DB</span>
-    <h2>Commands</h2>
-    <p>Management actions flow through auditable command rows, not arbitrary shell execution.</p>
-  </article>
-</section>
-
-<section class="panel">
-  <div class="panel-header"><h1>Heartbeats</h1></div>
-  {% if heartbeats %}
-    <table>
-      <thead><tr><th>Service</th><th>Instance</th><th>Platform</th><th>Status</th><th>Last Seen</th></tr></thead>
-      <tbody>
-        {% for heartbeat in heartbeats %}
-          <tr>
-            <td>{{ heartbeat.service_name }}</td>
-            <td>{{ heartbeat.instance_id }}</td>
-            <td>{{ heartbeat.platform }}</td>
-            <td><span class="status-pill">{{ heartbeat.status }}</span></td>
-            <td>{{ heartbeat.last_seen_at }}</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <p>No worker heartbeats recorded yet.</p>
+  <p>Flux Serve supervises Flux workers and SimServer runtime processes.</p>
+  {% if serve_platform_mode == "detail" %}
+    <p>Observed service health is Flux.serve's consolidated platform view. Raw process heartbeats are retained as evidence for services that self-report. Entries older than {{ stale_after_seconds }}s are stale and should not be treated as running.</p>
+    <h2>Observed Service Health</h2>
+    {% if snapshot_status.items %}
+      <table>
+        <thead><tr><th>Service</th><th>Category</th><th>Desired</th><th>Observed</th><th>Severity</th><th>Last Check</th><th>Summary</th></tr></thead>
+        <tbody>
+          {% for snapshot in snapshot_status.items %}
+            <tr>
+              <td>{{ snapshot.service_key }}</td>
+              <td>{{ snapshot.category }}</td>
+              <td>{{ snapshot.desired_state }}</td>
+              <td>{{ snapshot.observed_state }}</td>
+              <td><span class="status-pill {% if snapshot.severity == 'error' or snapshot.severity == 'warning' %}status-failed{% endif %}">{{ snapshot.severity }}</span></td>
+              <td>{{ snapshot.last_checked_at }}</td>
+              <td>{{ snapshot.summary }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>No service snapshots recorded yet. Run <code>uv run python manage.py flux_serve_monitor --once</code> to seed the observed service map.</p>
+    {% endif %}
+    <h2>Raw Process Heartbeats</h2>
+    {% if serve_status.stale_count %}
+      <form method="post" action="{% url 'serve:delete_stale_heartbeats' %}" class="actions">
+        {% csrf_token %}
+        <button class="button button-secondary" type="submit">Delete stale heartbeat artifacts</button>
+      </form>
+    {% endif %}
+    {% if serve_status.items %}
+      <table>
+        <thead><tr><th>Service</th><th>Instance</th><th>Platform</th><th>Status</th><th>Age</th><th>Last Seen</th><th></th></tr></thead>
+        <tbody>
+          {% for item in serve_status.items %}
+            {% with heartbeat=item.heartbeat %}
+            <tr>
+              <td>{{ heartbeat.service_name }}</td>
+              <td>{{ heartbeat.instance_id }}</td>
+              <td>{{ heartbeat.platform }}</td>
+              <td><span class="status-pill {% if item.stale or item.error %}status-failed{% endif %}">{{ item.state }}</span></td>
+              <td>{% if item.age_seconds != None %}{{ item.age_seconds }}s{% else %}-{% endif %}</td>
+              <td>{{ heartbeat.last_seen_at }}</td>
+              <td>
+                {% if not item.running %}
+                  <form method="post" action="{% url 'serve:delete_heartbeat' heartbeat.id %}">
+                    {% csrf_token %}
+                    <button class="button button-secondary" type="submit">Delete</button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% endwith %}
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>No worker heartbeats recorded yet.</p>
+    {% endif %}
   {% endif %}
+  {% include "flux/partials/comp_card_controls.html" with card_id="serve-platform" current_mode=serve_platform_mode show_detail=True %}
 </section>
 
-<section class="panel">
-  <div class="panel-header"><h1>Recent Commands</h1></div>
+{% if request.GET.card == "serve-commands" %}{% firstof request.GET.mode "summary" as serve_commands_mode %}{% else %}{% firstof "summary" as serve_commands_mode %}{% endif %}
+<section id="serve-commands-comp-card" class="panel comp-card" data-comp-card data-comp-card-mode="{{ serve_commands_mode }}">
+  {% include "flux/partials/link_copy.html" with link=commands_link label="Serve Logs" %}
+  <div class="panel-header"><div><p class="eyebrow">Flux.serve</p><h1>Recent Logs</h1></div><span class="status-pill">{{ commands|length }} recent</span></div>
+  {% if serve_commands_mode == "detail" %}
   {% if commands %}
     <table>
       <thead><tr><th>Command</th><th>Status</th><th>Requested By</th><th>Requested</th></tr></thead>
@@ -71,7 +102,9 @@
       </tbody>
     </table>
   {% else %}
-    <p>No service commands requested yet.</p>
+    <p>No service logs recorded yet.</p>
   {% endif %}
+  {% endif %}
+  {% include "flux/partials/comp_card_controls.html" with card_id="serve-commands" current_mode=serve_commands_mode show_detail=True %}
 </section>
 {% endblock %}

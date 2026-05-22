@@ -3,6 +3,24 @@ from django.utils import timezone
 from flux_sim.tag_mode import TagModeKind
 
 
+class SimServer(models.Model):
+    name = models.CharField(max_length=120, unique=True)
+    endpoint_url = models.CharField(max_length=255, default="opc.tcp://0.0.0.0:4840/flux/sim")
+    application_uri = models.CharField(max_length=255, default="urn:flux:sim")
+    product_uri = models.CharField(max_length=255, default="urn:flux:sim")
+    namespace_uri = models.CharField(max_length=255, default="urn:flux:sim")
+    enabled = models.BooleanField(default=True)
+    security_policy = models.CharField(max_length=120, default="None")
+    description = models.TextField(blank=True)
+    config = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self) -> str:
+        return self.name
+
+
 class TagProvider(models.Model):
     class Source(models.TextChoices):
         JSON_UPLOAD = "json_upload", "JSON upload"
@@ -12,6 +30,13 @@ class TagProvider(models.Model):
     source = models.CharField(max_length=40, choices=Source.choices)
     source_name = models.CharField(max_length=255, blank=True)
     source_sha256 = models.CharField(max_length=64)
+    sim_server = models.ForeignKey(
+        SimServer,
+        on_delete=models.PROTECT,
+        related_name="tag_providers",
+        blank=True,
+        null=True,
+    )
     root_tag_type = models.CharField(max_length=80, default="Provider")
     total_nodes = models.PositiveIntegerField(default=0)
     folder_count = models.PositiveIntegerField(default=0)

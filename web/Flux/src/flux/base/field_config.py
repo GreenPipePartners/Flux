@@ -10,11 +10,11 @@ def enabled_endpoint_configs() -> list[dict[str, Any]]:
     return [endpoint_config(endpoint) for endpoint in endpoints]
 
 
-def endpoint_config(endpoint: FieldEndpoint) -> dict[str, Any]:
+def endpoint_config(endpoint: FieldEndpoint, *, endpoint_url: str | None = None) -> dict[str, Any]:
     devices = FieldDevice.objects.filter(endpoint=endpoint, enabled=True).prefetch_related("tags")
     return {
         "name": endpoint.name,
-        "endpoint_url": endpoint.endpoint_url,
+        "endpoint_url": endpoint_url or endpoint.endpoint_url,
         "application_uri": endpoint.application_uri,
         "product_uri": endpoint.product_uri,
         "namespace_uri": endpoint.namespace_uri,

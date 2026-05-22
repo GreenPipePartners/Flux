@@ -1,0 +1,56 @@
+site_name: Flux Docs
+site_description: Performance-first Ignition companion documentation
+site_url: http://localhost:8001/
+repo_url: https://github.com/local/flux
+docs_dir: docs
+site_dir: .runtime/site
+exclude_docs: |
+  README.md
+
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: green
+    accent: light green
+  features:
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - Home: index.md
+  - Operator Guide: operator-guide.md
+  - Architecture:
+      - System Boundaries: flux-architecture.md
+      - Live Extraction: live-extraction.md
+      - Trace Architecture: trace-architecture.md
+      - Ignition Dev Cell: ignition-dev-cell.md
+  - Apps:
+      - Overview: apps/index.md
+      - Dashboard: apps/dashboard.md
+      - Live: apps/live.md
+      - Trace: apps/trace.md
+      - Serve: apps/serve.md
+      - Sim: apps/sim.md
+      - Opt: apps/opt.md
+  - Runbooks:
+      - Overview: runbooks/index.md
+      - Local Docs Server: runbooks/local-docs-server.md
+      - Local Service: runbooks/local-service.md
+      - Fluxolot Fishtank: runbooks/fluxolot-fishtank.md
+  - Reference:
+      - Live Card Context: live-card-context.md

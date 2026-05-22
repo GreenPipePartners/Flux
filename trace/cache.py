@@ -8,8 +8,7 @@ from django.utils import timezone
 
 from flux.sim.live_extract import rows_to_history_points
 from flux.trace.models import TraceCacheCursor, TraceCachePoint, TraceProfile, TraceSignal
-from trace.data_plane import dense_y_values_by_signal
-
+from trace.data_plane import cache_point_epoch_rows
 
 @dataclass(frozen=True)
 class TraceCacheSyncResult:
@@ -28,13 +27,16 @@ def trace_cache_payload(profile: TraceProfile, *, window_minutes: int | None = N
     end = latest or timezone.now().replace(second=0, microsecond=0)
     end = end.replace(second=0, microsecond=0) + timezone.timedelta(minutes=1)
     start = end - timezone.timedelta(minutes=window_minutes)
-    start_epoch = int(start.timestamp())
-    end_epoch = int(end.timestamp())
-    x_values = list(range(start_epoch, end_epoch, step_minutes * 60))
-    y_values_by_signal = dense_y_values_by_signal(signals=signals, start=start, end=end, start_epoch=start_epoch, point_count=len(x_values), step_minutes=step_minutes)
+    x_values, y_values_by_signal, raw_counts = sampled_cache_values(
+        signals=signals,
+        start=start,
+        end=end,
+        start_epoch=int(start.timestamp()),
+        step_minutes=step_minutes,
+    )
     return {
         "x": x_values,
-        "series": [series_payload(signal, y_values_by_signal[signal.id]) for signal in signals],
+        "series": [series_payload(signal, y_values_by_signal[signal.id], raw_counts[signal.id]) for signal in signals],
         "axisGroups": axis_groups(signals),
         "latestReadAt": (end - timezone.timedelta(minutes=1)).isoformat(),
         "windowDays": window_minutes / 1440,
@@ -134,9 +136,43 @@ def latest_cache_timestamp(signals: list[TraceSignal]):
     return TraceCachePoint.objects.filter(signal__in=signals).order_by("-timestamp").values_list("timestamp", flat=True).first()
 
 
-def series_payload(signal: TraceSignal, y_values: list[float | None]) -> dict:
+def sampled_cache_values(
+    *,
+    signals: list[TraceSignal],
+    start,
+    end,
+    start_epoch: int,
+    step_minutes: int = 1,
+) -> tuple[list[int], dict[int, list[float | None]], dict[int, int]]:
+    y_values_by_signal: dict[int, list[float | None]] = {signal.id: [] for signal in signals}
+    raw_counts: dict[int, int] = {signal.id: 0 for signal in signals}
+    if not signals:
+        return [], y_values_by_signal, raw_counts
+
+    step_seconds = max(1, step_minutes) * 60
+    selected_points: dict[tuple[int, int], tuple[int, float]] = {}
+    for signal_id, epoch_seconds, value in cache_point_epoch_rows(signals=signals, start=start, end=end):
+        if step_minutes > 1:
+            offset_seconds = epoch_seconds - start_epoch
+            if offset_seconds < 0:
+                continue
+            bucket = offset_seconds // step_seconds
+        else:
+            bucket = epoch_seconds
+        selected_points[(signal_id, bucket)] = (epoch_seconds, value)
+
+    x_values = sorted({epoch_seconds for epoch_seconds, _value in selected_points.values()})
+    x_index = {epoch_seconds: index for index, epoch_seconds in enumerate(x_values)}
+    y_values_by_signal = {signal.id: [None] * len(x_values) for signal in signals}
+    for (signal_id, _bucket), (epoch_seconds, value) in selected_points.items():
+        y_values_by_signal[signal_id][x_index[epoch_seconds]] = value
+        raw_counts[signal_id] += 1
+    return x_values, y_values_by_signal, raw_counts
+
+
+def series_payload(signal: TraceSignal, y_values: list[float | None], raw_count: int) -> dict:
     return {
-        "rawCount": len(y_values),
+        "rawCount": raw_count,
         "tagId": signal.tag_id,
         "signalId": signal.id,
         "name": signal.display_label,

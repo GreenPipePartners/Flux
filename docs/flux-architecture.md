@@ -61,7 +61,7 @@ Live-to-sim extraction is documented in `docs/live-extraction.md`. The current t
 Local development runtime is owned by a user systemd service:
 
 ```text
-flux-stack.service -> scripts/flux-start.sh -> Django + FieldAgent + demo reader
+flux-stack.service -> scripts/flux-start.sh -> Django + FieldAgent + Fluxolot sampler
 ```
 
 The CLI and desktop launchers start/stop the service. Django should not directly own long-lived OS processes from request handlers.

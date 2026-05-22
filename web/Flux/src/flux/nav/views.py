@@ -1,5 +1,7 @@
 from django.shortcuts import get_object_or_404, render
 
+from flux.links import flux_link
+
 from .filter import NavigationFilter
 from .models import NavigationDimension, NavigationProfile
 from .registry import run_navigation_query
@@ -27,6 +29,20 @@ def index(request):
         "changed": category,
         "display_order": profile_order(display_profile),
         "result": result,
+        "nav_link": flux_link(
+            title="Flux Navigation Filter",
+            description="Navigation context captures the active profile, selected filters, action profile, and resolved traversal order.",
+            rows=[
+                ("Profile", display_profile.key),
+                ("Action profile", action_profile.key),
+                ("Changed", category or "-"),
+                ("Order", ",".join(result.order)),
+                ("Navigation order", ",".join(result.nav_order)),
+            ],
+            payload={"type": "flux.nav.filter.context", "filters": result.filters, "profile": display_profile.key},
+            docs_path="apps/",
+            page_url=request.build_absolute_uri(),
+        ),
     }
     if request.headers.get("HX-Request"):
         return render(request, "nav/partials/navigation_panel.html", context)

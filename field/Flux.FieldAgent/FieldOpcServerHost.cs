@@ -16,17 +16,11 @@ public sealed class FieldOpcServerHost(ILogger<FieldOpcServerHost> logger)
         }
 
         var endpointUrl = FirstEndpointUrl(config) ?? options.EndpointUrl;
-        var configuration = BuildApplicationConfiguration(endpointUrl, options.CertificateStorePath);
-        await configuration.ValidateAsync(ApplicationType.Server).ConfigureAwait(false);
-
-        application = new ApplicationInstance
-        {
-            ApplicationName = "Flux Field Agent",
-            ApplicationType = ApplicationType.Server,
-            ApplicationConfiguration = configuration,
-        };
-
-        await application.CheckApplicationInstanceCertificatesAsync(false, 0, cancellationToken).ConfigureAwait(false);
+        var configuration = await BuildValidatedConfigurationAsync(
+            endpointUrl,
+            options.CertificateStorePath,
+            cancellationToken).ConfigureAwait(false);
+        application = BuildApplicationInstance(configuration);
         server = new FieldOpcServer(config);
         await application.StartAsync(server).ConfigureAwait(false);
         logger.LogInformation("Flux Field OPC UA server started endpoint={EndpointUrl}", endpointUrl);
@@ -130,5 +124,59 @@ public sealed class FieldOpcServerHost(ILogger<FieldOpcServerHost> logger)
             TraceConfiguration = new TraceConfiguration(),
             DisableHiResClock = false,
         };
+    }
+
+    private async Task<ApplicationConfiguration> BuildValidatedConfigurationAsync(
+        string endpointUrl,
+        string certificateStorePath,
+        CancellationToken cancellationToken)
+    {
+        var configuration = BuildApplicationConfiguration(endpointUrl, certificateStorePath);
+        await configuration.ValidateAsync(ApplicationType.Server).ConfigureAwait(false);
+        try
+        {
+            await BuildApplicationInstance(configuration)
+                .CheckApplicationInstanceCertificatesAsync(false, 0, cancellationToken)
+                .ConfigureAwait(false);
+            return configuration;
+        }
+        catch (Exception exc) when (LooksLikeInvalidGeneratedCertificate(exc))
+        {
+            var ownStore = Path.Combine(certificateStorePath, "own");
+            logger.LogWarning(exc, "Generated OPC UA application certificate is invalid; recreating certificate store at {OwnStore}", ownStore);
+            DeleteDirectoryIfExists(ownStore);
+
+            configuration = BuildApplicationConfiguration(endpointUrl, certificateStorePath);
+            await configuration.ValidateAsync(ApplicationType.Server).ConfigureAwait(false);
+            await BuildApplicationInstance(configuration)
+                .CheckApplicationInstanceCertificatesAsync(false, 0, cancellationToken)
+                .ConfigureAwait(false);
+            return configuration;
+        }
+    }
+
+    private static ApplicationInstance BuildApplicationInstance(ApplicationConfiguration configuration)
+    {
+        return new ApplicationInstance
+        {
+            ApplicationName = "Flux Field Agent",
+            ApplicationType = ApplicationType.Server,
+            ApplicationConfiguration = configuration,
+        };
+    }
+
+    private static bool LooksLikeInvalidGeneratedCertificate(Exception exc)
+    {
+        var message = exc.ToString();
+        return message.Contains("certificate", StringComparison.OrdinalIgnoreCase)
+            && message.Contains("invalid", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void DeleteDirectoryIfExists(string path)
+    {
+        if (Directory.Exists(path))
+        {
+            Directory.Delete(path, recursive: true);
+        }
     }
 }

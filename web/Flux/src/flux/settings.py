@@ -69,6 +69,9 @@ TEMPLATES = [
         "DIRS": [BASE_DIR / "src" / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
+            "libraries": {
+                "comp_cards": "dashboard.templatetags.comp_cards",
+            },
             "context_processors": [
                 "django.template.context_processors.debug",
                 "django.template.context_processors.request",

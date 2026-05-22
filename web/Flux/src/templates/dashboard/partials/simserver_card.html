@@ -1,0 +1,73 @@
+{% load nav_extras %}
+{% if simserver_mode %}{% firstof simserver_mode as resolved_simserver_mode %}{% elif request.GET.card == "simserver" %}{% firstof request.GET.mode "detail" as resolved_simserver_mode %}{% else %}{% firstof "detail" as resolved_simserver_mode %}{% endif %}
+{% firstof comp_surface_target "simserver-comp-card" as simserver_target_id %}
+<article
+  id="simserver-comp-card"
+  class="panel action-panel action-panel-{% if device_status.running_endpoint_count %}ok{% else %}warning{% endif %} comp-card{% if request.GET.card == 'simserver' and request.GET.mode != 'summary' %} comp-card-anchor{% endif %}"
+  data-comp-card
+  data-comp-card-mode="{{ resolved_simserver_mode }}"
+  {% if device_status.refresh_endpoint_state %}
+    hx-get="{% url 'dashboard:home' %}?partial=simserver_card&card=simserver&mode={{ resolved_simserver_mode }}"
+    hx-trigger="every 2s"
+    hx-target="this"
+    hx-select="#simserver-comp-card"
+    hx-swap="outerHTML show:none"
+  {% endif %}
+>
+  <button
+    class="copy-corner"
+    type="button"
+    data-flux-link-copy
+    data-copy-docs-url="{{ simserver_copy.docs_url }}"
+    aria-label="Copy SimServer context"
+    title="Copy SimServer context"
+  ></button>
+  <template data-flux-link-copy-table>{{ simserver_copy.table }}</template>
+  <template data-flux-link-copy-llm>{{ simserver_copy.llm }}</template>
+  <section data-comp-view="summary">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">Flux.sim</p>
+      <h2>Runtime Connection</h2>
+    </div>
+    <span class="status-pill">{{ device_status.running_endpoint_count }}/{{ device_status.enabled_endpoint_count }} running</span>
+  </div>
+  <p><span class="readiness-detail-line">{{ device_status.running_endpoint_count }} running</span><span class="readiness-detail-line">{{ device_status.enabled_device_count }} device namespaces</span><span class="readiness-detail-line">{{ device_status.enabled_tag_count }} field tags</span></p>
+  {% if resolved_simserver_mode == "detail" or resolved_simserver_mode == "configure" %}
+  {% if device_status.endpoint_items %}
+    <div class="stale-list">
+      {% for item in device_status.endpoint_items %}
+        <div class="stale-row">
+          <div>
+            <strong>{{ item.endpoint.name }}</strong>
+            <small>{{ item.endpoint.status }} · {{ item.enabled_device_count }} device namespaces · {{ item.enabled_tag_count }} tags{% if item.age_seconds != None %} · seen {{ item.age_seconds }}s ago{% endif %}</small>
+            {% if item.endpoint.last_error %}<small>{{ item.endpoint.last_error }}</small>{% endif %}
+          </div>
+          {% if item.online %}
+            <form method="post" class="inline-form" hx-post="{% url 'dashboard:home' %}?card=simserver&mode={{ resolved_simserver_mode }}" hx-target="#{{ simserver_target_id }}" hx-select="#{{ simserver_target_id }}" hx-swap="outerHTML show:none">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="stop_sim_server">
+              <input type="hidden" name="endpoint_id" value="{{ item.endpoint.id }}">
+              <button class="button button-secondary" type="submit">■ Stop</button>
+            </form>
+          {% elif item.endpoint.enabled and item.endpoint.status == "starting" %}
+            <button class="button button-secondary" type="button" disabled>Starting...</button>
+          {% else %}
+            <form method="post" class="inline-form" hx-post="{% url 'dashboard:home' %}?card=simserver&mode={{ resolved_simserver_mode }}" hx-target="#{{ simserver_target_id }}" hx-select="#{{ simserver_target_id }}" hx-swap="outerHTML show:none">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="start_sim_server">
+              <input type="hidden" name="endpoint_id" value="{{ item.endpoint.id }}">
+              <button class="button button-secondary" type="submit">▶ Start</button>
+            </form>
+          {% endif %}
+          <a href="{% url 'admin:base_fieldendpoint_change' item.endpoint.id %}">Inspect</a>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted">No Flux.serve SimServer runtime endpoints configured yet.</p>
+  {% endif %}
+  {% endif %}
+  </section>
+  {% include "flux/partials/comp_card_controls.html" with card_id="simserver" current_mode=resolved_simserver_mode show_detail=True show_configure=True target_id=simserver_target_id %}
+</article>

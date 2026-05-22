@@ -1,4 +1,5 @@
 import json
+from io import StringIO
 from django.contrib.staticfiles import finders
 from pathlib import Path
 from unittest.mock import patch
@@ -6,11 +7,23 @@ from django.test import TestCase
 from django.utils import timezone
 
 from flux.base.runtime import RuntimeTag, TagSample, TagSchedule
+from flux.opt.models import OptimizationLease
+from flux.opt.services import active_demand_full_paths
+from flux.plane import seed_trace_cache_from_runtime_history
+from flux.sim.fluxolot_fishtank import ensure_fluxolot_fishtank, ensure_fluxolot_trace_profiles
 
 from .selectors import axis_key_for_tag, trace_sample_series
 from flux.trace.models import TraceAnnotation, TraceAnnotationTarget, TraceCacheCursor, TraceCachePoint, TraceProfile, TraceSignal
 from trace.cache import sync_trace_cache, trace_cache_payload
+from trace.importer import import_trace_scopes_csv
 from trace.providers.nav_wells import WELL_TRACE_TAGS, seed_nav_well_trace_config
+
+
+def has_adjacent_numeric(values):
+    return any(
+        left is not None and right is not None
+        for left, right in zip(values, values[1:], strict=False)
+    )
 
 
 class FakeHistorian:
@@ -63,7 +76,7 @@ class TraceSmokeTests(TestCase):
         response = self.client.get("/trace/")
 
         self.assertContains(response, "trace-data")
-        self.assertContains(response, "/static/flux/vendor/uplot/uPlot.iife.min.js?v=trace-shared-x-1")
+        self.assertContains(response, "/static/flux/vendor/uplot/uPlot.iife.min.js?v=trace-shared-x-2")
         self.assertContains(response, "flux/trace/historical-page.js")
         self.assertContains(response, "Motor Amps")
         self.assertContains(response, "Live Trace")
@@ -77,7 +90,7 @@ class TraceSmokeTests(TestCase):
         response = self.client.get("/trace/live/")
 
         self.assertContains(response, "trace-live-data")
-        self.assertContains(response, "/static/flux/vendor/uplot/uPlot.iife.min.js?v=trace-shared-x-1")
+        self.assertContains(response, "/static/flux/vendor/uplot/uPlot.iife.min.js?v=trace-shared-x-2")
         self.assertContains(response, "flux/trace/live-page.js")
         self.assertContains(response, "right-edge follow")
         self.assertContains(response, "data-samples-url")
@@ -96,6 +109,8 @@ class TraceSmokeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertEqual(payload["series"][0]["name"], "Motor Amps")
+        self.assertEqual(payload["x"], [int(now.timestamp())])
+        self.assertEqual(payload["series"][0]["x"], [])
         self.assertEqual(payload["series"][0]["y"], [11.5])
         self.assertEqual(payload["series"][0]["tagId"], tag.id)
         self.assertIsNotNone(payload["latestReadAt"])
@@ -222,7 +237,9 @@ class TraceSmokeTests(TestCase):
         self.assertIn("followRightEdge", live_page)
         self.assertIn("pinTraceMarker", historical_page)
         self.assertIn("installTraceLiveRefresh", historical_page)
+        self.assertIn("refreshActiveTraceSet: () => refreshActiveTraceSet", historical_page)
         self.assertIn("clearMarkers: false", historical_page)
+        self.assertIn("pollLiveTrace", live_page)
         self.assertIn("navigator.clipboard.writeText", historical_page)
         self.assertIn("hoverBoldLinePlugin", historical_page)
         annotations = (static_root / "annotations.js").read_text(encoding="utf-8")
@@ -236,6 +253,8 @@ class TraceSmokeTests(TestCase):
         self.assertNotIn("annotationCell.textContent = `(${marker.id})", markers)
         self.assertNotIn("ctx.fillText(`(${annotation.markerId})", markers)
         self.assertIn("function mergeLiveSeries", data)
+        self.assertIn("function mergeSharedXSeries", data)
+        self.assertIn("const incomingTimes = incoming.x.length ? incoming.x : incomingSharedX", data)
         self.assertIn("points: { show: false", (static_root / "chart.js").read_text(encoding="utf-8"))
         self.assertIn("function nearestSeriesIndexAtCursor", (static_root / "chart.js").read_text(encoding="utf-8"))
         self.assertNotIn("unpkg.com", historical_page + live_page)
@@ -279,6 +298,38 @@ class TraceSmokeTests(TestCase):
         self.assertEqual(TraceCachePoint.objects.get(signal=signal, timestamp=timestamp).value_float, 11.5)
         self.assertEqual(TraceCacheCursor.objects.get(signal=signal).last_timestamp, timestamp)
 
+    def test_plane_seeds_trace_cache_from_runtime_history(self):
+        tag = self._tag("Process PV", engineering_units="psi")
+        profile = TraceProfile.objects.create(key="process", label="Process", cache_window_minutes=60)
+        signal = TraceSignal.objects.create(profile=profile, tag=tag, axis_key="pressure")
+        timestamp = timezone.now().replace(second=30, microsecond=123456)
+        rounded = timestamp.replace(second=0, microsecond=0)
+        TagSample.objects.create(tag=tag, value=True, quality_code="Good", value_timestamp=timestamp, read_at=timestamp)
+        TagSample.objects.create(tag=tag, value="bad", quality_code="Good", value_timestamp=timestamp, read_at=timestamp)
+        TagSample.objects.create(tag=tag, value=10.5, quality_code="Good", value_timestamp=timestamp, read_at=timestamp)
+
+        point_count = seed_trace_cache_from_runtime_history(profile)
+
+        self.assertEqual(point_count, 1)
+        point = TraceCachePoint.objects.get(signal=signal, timestamp=rounded)
+        self.assertEqual(point.value_float, 10.5)
+        self.assertEqual(point.quality_code, "Good")
+
+        TagSample.objects.create(
+            tag=tag,
+            value=11.5,
+            quality_code="Stale",
+            value_timestamp=timestamp,
+            read_at=timestamp + timezone.timedelta(seconds=1),
+        )
+
+        point_count = seed_trace_cache_from_runtime_history(profile)
+
+        self.assertEqual(point_count, 1)
+        point.refresh_from_db()
+        self.assertEqual(point.value_float, 11.5)
+        self.assertEqual(point.quality_code, "Stale")
+
     def test_trace_cache_payload_reads_local_cache_with_signal_significance(self):
         tag = self._tag("Process PV", engineering_units="psi")
         profile = TraceProfile.objects.create(key="process", label="Process", cache_window_minutes=2)
@@ -304,6 +355,25 @@ class TraceSmokeTests(TestCase):
         self.assertEqual(payload["series"][0]["y"], [10.5, 11.5])
         self.assertEqual(payload["axisGroups"][0]["key"], "pressure")
         self.assertEqual(payload["axisGroups"][0]["range"], [0, 1200])
+
+    def test_trace_cache_payload_step_uses_actual_sample_times_for_visible_lines(self):
+        tag = self._tag("Process PV", engineering_units="psi")
+        profile = TraceProfile.objects.create(key="process", label="Process", cache_window_minutes=240)
+        signal = TraceSignal.objects.create(profile=profile, tag=tag, label="Primary PV", axis_key="pressure")
+        start = timezone.now().replace(second=0, microsecond=0) - timezone.timedelta(hours=2)
+        for index in range(3):
+            TraceCachePoint.objects.create(
+                signal=signal,
+                timestamp=start + timezone.timedelta(hours=index),
+                value_float=10.0 + index,
+                quality_code="Good",
+            )
+
+        payload = trace_cache_payload(profile, window_minutes=240, step_minutes=7)
+
+        self.assertEqual(len(payload["x"]), 3)
+        self.assertEqual(payload["series"][0]["y"], [10.0, 11.0, 12.0])
+        self.assertTrue(has_adjacent_numeric(payload["series"][0]["y"]))
 
     def test_trace_cache_profile_route_renders_from_local_cache(self):
         profile = TraceProfile.objects.create(key="process", label="Process Cache", cache_window_minutes=2)
@@ -333,6 +403,139 @@ class TraceSmokeTests(TestCase):
         self.assertEqual(payload["profileKey"], "process")
         self.assertEqual(payload["series"][0]["name"], "Primary PV")
 
+    def test_trace_scope_csv_import_creates_profile_tags_and_ordered_signals(self):
+        csv_data = StringIO(
+            "Chart Scope,ID,Name,Tag 1,Tag 2,display order\n"
+            "test,T-1,Test Trace,[default]Flux/Test/PV,[edge]Flux/Test/SP,1\n"
+        )
+
+        result = import_trace_scopes_csv(csv_data)
+
+        self.assertEqual(result.profiles, 1)
+        self.assertEqual(result.tags, 2)
+        self.assertEqual(result.signals, 2)
+        profile = TraceProfile.objects.get(key="test")
+        self.assertEqual(profile.label, "Test Trace")
+        signals = list(profile.signals.select_related("tag").order_by("sort_order"))
+        self.assertEqual([signal.tag.full_path for signal in signals], ["[default]Flux/Test/PV", "[edge]Flux/Test/SP"])
+        self.assertEqual([signal.sort_order for signal in signals], [1, 2])
+
+    def test_generic_trace_scope_routes_use_selected_profile_payload(self):
+        csv_data = StringIO(
+            "Chart Scope,ID,Name,Tag 1,display order\n"
+            "test,T-1,Test Trace,[default]Flux/Test/PV,1\n"
+        )
+        import_trace_scopes_csv(csv_data)
+        profile = TraceProfile.objects.get(key="test")
+        signal = profile.signals.get()
+        now = timezone.now().replace(second=0, microsecond=0)
+        TraceCachePoint.objects.create(signal=signal, timestamp=now, value_float=10.5, quality_code="Good")
+
+        page = self.client.get("/trace/test/")
+        payload_response = self.client.get("/trace/test/payload/")
+
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Test Trace")
+        self.assertContains(page, "CSV-defined Flux.trace scope")
+        self.assertEqual(payload_response.status_code, 200)
+        payload = payload_response.json()["traceChart"]
+        self.assertEqual(payload["profileKey"], "test")
+        self.assertEqual(payload["series"][0]["fullPath"], "[default]Flux/Test/PV")
+
+    def test_trace_scope_route_leases_scope_runtime_tags_hot(self):
+        csv_data = StringIO(
+            "Chart Scope,ID,Name,Tag 1,Tag 2,display order\n"
+            "test,T-1,Test Trace,[default]Flux/Test/PV,[default]Flux/Test/SP,1\n"
+        )
+        import_trace_scopes_csv(csv_data)
+
+        response = self.client.get("/trace/test/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(active_demand_full_paths(), {"[default]Flux/Test/PV", "[default]Flux/Test/SP"})
+
+    def test_trace_scope_payload_leases_scope_runtime_tags_hot(self):
+        csv_data = StringIO(
+            "Chart Scope,ID,Name,Tag 1,Tag 2,display order\n"
+            "test,T-1,Test Trace,[default]Flux/Test/PV,[default]Flux/Test/SP,1\n"
+        )
+        import_trace_scopes_csv(csv_data)
+        OptimizationLease.objects.all().delete()
+
+        response = self.client.get("/trace/test/payload/", {"window_minutes": "120"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(active_demand_full_paths(), {"[default]Flux/Test/PV", "[default]Flux/Test/SP"})
+
+    def test_fluxolot_trace_scope_cycles_sir_and_missus_profiles(self):
+        result = ensure_fluxolot_fishtank(history_days=1, history_interval_minutes=720)
+        profiles = ensure_fluxolot_trace_profiles(result.runtime_tags)
+        for profile in profiles:
+            seed_trace_cache_from_runtime_history(profile)
+
+        page = self.client.get("/trace/fluxolot/")
+        sir_response = self.client.get("/trace/fluxolot/payload/", {"set": "1"})
+        missus_response = self.client.get("/trace/fluxolot/payload/", {"set": "2"})
+
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Fluxolot Fishtank Trace")
+        self.assertContains(page, "Previous Tank")
+        self.assertContains(page, "Next Tank")
+        self.assertContains(page, "Trace source")
+        self.assertContains(page, 'data-trace-live-refresh-seconds="15"')
+        self.assertEqual(sir_response.status_code, 200)
+        self.assertEqual(missus_response.status_code, 200)
+        sir = sir_response.json()["traceChart"]
+        missus = missus_response.json()["traceChart"]
+        self.assertEqual(sir["profileKey"], "fluxolot-sir")
+        self.assertEqual(missus["profileKey"], "fluxolot-missus")
+        self.assertEqual(sir["setIndex"], 1)
+        self.assertEqual(missus["setIndex"], 2)
+        self.assertEqual(len(sir["series"]), 8)
+        self.assertEqual(len(missus["series"]), 8)
+        self.assertTrue(all("/Sir-Fluxolot-Fishtank_" in series["fullPath"] for series in sir["series"]))
+        self.assertTrue(all("/Missus-Fluxolot-Fishtank_" in series["fullPath"] for series in missus["series"]))
+        self.assertIn("Sir Fluxolot Temperature", {series["name"] for series in sir["series"]})
+        self.assertIn("Missus Fluxolot Temperature", {series["name"] for series in missus["series"]})
+
+    def test_fluxolot_trace_payload_contains_visible_line_segments(self):
+        result = ensure_fluxolot_fishtank(history_days=1, history_interval_minutes=60)
+        profiles = ensure_fluxolot_trace_profiles(result.runtime_tags)
+        for profile in profiles:
+            seed_trace_cache_from_runtime_history(profile)
+
+        payload = self.client.get("/trace/fluxolot/payload/", {"set": "1"}).json()["traceChart"]
+
+        self.assertGreaterEqual(len(payload["x"]), 2)
+        self.assertTrue(all(has_adjacent_numeric(series["y"]) for series in payload["series"]))
+
+    def test_fluxolot_trace_live_refresh_payload_includes_new_cache_point(self):
+        result = ensure_fluxolot_fishtank(history_days=1, history_interval_minutes=60)
+        profiles = ensure_fluxolot_trace_profiles(result.runtime_tags)
+        for profile in profiles:
+            seed_trace_cache_from_runtime_history(profile)
+        profile = TraceProfile.objects.get(key="fluxolot-sir")
+        signal = profile.signals.select_related("tag").order_by("sort_order", "id").first()
+        latest = (
+            TraceCachePoint.objects.filter(signal__profile=profile)
+            .order_by("-timestamp")
+            .values_list("timestamp", flat=True)
+            .first()
+        )
+        new_timestamp = latest + timezone.timedelta(minutes=5)
+        TraceCachePoint.objects.create(
+            signal=signal,
+            timestamp=new_timestamp,
+            value_float=123.456,
+            quality_code="Good",
+        )
+
+        payload = self.client.get("/trace/fluxolot/payload/", {"set": "1"}).json()["traceChart"]
+        refreshed_series = next(series for series in payload["series"] if series["signalId"] == signal.id)
+
+        self.assertEqual(payload["x"][-1], int(new_timestamp.timestamp()))
+        self.assertEqual(refreshed_series["y"][-1], 123.456)
+
     def test_nav_well_trace_seed_creates_eight_signals_per_well(self):
         result = seed_nav_well_trace_config(limit=2)
 
@@ -352,6 +555,8 @@ class TraceSmokeTests(TestCase):
         self.assertContains(page, "Navigation Well Trace")
         self.assertContains(page, "Previous Well")
         self.assertContains(page, "Next Well")
+        self.assertContains(page, "Trace source")
+        self.assertContains(page, "Compression")
         self.assertContains(page, "Send Annotations")
         self.assertContains(page, 'data-trace-live-refresh-seconds="60"')
         self.assertContains(page, 'data-trace-annotation-url="/trace/annotations/"')
@@ -359,6 +564,33 @@ class TraceSmokeTests(TestCase):
         self.assertEqual(len(second["series"]), 8)
         self.assertNotEqual(first["profileKey"], second["profileKey"])
         self.assertNotEqual(first["series"][0]["fullPath"], second["series"][0]["fullPath"])
+
+    def test_nav_well_trace_payload_accepts_stable_source_without_breaking_set_index(self):
+        seed_nav_well_trace_config(limit=2)
+        second = self.client.get("/trace/wells/payload/", {"set": "2"}).json()["traceChart"]
+
+        by_source = self.client.get(
+            "/trace/wells/payload/",
+            {"source": second["wellId"], "set": "1"},
+        ).json()["traceChart"]
+
+        self.assertEqual(by_source["wellId"], second["wellId"])
+        self.assertEqual(by_source["profileKey"], second["profileKey"])
+        self.assertEqual(by_source["setIndex"], 2)
+
+    def test_nav_well_trace_embed_mode_uses_same_chart_without_page_chrome(self):
+        seed_nav_well_trace_config(limit=1)
+
+        route_response = self.client.get("/trace/wells/embed/")
+        query_response = self.client.get("/trace/wells/", {"embed": "1"})
+
+        self.assertEqual(route_response.status_code, 200)
+        self.assertContains(route_response, "trace-data")
+        self.assertContains(route_response, "Sample Tag Trend")
+        self.assertNotContains(route_response, "Ignition Companion")
+        self.assertNotContains(route_response, "No historical samples recorded yet")
+        self.assertEqual(query_response.status_code, 200)
+        self.assertNotContains(query_response, "Ignition Companion")
 
     def test_trace_annotation_endpoint_stores_ignition_historian_annotation(self):
         fake = FakeAnnotationFluxy()

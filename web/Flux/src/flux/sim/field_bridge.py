@@ -5,13 +5,14 @@ from hashlib import sha1
 
 from django.db import transaction
 
-from flux.base.models import FieldDevice, FieldEndpoint, FieldTag, SimDevice, SimDeviceTag
+from flux.base.models import FieldDevice, FieldEndpoint, FieldTag, SimDevice, SimDeviceTag, SimServer
 
 
-DEFAULT_ENDPOINT_URL = "opc.tcp://0.0.0.0:4840/flux/field"
-DEFAULT_APPLICATION_URI = "urn:flux:field"
-DEFAULT_PRODUCT_URI = "urn:flux:field"
-DEFAULT_NAMESPACE_URI = "urn:flux:field:sim"
+DEFAULT_ENDPOINT_URL = "opc.tcp://0.0.0.0:4840/flux/sim"
+DEFAULT_APPLICATION_URI = "urn:flux:sim"
+DEFAULT_PRODUCT_URI = "urn:flux:sim"
+DEFAULT_NAMESPACE_URI = "urn:flux:sim"
+DEFAULT_SIM_SERVER_NAME = "Flux sim OPC-UA Server"
 
 
 @dataclass(frozen=True)
@@ -27,44 +28,38 @@ def materialize_enabled_sim_devices(*, provider_name: str | None = None) -> Fiel
         devices = devices.filter(provider__name=provider_name)
     devices = devices.prefetch_related("tags").order_by("provider__name", "name")
 
-    endpoint_count = 0
     device_count = 0
     tag_count = 0
     with transaction.atomic():
+        endpoints_by_server: dict[int, FieldEndpoint] = {}
         for sim_device in devices:
             enabled_tags = list(sim_device.tags.filter(enabled=True).order_by("source_path"))
             if not enabled_tags:
                 continue
 
-            _endpoint, field_device = materialize_sim_device(sim_device, enabled_tags)
-            endpoint_count += 1
+            sim_server = sim_server_for_device(sim_device)
+            endpoint = endpoints_by_server.get(sim_server.id)
+            if endpoint is None:
+                endpoint = materialize_sim_server_endpoint(sim_server=sim_server)
+                endpoints_by_server[sim_server.id] = endpoint
+            _endpoint, field_device = materialize_sim_device(sim_device, enabled_tags, endpoint=endpoint)
             device_count += 1
             tag_count += field_device.tags.filter(enabled=True).count()
 
     return FieldBridgeResult(
-        endpoint_count=endpoint_count, device_count=device_count, tag_count=tag_count
+        endpoint_count=len(endpoints_by_server), device_count=device_count, tag_count=tag_count
     )
 
 
 def materialize_sim_device(
-    sim_device: SimDevice, enabled_tags: list[SimDeviceTag] | None = None
+    sim_device: SimDevice, enabled_tags: list[SimDeviceTag] | None = None, *, endpoint: FieldEndpoint | None = None
 ) -> tuple[FieldEndpoint, FieldDevice]:
     tags = (
         enabled_tags
         if enabled_tags is not None
         else list(sim_device.tags.filter(enabled=True).order_by("source_path"))
     )
-    endpoint, _created = FieldEndpoint.objects.update_or_create(
-        name=field_endpoint_name(sim_device),
-        defaults={
-            "endpoint_url": sim_device.endpoint_url or DEFAULT_ENDPOINT_URL,
-            "application_uri": DEFAULT_APPLICATION_URI,
-            "product_uri": DEFAULT_PRODUCT_URI,
-            "namespace_uri": sim_device.namespace_uri or DEFAULT_NAMESPACE_URI,
-            "enabled": True,
-            "security_policy": "None",
-        },
-    )
+    endpoint = endpoint or materialize_sim_server_endpoint(sim_device=sim_device)
     field_device, _created = FieldDevice.objects.update_or_create(
         endpoint=endpoint,
         name=sim_device.name,
@@ -98,6 +93,39 @@ def materialize_sim_device(
         )
     field_device.tags.exclude(name__in=active_names).update(enabled=False)
     return endpoint, field_device
+
+
+def materialize_sim_server_endpoint(*, sim_server: SimServer | None = None) -> FieldEndpoint:
+    sim_server = sim_server or default_sim_server()
+    return FieldEndpoint.objects.update_or_create(
+        name=sim_server.name,
+        defaults={
+            "endpoint_url": sim_server.endpoint_url or DEFAULT_ENDPOINT_URL,
+            "application_uri": sim_server.application_uri or DEFAULT_APPLICATION_URI,
+            "product_uri": sim_server.product_uri or DEFAULT_PRODUCT_URI,
+            "namespace_uri": sim_server.namespace_uri or DEFAULT_NAMESPACE_URI,
+            "enabled": sim_server.enabled,
+            "security_policy": sim_server.security_policy or "None",
+        },
+    )[0]
+
+
+def sim_server_for_device(sim_device: SimDevice) -> SimServer:
+    return sim_device.provider.sim_server or default_sim_server()
+
+
+def default_sim_server() -> SimServer:
+    return SimServer.objects.get_or_create(
+        name=DEFAULT_SIM_SERVER_NAME,
+        defaults={
+            "endpoint_url": DEFAULT_ENDPOINT_URL,
+            "application_uri": DEFAULT_APPLICATION_URI,
+            "product_uri": DEFAULT_PRODUCT_URI,
+            "namespace_uri": DEFAULT_NAMESPACE_URI,
+            "enabled": True,
+            "security_policy": "None",
+        },
+    )[0]
 
 
 def field_endpoint_name(sim_device: SimDevice) -> str:

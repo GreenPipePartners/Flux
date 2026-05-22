@@ -1,5 +1,5 @@
 import { createTracePlot, resizeTracePlot } from "./chart.js";
-import { alignTracePayload, mergeLiveSeries, newestTraceTime, traceSeriesFromPayload } from "./data.js";
+import { alignTracePayload, mergeLiveSeries, newestTraceTime, traceSeriesFromPayload } from "./data.js?v=trace-shared-x-2";
 import { dragPanPlugin, wheelPanZoomPlugin } from "./interactions.js";
 
 const payload = JSON.parse(document.getElementById("trace-live-data").textContent);
@@ -18,7 +18,7 @@ const livePlot = createTracePlot({
   series: liveTraceData,
   plugins: [wheelPanZoomPlugin(), dragPanPlugin()],
 });
-window.__fluxLiveTraceDebug = { plot: livePlot, liveTraceData, aligned };
+updateLiveTraceDebug();
 
 function currentRange() {
   return livePlot.scales.x.min === null || livePlot.scales.x.max === null ? null : [livePlot.scales.x.min, livePlot.scales.x.max];
@@ -49,7 +49,7 @@ async function pollLiveTrace() {
   mergeLiveSeries(liveTraceData, nextPayload);
   if (nextPayload.latestReadAt) latestReadAt = nextPayload.latestReadAt;
   aligned = alignTracePayload(liveTraceData);
-  window.__fluxLiveTraceDebug.aligned = aligned;
+  updateLiveTraceDebug();
   livePlot.setData(aligned.data);
   const newest = newestTraceTime(aligned);
   if (followRightEdge && newest !== null) {
@@ -57,6 +57,10 @@ async function pollLiveTrace() {
   } else if (preservedRange) {
     livePlot.setScale("x", { min: preservedRange[0], max: preservedRange[1] });
   }
+}
+
+function updateLiveTraceDebug() {
+  window.__fluxLiveTraceDebug = { plot: livePlot, liveTraceData, aligned, pollLiveTrace };
 }
 
 window.setInterval(pollLiveTrace, pollMilliseconds);

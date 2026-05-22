@@ -34,10 +34,8 @@ def test_field_supervisor_multi_process_devices_read_through_fluxy(tmp_path):
     tag_folder = os.getenv("FLUX_FIELD_SUPERVISOR_TAG_FOLDER", "FluxFieldSupervisor")
     cert_path = tmp_path / "pki"
     endpoint, field_tags = create_supervised_devices()
-    specs = [
-        process_spec(device, runtime_dir=tmp_path / "runtime", base_port=base_port, project_path=project_path)
-        for device in endpoint.devices.order_by("name")
-    ]
+    spec = process_spec(endpoint, runtime_dir=tmp_path / "runtime", base_port=base_port, project_path=project_path)
+    specs = [spec]
     processes = []
     fx = fluxy.Fluxy(
         base_url=os.getenv("FLUXY_BASE_URL", "http://localhost:8088/system/webdev/flux"),
@@ -54,14 +52,13 @@ def test_field_supervisor_multi_process_devices_read_through_fluxy(tmp_path):
     ]
     try:
         processes = [start_supervised_process(spec, cert_path) for spec in specs]
-        for spec in specs:
-            wait_for_port(public_host, endpoint_port(spec.endpoint_url))
-            ensure_opcua_connection(
-                fx,
-                opc_server_name(spec.device),
-                public_endpoint_url(spec.endpoint_url, public_host),
-            )
-            wait_for_opc_connected(fx, opc_server_name(spec.device))
+        wait_for_port(public_host, endpoint_port(spec.endpoint_url))
+        ensure_opcua_connection(
+            fx,
+            opc_server_name(spec.endpoint),
+            public_endpoint_url(spec.endpoint_url, public_host),
+        )
+        wait_for_opc_connected(fx, opc_server_name(spec.endpoint))
         configure_supervised_tags(fx, tag_provider, tag_folder, field_tags)
         seen = sample_tag_changes(fx, tag_paths, timeout_seconds=30)
     except FluxyError as exc:
@@ -113,7 +110,7 @@ def configure_supervised_tags(fx, tag_provider, tag_folder, field_tags):
                 "tags": [
                     ignition_tag_config(
                         tag,
-                        opc_server_name(tag.device),
+                        opc_server_name(tag.device.endpoint),
                         tag_name="%s_%s" % (tag.device.name, tag.name),
                     )
                     for tag in field_tags
@@ -184,7 +181,7 @@ def cleanup_supervised_integration(fx, tag_provider, tag_folder, specs):
         pass
     for spec in specs:
         try:
-            fx.opcua.remove_connection(opc_server_name(spec.device))
+            fx.opcua.remove_connection(opc_server_name(spec.endpoint))
         except Exception:
             pass
 
@@ -217,5 +214,5 @@ def endpoint_port(endpoint_url):
     return int(endpoint_url.split(":", 2)[2].split("/", 1)[0])
 
 
-def opc_server_name(device):
-    return "Flux Field %s" % device.name
+def opc_server_name(endpoint):
+    return "Flux Sim %s Server" % endpoint.name

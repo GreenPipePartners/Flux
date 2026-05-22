@@ -8,10 +8,11 @@ from flux.base.models import (
     SimDevice,
     SimDeviceTag,
     SimDriver,
+    SimServer,
     TagProvider,
 )
-from flux.base.field_config import single_device_endpoint_config
-from flux.sim.field_bridge import field_endpoint_name, materialize_enabled_sim_devices
+from flux.base.field_config import endpoint_config, single_device_endpoint_config
+from flux.sim.field_bridge import DEFAULT_SIM_SERVER_NAME, materialize_enabled_sim_devices
 
 
 class SimFieldBridgeTests(TestCase):
@@ -41,7 +42,7 @@ class SimFieldBridgeTests(TestCase):
 
         self.assertEqual(result.device_count, 1)
         self.assertEqual(result.tag_count, 2)
-        endpoint = FieldEndpoint.objects.get(name=field_endpoint_name(sim_device))
+        endpoint = FieldEndpoint.objects.get(name=DEFAULT_SIM_SERVER_NAME)
         runtime_device = FieldDevice.objects.get(endpoint=endpoint, name="RTU_01")
         self.assertEqual(FieldDevice.objects.count(), 1)
         self.assertEqual(runtime_device.device_type, "OPC UA")
@@ -75,6 +76,66 @@ class SimFieldBridgeTests(TestCase):
         self.assertEqual(FieldEndpoint.objects.count(), 1)
         self.assertEqual(FieldDevice.objects.count(), 1)
         self.assertEqual(FieldTag.objects.count(), 1)
+
+    def test_materialize_multiple_sim_devices_under_one_runtime_server(self):
+        first = self.create_sim_device(name="RTU_01")
+        second = self.create_sim_device(name="RTU_02")
+        for sim_device in [first, second]:
+            SimDeviceTag.objects.create(
+                provider=sim_device.provider,
+                device=sim_device,
+                source_path="Area/%s/PV" % sim_device.name,
+                tag_name="PV",
+                data_type="Float4",
+                enabled=True,
+            )
+
+        result = materialize_enabled_sim_devices(provider_name="Tag_02")
+
+        self.assertEqual(result.endpoint_count, 1)
+        self.assertEqual(result.device_count, 2)
+        endpoint = FieldEndpoint.objects.get(name=DEFAULT_SIM_SERVER_NAME)
+        self.assertEqual(list(endpoint.devices.order_by("name").values_list("name", flat=True)), ["RTU_01", "RTU_02"])
+        self.assertEqual([device["name"] for device in endpoint_config(endpoint)["devices"]], ["RTU_01", "RTU_02"])
+
+    def test_materialize_different_providers_under_default_runtime_server(self):
+        first = self.create_sim_device(provider_name="Tag_02", name="RTU_01")
+        second = self.create_sim_device(provider_name="Tag_05", name="PLC_01")
+        for sim_device in [first, second]:
+            SimDeviceTag.objects.create(
+                provider=sim_device.provider,
+                device=sim_device,
+                source_path="Area/%s/PV" % sim_device.name,
+                tag_name="PV",
+                data_type="Float4",
+                enabled=True,
+            )
+
+        result = materialize_enabled_sim_devices()
+
+        self.assertEqual(result.endpoint_count, 1)
+        self.assertEqual(result.device_count, 2)
+        self.assertEqual(
+            list(FieldEndpoint.objects.order_by("name").values_list("name", flat=True)),
+            [DEFAULT_SIM_SERVER_NAME],
+        )
+
+    def test_materialize_provider_with_explicit_server_under_that_runtime_server(self):
+        sim_server = SimServer.objects.create(name="Flux sim Partner Server")
+        sim_device = self.create_sim_device(provider_name="Partner", name="RemotePLC", sim_server=sim_server)
+        SimDeviceTag.objects.create(
+            provider=sim_device.provider,
+            device=sim_device,
+            source_path="Remote/PLC/PV",
+            tag_name="PV",
+            data_type="Float4",
+            enabled=True,
+        )
+
+        result = materialize_enabled_sim_devices(provider_name="Partner")
+
+        self.assertEqual(result.endpoint_count, 1)
+        self.assertEqual(FieldEndpoint.objects.get().name, "Flux sim Partner Server")
 
     def test_standard_mode_exports_mode_without_delay_metadata(self):
         sim_device = self.create_sim_device(response_delay_ms=250)
@@ -171,12 +232,15 @@ class SimFieldBridgeTests(TestCase):
         self.assertEqual(FieldDevice.objects.count(), 1)
         self.assertEqual(FieldTag.objects.count(), 1)
 
-    def create_sim_device(self, *, mode=SimDevice.Mode.STANDARD, response_delay_ms=0):
-        provider = TagProvider.objects.create(name="Tag_02")
-        driver = SimDriver.objects.create(key="opc_ua", label="OPC UA", strategy_key="acm")
+    def create_sim_device(self, *, provider_name="Tag_02", name="RTU_01", mode=SimDevice.Mode.STANDARD, response_delay_ms=0, sim_server=None):
+        provider, _created = TagProvider.objects.get_or_create(name=provider_name, defaults={"sim_server": sim_server})
+        if sim_server is not None and provider.sim_server_id != sim_server.id:
+            provider.sim_server = sim_server
+            provider.save(update_fields=["sim_server"])
+        driver, _created = SimDriver.objects.get_or_create(key="opc_ua", defaults={"label": "OPC UA", "strategy_key": "acm"})
         return SimDevice.objects.create(
             provider=provider,
-            name="RTU_01",
+            name=name,
             driver=driver,
             endpoint_url="opc.tcp://0.0.0.0:4840/flux/rtu_01",
             namespace_uri="urn:flux:test:rtu_01",

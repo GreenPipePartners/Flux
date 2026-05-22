@@ -35,10 +35,27 @@ class TagDataIngestTests(TestCase):
         self.assertEqual(result.tag_count, 3)
         self.assertEqual(result.unknown_device_count, 0)
         self.assertTrue(TagProvider.objects.filter(name="Tag_02").exists())
+        self.assertEqual(TagProvider.objects.get(name="Tag_02").sim_server.name, "Flux sim OPC-UA Server")
         self.assertTrue(TagNode.objects.filter(provider__name="Tag_02", path="Area/RTU_01/PV").exists())
         self.assertEqual(SimDriver.objects.get(key="opc_ua").strategy_key, "acm")
         self.assertEqual(SimDevice.objects.filter(provider__name="Tag_02").count(), 2)
         self.assertEqual(SimDeviceTag.objects.filter(provider__name="Tag_02").count(), 3)
+
+    def test_ingest_tag_data_catalog_assigns_acm_provider_to_distinct_sim_server(self):
+        with catalog_files(opc_server="ACM_02") as (devices_path, tags_path):
+            ingest_tag_data_catalog(provider_name="Tag_02", devices_path=devices_path, tags_path=tags_path)
+
+        provider = TagProvider.objects.get(name="Tag_02")
+
+        self.assertEqual(provider.sim_server.name, "Flux sim ACM_02 Server")
+
+    def test_ingest_tag_data_catalog_maps_ignition_opc_server_to_default_sim_server(self):
+        with catalog_files(opc_server="Ignition OPC UA Server") as (devices_path, tags_path):
+            ingest_tag_data_catalog(provider_name="Tag_05", devices_path=devices_path, tags_path=tags_path)
+
+        provider = TagProvider.objects.get(name="Tag_05")
+
+        self.assertEqual(provider.sim_server.name, "Flux sim OPC-UA Server")
         logix_tag = SimDeviceTag.objects.get(source_path="Area/Standalone")
         self.assertEqual(logix_tag.device.name, "PLC_01")
         self.assertEqual(logix_tag.address_strategy, "logix")
@@ -71,6 +88,7 @@ class BoundedRealTagDataMaterializationTests(TestCase):
                 ),
                 tags=tag_02_subset_provider_export(),
                 expected={
+                    "server": "Flux sim ACM_02 Server",
                     "ACM_02": {
                         "device_type": "OPC UA",
                         "tags": [
@@ -92,6 +110,7 @@ class BoundedRealTagDataMaterializationTests(TestCase):
                 ),
                 tags=tag_05_subset_provider_export(),
                 expected={
+                    "server": "Flux sim OPC-UA Server",
                     "AB_CGF02": {
                         "device_type": "ControlLogix",
                         "tags": [
@@ -130,16 +149,18 @@ class BoundedRealTagDataMaterializationTests(TestCase):
                         FieldEndpoint.objects.filter(devices__browse_path=case.provider)
                         .distinct()
                         .count(),
-                        2,
+                        1,
                     )
 
                     for device_name, expected in case.expected.items():
+                        if device_name == "server":
+                            continue
                         field_device = FieldDevice.objects.get(
                             browse_path=case.provider, name=device_name
                         )
                         config = single_device_endpoint_config(field_device)
                         device_config = config["devices"][0]
-                        self.assertEqual(config["name"], "sim-%s-%s" % (case.provider, device_name))
+                        self.assertEqual(config["name"], case.expected["server"])
                         self.assertEqual(device_config["name"], device_name)
                         self.assertEqual(device_config["device_type"], expected["device_type"])
                         self.assertEqual(device_config["browse_path"], case.provider)
@@ -208,20 +229,23 @@ class LiveTagDataIngestTests(TestCase):
 
 
 class catalog_files:
+    def __init__(self, *, opc_server=""):
+        self.opc_server = opc_server
+
     def __enter__(self):
         self.temp_dir = TemporaryDirectory()
         base = Path(self.temp_dir.name)
         devices_path = base / "devices.txt"
         tags_path = base / "tags.json"
         devices_path.write_text("RTU_01\tOPC UA\tCONNECTED\tServerClient\nPLC_01\tControlLogix\tConnected\t\n", encoding="utf-8")
-        tags_path.write_text(json.dumps(provider_export_fixture()), encoding="utf-8")
+        tags_path.write_text(json.dumps(provider_export_fixture(opc_server=self.opc_server)), encoding="utf-8")
         return devices_path, tags_path
 
     def __exit__(self, exc_type, exc, traceback):
         self.temp_dir.cleanup()
 
 
-def provider_export_fixture():
+def provider_export_fixture(*, opc_server=""):
     return {
         "name": "",
         "tagType": "Provider",
@@ -240,6 +264,7 @@ def provider_export_fixture():
                                 "tagType": "AtomicTag",
                                 "valueSource": "opc",
                                 "dataType": "Float4",
+                                "opcServer": opc_server,
                                 "opcItemPath": "ns=2;s=RTU_01.40001F",
                             },
                             {
@@ -247,6 +272,7 @@ def provider_export_fixture():
                                 "tagType": "AtomicTag",
                                 "valueSource": "opc",
                                 "dataType": "Boolean",
+                                "opcServer": opc_server,
                                 "opcItemPath": "ns=2;s=RTU_01.00001B",
                             },
                         ],
@@ -256,6 +282,7 @@ def provider_export_fixture():
                         "tagType": "AtomicTag",
                         "valueSource": "opc",
                         "dataType": "Int4",
+                        "opcServer": opc_server,
                         "opcItemPath": "ns=2;s=PLC_01.Local:1:I.Data.0",
                     },
                 ],
@@ -347,14 +374,14 @@ def tag_02_subset_provider_export():
                 "WY/BR/PADS/BR05-30/BR05-30_RTU_55",
                 "ACM_02",
                 [
-                    atomic_tag("FlowRate", "Float4", "ns=2;s=ACM_02.FlowRate"),
-                    atomic_tag("RunStatus", "Boolean", "ns=2;s=ACM_02.RunStatus"),
+                    atomic_tag("FlowRate", "Float4", "ns=2;s=ACM_02.FlowRate", opc_server="ACM_02"),
+                    atomic_tag("RunStatus", "Boolean", "ns=2;s=ACM_02.RunStatus", opc_server="ACM_02"),
                 ],
             ),
             udt_device(
                 "WY/BR/PADS/BR05-30/BR05-30_Murphy",
                 "BR05_30_Murphy",
-                [atomic_tag("Pressure", "Float4", "ns=2;s=BR05_30_Murphy.40001F")],
+                [atomic_tag("Pressure", "Float4", "ns=2;s=BR05_30_Murphy.40001F", opc_server="ACM_02")],
             ),
         ]
     )
@@ -404,12 +431,12 @@ def udt_device(path, opc_device, tags):
     }
 
 
-def atomic_tag(name, data_type, opc_item_path):
+def atomic_tag(name, data_type, opc_item_path, *, opc_server="Ignition OPC UA Server"):
     return {
         "name": name,
         "tagType": "AtomicTag",
         "valueSource": "opc",
         "dataType": data_type,
-        "opcServer": "Ignition OPC UA Server",
+        "opcServer": opc_server,
         "opcItemPath": opc_item_path,
     }

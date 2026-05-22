@@ -102,7 +102,26 @@ def _config_value(config, key):
 
 def _config_to_dict(config):
     item = {}
-    for key in ["name", "tagType", "valueSource", "dataType", "value", "tooltip", "documentation"]:
+    for key in [
+        "name",
+        "tagType",
+        "valueSource",
+        "dataType",
+        "value",
+        "tooltip",
+        "documentation",
+        "historyEnabled",
+        "historyProvider",
+        "historySampleMode",
+        "historySampleRate",
+        "historySampleRateUnits",
+        "historyMinTimeBetweenSamples",
+        "historyMinTimeUnits",
+        "historicalDeadband",
+        "historicalDeadbandMode",
+        "historyMaxAge",
+        "historyMaxAgeUnits",
+    ]:
         value = _config_value(config, key)
         if value is not None:
             item[key] = value
@@ -118,11 +137,25 @@ try:
     _log_start(operation)
     payload = _json_body(request)
     path = payload.get("path") or payload.get("tagPath") or payload.get("tag_path")
+    paths = payload.get("paths") or payload.get("tagPaths") or payload.get("tag_paths")
     recursive = bool(payload.get("recursive", False))
-    if not isinstance(path, basestring):
-        return _bad_request("Request must include path string", _request_debug(request))
-    configs = system.tag.getConfiguration(path, recursive)
-    decoded_configs = [_config_to_dict(config) for config in configs]
+    if paths is not None:
+        if not isinstance(paths, list):
+            return _bad_request("paths must be a list", _request_debug(request))
+        decoded_configs = []
+        for current_path in paths:
+            if not isinstance(current_path, basestring):
+                return _bad_request("paths must contain path strings", _request_debug(request))
+            for config in system.tag.getConfiguration(current_path, recursive):
+                decoded_config = _config_to_dict(config)
+                if "fullPath" not in decoded_config:
+                    decoded_config["fullPath"] = current_path
+                decoded_configs.append(decoded_config)
+    else:
+        if not isinstance(path, basestring):
+            return _bad_request("Request must include path string", _request_debug(request))
+        configs = system.tag.getConfiguration(path, recursive)
+        decoded_configs = [_config_to_dict(config) for config in configs]
     _log_success(operation)
     return {"json": {"ok": True, "configs": decoded_configs}}
 except Exception, exc:

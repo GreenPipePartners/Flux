@@ -86,6 +86,7 @@ try {
     Write-Host "Preparing Flux database and FieldAgent config..."
     Invoke-WebCommand @("run", "python", "manage.py", "migrate")
     Invoke-WebCommand @("run", "python", "manage.py", "repair_sequences", "base")
+    Invoke-WebCommand @("run", "python", "manage.py", "install_fluxolot_fishtank")
     Invoke-WebCommand @("run", "python", "manage.py", "export_field_config", "--output", "field/field-config.json")
 
     Write-Host "Starting Flux stack..."
@@ -94,7 +95,8 @@ try {
     Start-FluxService "django" "uv" @("run", "waitress-serve", "--listen=*:8000", "--threads=16", "flux.wsgi:application") $WebDir
     Wait-FluxUrl "http://localhost:8000/" "Django"
     Start-FluxService "field" "dotnet" @("run", "--project", $FieldProject, "--FluxField:ConfigPath=$FieldConfig") $RootDir
-    Start-FluxService "demo" "uv" @("run", "python", "manage.py", "run_sim_demo") $WebDir
+    Start-FluxService "serve-monitor" "uv" @("run", "python", "manage.py", "flux_serve_monitor") $WebDir
+    Start-FluxService "fluxolot-sampler" "uv" @("run", "python", "manage.py", "flux_sampling_worker", "--profile", "fluxolot-fishtank") $WebDir
 
     Write-Host ""
     Write-Host "Flux stack is running. Open http://localhost:8000/live/ or http://localhost:8000/sim/."

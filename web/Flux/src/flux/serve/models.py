@@ -40,6 +40,50 @@ class ServeHeartbeat(models.Model):
         return f"{self.service_name} ({self.instance_id})"
 
 
+class ServeServiceSnapshot(models.Model):
+    class DesiredState(models.TextChoices):
+        REQUIRED = "required", "Required"
+        EXPECTED = "expected", "Expected"
+        OPTIONAL = "optional", "Optional"
+        EXTERNAL = "external", "External"
+        DISABLED = "disabled", "Disabled"
+
+    class ObservedState(models.TextChoices):
+        HEALTHY = "healthy", "Healthy"
+        DEGRADED = "degraded", "Degraded"
+        MISSING = "missing", "Missing"
+        STALE = "stale", "Stale"
+        ERROR = "error", "Error"
+        UNKNOWN = "unknown", "Unknown"
+        STOPPED = "stopped", "Stopped"
+
+    class Severity(models.TextChoices):
+        OK = "ok", "OK"
+        WARNING = "warning", "Warning"
+        ERROR = "error", "Error"
+        UNKNOWN = "unknown", "Unknown"
+
+    service_key = models.CharField(max_length=180, unique=True)
+    display_name = models.CharField(max_length=180)
+    category = models.CharField(max_length=80)
+    desired_state = models.CharField(max_length=20, choices=DesiredState.choices, default=DesiredState.EXPECTED)
+    observed_state = models.CharField(max_length=20, choices=ObservedState.choices, default=ObservedState.UNKNOWN)
+    severity = models.CharField(max_length=20, choices=Severity.choices, default=Severity.UNKNOWN)
+    last_checked_at = models.DateTimeField(default=timezone.now, db_index=True)
+    summary = models.CharField(max_length=255, blank=True)
+    detail = models.TextField(blank=True)
+    last_error = models.TextField(blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["category", "service_key"]
+
+    def __str__(self) -> str:
+        return f"{self.service_key}: {self.observed_state}"
+
+
 class ServeCommand(models.Model):
     class Status(models.TextChoices):
         REQUESTED = "requested", "Requested"

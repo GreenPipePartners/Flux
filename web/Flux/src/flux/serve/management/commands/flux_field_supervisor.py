@@ -9,12 +9,13 @@ from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from flux.base.models import FieldAgentHeartbeat
-from flux.serve.field_supervisor import apply_reconciliation_plan, enabled_field_devices, process_spec, reconciliation_plan, start_process
+from flux.serve.field_supervisor import apply_reconciliation_plan, enabled_field_endpoints, process_spec, reconciliation_plan, start_process
 from flux.serve.models import ServeHeartbeat
+from flux.serve.server_commands import apply_claimed_command, claim_requested_commands, complete_command, fail_command
 
 
 class Command(BaseCommand):
-    help = "Run one FieldAgent OPC-UA server process per enabled field device."
+    help = "Run one FieldAgent OPC-UA server process per enabled runtime endpoint."
 
     def add_arguments(self, parser):
         parser.add_argument("--once", action="store_true")
@@ -23,10 +24,13 @@ class Command(BaseCommand):
         parser.add_argument("--runtime-dir", default=str(settings.BASE_DIR.parents[1] / ".runtime" / "field-agent"))
         parser.add_argument("--project-path", default=str(settings.BASE_DIR.parents[1] / "field" / "Flux.FieldAgent" / "Flux.FieldAgent.csproj"))
         parser.add_argument("--service-name", default="flux-field-supervisor")
+        parser.add_argument("--exit-when-idle", action="store_true")
 
     def handle(self, *args, **options):
         runtime_dir = Path(options["runtime_dir"])
         project_path = Path(options["project_path"])
+        if not options["dry_run"]:
+            self.process_requested_commands(options["service_name"])
         specs = self.process_specs(runtime_dir=runtime_dir, base_port=options["base_port"], project_path=project_path)
         processes = {}
         plan = reconciliation_plan(specs, processes)
@@ -38,8 +42,8 @@ class Command(BaseCommand):
             defaults={
                 "status": ServeHeartbeat.Status.RUNNING,
                 "last_seen_at": timezone.now(),
-                "current_job": "devices=%s running=%s" % (len(specs), len(processes)),
-                "metadata": {"devices": [spec.key for spec in specs], "dry_run": options["dry_run"], "plan": plan.as_dict()},
+                "current_job": "servers=%s running=%s" % (len(specs), len(processes)),
+                "metadata": {"servers": [spec.key for spec in specs], "dry_run": options["dry_run"], "plan": plan.as_dict()},
             },
         )[0]
         for spec in specs:
@@ -62,6 +66,7 @@ class Command(BaseCommand):
         previous_sigint = signal.signal(signal.SIGINT, request_stop)
         try:
             while not stop_requested:
+                self.process_requested_commands(options["service_name"])
                 specs = self.process_specs(runtime_dir=runtime_dir, base_port=options["base_port"], project_path=project_path)
                 spec_by_key = {spec.key: spec for spec in specs}
                 plan = reconciliation_plan(specs, processes)
@@ -93,14 +98,17 @@ class Command(BaseCommand):
                 ServeHeartbeat.objects.filter(pk=heartbeat.pk).update(
                     status=ServeHeartbeat.Status.ERROR if failed_exit_code is not None else ServeHeartbeat.Status.RUNNING,
                     last_seen_at=timezone.now(),
-                    current_job="devices=%s running=%s" % (len(specs), len(processes)),
+                    current_job="servers=%s running=%s" % (len(specs), len(processes)),
                     last_error="FieldAgent process exited with status %s" % failed_exit_code if failed_exit_code is not None else "",
-                    metadata={"devices": [spec.key for spec in specs], "dry_run": False, "plan": plan.as_dict()},
+                    metadata={"servers": [spec.key for spec in specs], "dry_run": False, "plan": plan.as_dict()},
                 )
-                if processes and not stop_requested:
-                    time.sleep(1)
                 if not processes:
-                    stop_requested = True
+                    if options["exit_when_idle"]:
+                        stop_requested = True
+                    elif not stop_requested:
+                        time.sleep(1)
+                elif not stop_requested:
+                    time.sleep(1)
         finally:
             signal.signal(signal.SIGTERM, previous_sigterm)
             signal.signal(signal.SIGINT, previous_sigint)
@@ -120,18 +128,38 @@ class Command(BaseCommand):
 
     def process_specs(self, *, runtime_dir, base_port, project_path):
         return [
-            process_spec(device, runtime_dir=runtime_dir, base_port=base_port, project_path=project_path)
-            for device in enabled_field_devices()
+            process_spec(endpoint, runtime_dir=runtime_dir, base_port=base_port, project_path=project_path)
+            for endpoint in enabled_field_endpoints()
         ]
 
+    def process_requested_commands(self, service_name):
+        for command in claim_requested_commands(service_name=service_name):
+            try:
+                result = apply_claimed_command(command)
+            except Exception as exc:
+                fail_command(command, error=str(exc))
+            else:
+                complete_command(command, result=result)
+
     def record_process_status(self, spec, *, process_id, last_error):
+        now = timezone.now()
         FieldAgentHeartbeat.objects.update_or_create(
-            endpoint=spec.device.endpoint,
+            endpoint=spec.endpoint,
             instance_id=spec.key,
             defaults={
                 "process_id": process_id,
-                "last_seen_at": timezone.now(),
-                "current_node_count": spec.device.tags.filter(enabled=True).count(),
+                "last_seen_at": now,
+                "current_node_count": sum(device.tags.filter(enabled=True).count() for device in spec.endpoint.devices.all()),
                 "last_error": last_error,
             },
         )
+        if process_id is not None:
+            spec.endpoint.status = spec.endpoint.Status.RUNNING
+            spec.endpoint.last_seen_at = now
+            spec.endpoint.last_error = ""
+            spec.endpoint.save(update_fields=["status", "last_seen_at", "last_error", "updated_at"])
+        elif last_error and spec.endpoint.enabled:
+            spec.endpoint.status = spec.endpoint.Status.ERROR
+            spec.endpoint.last_seen_at = now
+            spec.endpoint.last_error = last_error
+            spec.endpoint.save(update_fields=["status", "last_seen_at", "last_error", "updated_at"])

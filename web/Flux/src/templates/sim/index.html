@@ -1,58 +1,71 @@
 {% extends "flux/base.html" %}
-{% load sim_json %}
+{% load nav_extras %}
 
 {% block title %}Flux Sim{% endblock %}
 
 {% block content %}
-<section class="panel">
+{% if request.GET.card == "sim-platform" %}{% firstof request.GET.mode "summary" as sim_platform_mode %}{% else %}{% firstof "summary" as sim_platform_mode %}{% endif %}
+<section id="sim-platform-comp-card" class="panel comp-card" data-comp-card data-comp-card-mode="{{ sim_platform_mode }}">
+  {% include "flux/partials/link_copy.html" with link=sim_link label="Simulation Platform" %}
   <div class="panel-header">
     <div>
       <p class="eyebrow">flux.sim</p>
       <h1>Simulation Platform</h1>
     </div>
-    <span class="status-pill">scheduled values</span>
+    <span class="status-pill sim-platform-{{ platform_status.state }}" title="{{ platform_status.detail }}">{{ platform_status.label }}</span>
   </div>
-  <p>Flux Sim configures simulated Ignition memory tags, writes values on schedules, and can backfill historian data.</p>
+  <p>Flux Sim imports Ignition tag-provider catalogs, maps them to Sim Servers, and materializes selected OPC tags into the local simulator runtime.</p>
+  {% if sim_platform_mode == "detail" %}
+    <p class="muted">Use the verbose workflow cards below to import providers, select branches, and clean generated Ignition tags.</p>
+  {% endif %}
+  {% include "flux/partials/comp_card_controls.html" with card_id="sim-platform" current_mode=sim_platform_mode show_detail=True %}
 </section>
 
-<section class="panel" aria-label="Sim catalog status">
+{% if request.GET.card == "sim-catalog" %}{% firstof request.GET.mode "detail" as sim_catalog_mode %}{% else %}{% firstof "detail" as sim_catalog_mode %}{% endif %}
+<section id="sim-catalog-comp-card" class="panel comp-card" aria-label="Sim catalog status" data-comp-card data-comp-card-mode="{{ sim_catalog_mode }}">
+  {% include "flux/partials/link_copy.html" with link=sim_link label="Catalog and Runtime" %}
   <div class="panel-header">
     <div>
       <p class="eyebrow">supervisor status</p>
       <h1>Catalog and Runtime</h1>
     </div>
-    <span class="status-pill">{{ catalog_status.runtime_device_count }} materialized devices</span>
+    <span class="status-pill">{{ catalog_status.sim_server_count }} Sim Servers</span>
   </div>
+  {% if sim_catalog_mode == "detail" %}
   <div class="stage-grid">
     <article class="stage-card">
+      {% include "flux/partials/link_copy.html" with link=sim_link label="Imported catalog" %}
       <span>Imported catalog</span>
-      <h2>{{ catalog_status.provider_count }} providers</h2>
-      <p>{{ catalog_status.node_count }} nodes, {{ catalog_status.opc_tag_count }} OPC tags.</p>
-      <p>{{ catalog_status.device_count }} devices, {{ catalog_status.tag_count }} device tags in the sim catalog.</p>
+      <h2>{{ catalog_status.provider_count }} Tag providers</h2>
+      <p>{{ catalog_status.device_count }} devices, {{ catalog_status.opc_tag_count }} OPC tags.</p>
     </article>
     <article class="stage-card">
-      <span>Coverage</span>
-      <h2>{{ catalog_status.enabled_device_count }} enabled devices</h2>
-      <p>{{ catalog_status.enabled_tag_count }} enabled device tags.</p>
-      <p>{{ catalog_status.unreferenced_opc_tag_count }} unreferenced OPC tags, {{ catalog_status.unknown_status_device_count }} devices with unknown status.</p>
-    </article>
-    <article class="stage-card">
-      <span>Materialized runtime</span>
-      <h2>{{ catalog_status.runtime_endpoint_count }} FieldAgent endpoints</h2>
-      <p>{{ catalog_status.runtime_device_count }} devices, {{ catalog_status.runtime_tag_count }} field tags materialized.</p>
+      {% include "flux/partials/link_copy.html" with link=sim_link label="Sim Runtime" %}
+      <span>Sim Runtime</span>
+      <h2>{{ catalog_status.sim_server_count }} Sim Servers</h2>
+      <p>Currently simulating {{ catalog_status.runtime_device_count }} device namespaces and {{ catalog_status.runtime_tag_count }} field tags.</p>
+      <div class="actions">
+        <a class="button button-secondary" href="{% url 'admin:base_simdevice_changelist' %}">Control devices</a>
+        <a class="button button-secondary" href="{% url 'admin:base_simdevicetag_changelist' %}">OPC tags</a>
+      </div>
     </article>
   </div>
+  {% endif %}
+  {% include "flux/partials/comp_card_controls.html" with card_id="sim-catalog" current_mode=sim_catalog_mode show_detail=True %}
 </section>
 
-<section class="panel">
+{% if request.GET.card == "sim-provider-model" %}{% firstof request.GET.mode "configure" as sim_provider_model_mode %}{% else %}{% firstof "configure" as sim_provider_model_mode %}{% endif %}
+<section id="sim-provider-model-comp-card" class="panel comp-card" data-comp-card data-comp-card-mode="{{ sim_provider_model_mode }}">
+  {% include "flux/partials/link_copy.html" with link=sim_link label="Generate Provider Model" %}
   <div class="panel-header">
-    <div>
-      <p class="eyebrow">flux.base</p>
-      <h1>Generate Provider Model</h1>
-    </div>
-    <span class="status-pill">postgres</span>
+      <div>
+        <p class="eyebrow">flux.base</p>
+        <h1>Generate Provider Model</h1>
+      </div>
+      <span class="status-pill">configure import</span>
   </div>
-  <p>Import an Ignition provider into the reusable base tag model. Sim, runtime, and field workflows should derive from this model instead of parsing tag JSON directly.</p>
+  {% if sim_provider_model_mode == "configure" %}
+    <p>Import an Ignition provider into the reusable base tag model. Sim, runtime, and field workflows should derive from this model instead of parsing tag JSON directly.</p>
   <datalist id="sim-tag-provider-options">
     {% for provider in sim_tag_providers %}
       <option value="{{ provider }}"></option>
@@ -60,6 +73,7 @@
   </datalist>
   <div class="stage-grid">
     <article class="stage-card">
+      {% include "flux/partials/link_copy.html" with link=sim_link label="Generate From JSON Import" %}
       <span>JSON</span>
       <h2>Generate From JSON Import</h2>
       <form method="post" action="{% url 'sim:import_provider_json' %}" enctype="multipart/form-data">
@@ -74,6 +88,7 @@
       </form>
     </article>
     <article class="stage-card">
+      {% include "flux/partials/link_copy.html" with link=sim_link label="Generate From Ignition Provider" %}
       <span>Ignition</span>
       <h2>Generate From Ignition Provider</h2>
       <form method="post" action="{% url 'sim:import_provider_ignition' %}">
@@ -88,25 +103,15 @@
       </form>
     </article>
   </div>
+  {% elif sim_provider_model_mode == "detail" %}
+    <p>Import an Ignition provider into the reusable base tag model. Sim, runtime, and field workflows should derive from this model instead of parsing tag JSON directly.</p>
+  {% endif %}
+  {% include "flux/partials/comp_card_controls.html" with card_id="sim-provider-model" current_mode=sim_provider_model_mode show_detail=True show_configure=True %}
 </section>
 
-<section class="stage-grid">
-  {% for schedule in schedules %}
-    <article class="stage-card">
-      <span>{{ schedule.interval_seconds }}s</span>
-      <h2>{{ schedule.name }}</h2>
-      <p>{{ schedule.tags.count }} simulated tags assigned.</p>
-    </article>
-  {% empty %}
-    <article class="stage-card">
-      <span>SIM</span>
-      <h2>No Schedules</h2>
-      <p>Run migrations to seed 1s, 5s, and 10s simulation schedules.</p>
-    </article>
-  {% endfor %}
-</section>
-
-<section class="panel">
+{% if request.GET.card == "sim-provider-tree" %}{% firstof request.GET.mode "configure" as sim_provider_tree_mode %}{% else %}{% firstof "configure" as sim_provider_tree_mode %}{% endif %}
+<section id="sim-provider-tree-comp-card" class="panel comp-card" data-comp-card data-comp-card-mode="{{ sim_provider_tree_mode }}">
+  {% include "flux/partials/link_copy.html" with link=sim_link label="Provider Tree Selection" %}
   <div class="panel-header">
     <div>
       <p class="eyebrow">imported provider</p>
@@ -114,16 +119,20 @@
     </div>
     <span class="status-pill">base model</span>
   </div>
+  {% if sim_provider_tree_mode == "configure" or sim_provider_tree_mode == "detail" %}
   {% if imported_providers %}
     <form method="get" class="sim-provider-picker">
       <label for="provider">Provider</label>
       <select id="provider" name="provider" onchange="this.form.submit()">
+        <option value="" {% if not selected_imported_provider %}selected{% endif %}>Choose provider...</option>
         {% for provider in imported_providers %}
           <option value="{{ provider }}" {% if provider == selected_imported_provider %}selected{% endif %}>{{ provider }}</option>
         {% endfor %}
       </select>
     </form>
-    {% if imported_tag_tree %}
+    {% if not selected_imported_provider %}
+      <p>Choose a provider to browse imported branches. Large catalogs are loaded only on demand.</p>
+    {% elif imported_tag_tree %}
       <p>{{ imported_tag_tree.selected_count }} provider branch selection(s). Export selected OPC leaf paths at <code>{% url 'sim:selected_paths' %}?provider={{ selected_imported_provider }}</code>.</p>
       <form method="post" action="{% url 'sim:set_imported_bulk' %}" data-sim-tree-form>
         {% csrf_token %}
@@ -142,112 +151,13 @@
   {% else %}
     <p>No base tag provider has been imported yet. Use JSON import or Ignition provider import above.</p>
   {% endif %}
-</section>
-
-<section class="panel">
-  <div class="panel-header">
-    <div>
-      <p class="eyebrow">simulation selection</p>
-      <h1>Tag Tree</h1>
-    </div>
-    <span class="status-pill">provider / folder / tag</span>
-  </div>
-  {% if tag_tree %}
-    <div class="sim-tag-tree">
-      {% for provider in tag_tree %}
-        <article class="sim-tree-provider">
-          <div class="sim-tree-row">
-            <div>
-              <h2>[{{ provider.name }}]</h2>
-              <p>{{ provider.enabled_count }} of {{ provider.total_count }} simulated tags enabled.</p>
-            </div>
-            <div class="sim-tree-actions">
-              <form method="post" action="{% url 'sim:set_enabled' %}">
-                {% csrf_token %}
-                <input type="hidden" name="scope" value="provider">
-                <input type="hidden" name="provider" value="{{ provider.name }}">
-                <input type="hidden" name="enabled" value="1">
-                <button class="button" type="submit">Enable Provider</button>
-              </form>
-              <form method="post" action="{% url 'sim:set_enabled' %}">
-                {% csrf_token %}
-                <input type="hidden" name="scope" value="provider">
-                <input type="hidden" name="provider" value="{{ provider.name }}">
-                <input type="hidden" name="enabled" value="0">
-                <button class="button button-secondary" type="submit">Disable Provider</button>
-              </form>
-            </div>
-          </div>
-          {% if provider.folders_list %}
-            {% include "sim/partials/tag_tree_folders.html" with folders=provider.folders_list provider=provider.name %}
-          {% endif %}
-          {% if provider.root_tags %}
-            <ul class="sim-tree-list">
-              {% for tag in provider.root_tags %}
-                <li class="sim-tree-leaf">
-                  <span>{{ tag.name }} <small>{{ tag.data_type }} · {{ tag.get_behavior_display }}{% if tag.behavior == "slow_response" %} {{ tag.response_delay_seconds }}s{% endif %}</small></span>
-                  <form method="post" action="{% url 'sim:set_enabled' %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="scope" value="tag">
-                    <input type="hidden" name="tag_id" value="{{ tag.id }}">
-                    <input type="hidden" name="enabled" value="{% if tag.enabled %}0{% else %}1{% endif %}">
-                    <button class="button {% if tag.enabled %}button-secondary{% endif %}" type="submit">{% if tag.enabled %}Disable{% else %}Enable{% endif %}</button>
-                  </form>
-                </li>
-              {% endfor %}
-            </ul>
-          {% endif %}
-        </article>
-      {% endfor %}
-    </div>
-  {% else %}
-    <p>No simulated tags configured yet.</p>
   {% endif %}
+  {% include "flux/partials/comp_card_controls.html" with card_id="sim-provider-tree" current_mode=sim_provider_tree_mode show_detail=True show_configure=True %}
 </section>
 
-<section class="panel">
-  <div class="panel-header">
-    <div>
-      <p class="eyebrow">tag behavior</p>
-      <h1>Behavior Configuration</h1>
-    </div>
-    <span class="status-pill">strategy</span>
-  </div>
-  <p>Choose how each simulated tag applies its generated target value. Slow response keeps the prior value visible until the configured delay expires. Ignores tag write keeps the current value after initialization. Write-to-other emits a configured side write when the source value matches the optional trigger.</p>
-  {% if tags %}
-    <table>
-      <thead><tr><th>Tag</th><th>Behavior</th><th>Options</th><th>Pending</th><th></th></tr></thead>
-      <tbody>
-        {% for tag in tags %}
-          <tr>
-            <td>{{ tag.tag_path }}</td>
-            <td colspan="4">
-              <form method="post" action="{% url 'sim:set_behavior' %}" class="inline-form">
-                {% csrf_token %}
-                <input type="hidden" name="tag_id" value="{{ tag.id }}">
-                <select name="behavior">
-                  {% for value, label in behavior_choices %}
-                    <option value="{{ value }}" {% if tag.behavior == value %}selected{% endif %}>{{ label }}</option>
-                  {% endfor %}
-                </select>
-                <input name="response_delay_seconds" type="number" min="0" step="1" value="{{ tag.response_delay_seconds }}" aria-label="Response delay seconds" title="Slow-response delay seconds">
-                <input name="response_tag_path" value="{{ tag.mode_config.response_tag_path|default:'' }}" placeholder="response tag path" aria-label="Response tag path">
-                <input name="response_value" value="{{ tag.mode_config.response_value|json_input_value }}" placeholder="JSON response value" aria-label="Response value">
-                <input name="trigger_value" value="{{ tag.mode_config.trigger_value|json_input_value }}" placeholder="optional JSON trigger" aria-label="Trigger value">
-                <span>{% if tag.pending_apply_at %}{{ tag.pending_value }} at {{ tag.pending_apply_at }}{% else %}-{% endif %}</span>
-                <button class="button" type="submit">Save</button>
-              </form>
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <p>No simulated tags configured yet.</p>
-  {% endif %}
-</section>
-
-<section class="panel">
+{% if request.GET.card == "sim-remove-tags" %}{% firstof request.GET.mode "summary" as sim_remove_tags_mode %}{% else %}{% firstof "summary" as sim_remove_tags_mode %}{% endif %}
+<section id="sim-remove-tags-comp-card" class="panel comp-card" data-comp-card data-comp-card-mode="{{ sim_remove_tags_mode }}">
+  {% include "flux/partials/link_copy.html" with link=sim_link label="Remove Simulated Tags" %}
   <div class="panel-header">
     <div>
       <p class="eyebrow">ignition cleanup</p>
@@ -256,6 +166,7 @@
     <span class="status-pill">Fluxy deleteTags</span>
   </div>
   <p>Delete one generated simulation branch from Ignition while keeping Flux Base and Sim configuration in Postgres.</p>
+  {% if sim_remove_tags_mode == "configure" %}
   <form method="post" action="{% url 'sim:remove_ignition_sim_tags' %}">
     {% csrf_token %}
     <label for="remove-provider">Provider</label>
@@ -266,51 +177,7 @@
       <button class="button button-secondary" type="submit">Remove From Ignition</button>
     </div>
   </form>
-</section>
-
-<section class="panel">
-  <div class="panel-header"><h1>Simulated Tags</h1></div>
-  {% if tags %}
-    <table>
-      <thead><tr><th>Path</th><th>Type</th><th>Pattern</th><th>Behavior</th><th>Schedule</th><th>Last Value</th><th>Next Write</th></tr></thead>
-      <tbody>
-        {% for tag in tags %}
-          <tr>
-            <td>{{ tag.tag_path }}</td>
-            <td>{{ tag.data_type }}</td>
-            <td>{{ tag.pattern }}</td>
-            <td>{{ tag.get_behavior_display }}{% if tag.behavior == "slow_response" %} {{ tag.response_delay_seconds }}s{% endif %}</td>
-            <td>{{ tag.schedule.interval_seconds }}s</td>
-            <td>{{ tag.last_value|default:"-" }}</td>
-            <td>{{ tag.next_write_at }}</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <p>No simulated tags configured yet.</p>
   {% endif %}
-</section>
-
-<section class="panel">
-  <div class="panel-header"><h1>History Backfills</h1></div>
-  {% if backfills %}
-    <table>
-      <thead><tr><th>Name</th><th>Status</th><th>Start</th><th>Duration</th><th>Interval</th></tr></thead>
-      <tbody>
-        {% for backfill in backfills %}
-          <tr>
-            <td>{{ backfill.name }}</td>
-            <td><span class="status-pill">{{ backfill.status }}</span></td>
-            <td>{{ backfill.start_at }}</td>
-            <td>{{ backfill.duration_days }} days</td>
-            <td>{{ backfill.interval_seconds }}s</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <p>No history backfill jobs configured yet.</p>
-  {% endif %}
+  {% include "flux/partials/comp_card_controls.html" with card_id="sim-remove-tags" current_mode=sim_remove_tags_mode show_configure=True %}
 </section>
 {% endblock %}

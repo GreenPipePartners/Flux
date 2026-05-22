@@ -2,6 +2,7 @@
 
 import django.db.models.deletion
 import django.utils.timezone
+from django.core.management.color import no_style
 from django.db import migrations, models
 
 
@@ -100,6 +101,19 @@ def copy_legacy_field_config(apps, schema_editor):
                 "last_error": heartbeat.last_error,
             },
         )
+
+    # Rows are copied with explicit primary keys from the legacy field app.
+    # Postgres sequences do not automatically advance on explicit IDs, so the
+    # next insert can otherwise collide with migrated seed data.
+    connection = schema_editor.connection
+    statements = connection.ops.sequence_reset_sql(
+        no_style(),
+        [base_endpoint, base_device, base_tag, base_node, base_heartbeat],
+    )
+    if statements:
+        with connection.cursor() as cursor:
+            for statement in statements:
+                cursor.execute(statement)
 
 
 class Migration(migrations.Migration):

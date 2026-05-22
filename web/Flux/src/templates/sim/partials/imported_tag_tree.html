@@ -19,6 +19,9 @@
           <span class="sim-import-icon" aria-hidden="true">{{ node.icon }}</span>
           <span class="sim-import-name">{{ node.name }}</span>
         </label>
+        {% if node.tag_type == "AtomicTag" %}
+          <a class="sim-tag-config" href="{% url 'admin:base_simdevicetag_changelist' %}?q={{ node.path|urlencode }}" title="Configure tag behavior" aria-label="Configure {{ node.name }} behavior">⚙</a>
+        {% endif %}
       </div>
       {% if node.children_list %}
         <div class="sim-import-children" data-sim-tree-children hidden>

@@ -1,9 +1,10 @@
 {% extends "flux/base.html" %}
-
 {% block title %}Flux Live Pad Overview{% endblock %}
 
 {% block content %}
-<section class="panel">
+{% if request.GET.card == "pad-overview" %}{% firstof request.GET.mode "summary" as pad_overview_mode %}{% else %}{% firstof "summary" as pad_overview_mode %}{% endif %}
+<section id="pad-overview-comp-card" class="panel comp-card" data-comp-card data-comp-card-mode="{{ pad_overview_mode }}">
+  {% include "flux/partials/link_copy.html" with link=live_page_link label="Pad Overview Demo" %}
   <div class="panel-header">
     <div>
       <p class="eyebrow">flux.live</p>
@@ -12,9 +13,11 @@
     <span class="status-pill">field demo</span>
   </div>
   <p>Well, meter, and tank cards rendered from Flux base runtime snapshots populated by the Flux simulation demo.</p>
+  {% if pad_overview_mode == "detail" %}
+    <p class="muted">Use the equipment tabs below to filter card groups and the live cards for per-equipment context copy.</p>
+  {% endif %}
+  {% include "flux/partials/comp_card_controls.html" with card_id="pad-overview" current_mode=pad_overview_mode show_detail=True %}
 </section>
-
-{% include "nav/partials/navigation_panel.html" %}
 
 {% include "live/partials/pad_overview_tab_panel.html" %}
 {% endblock %}

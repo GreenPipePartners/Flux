@@ -1,10 +1,19 @@
 {% for card in cards %}
   <article class="stage-card live-equipment-card">
-    <span>{{ card.equipment_type }}</span>
+    <button
+      class="live-card-copy-corner"
+      type="button"
+      data-live-card-copy
+      aria-label="Copy {{ card.title }} card data"
+      title="Copy card data"
+    ></button>
+    <template data-live-card-copy-table>{{ card.copy_table_markdown }}</template>
+    <template data-live-card-copy-llm>{{ card.copy_llm_markdown }}</template>
+    <span>{{ card.kind }}</span>
     <h2>{{ card.title }}</h2>
     <div class="live-point-list">
       {% for point in card.points %}
-        <div class="live-point-row">
+        <div class="live-point-row {% if point.error %}status-failed{% endif %}">
           <div>
             <strong>{{ point.label }}</strong>
             <small title="{{ point.full_path }}">{{ point.quality }}{% if point.stale %} / stale{% endif %}</small>

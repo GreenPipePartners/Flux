@@ -7,12 +7,17 @@ from typing import Any
 
 from django.db import transaction
 
-from flux.base.models import SimDevice, SimDeviceTag, SimDriver, TagNode, TagProvider
+from flux.base.models import SimDevice, SimDeviceTag, SimDriver, SimServer, TagNode, TagProvider
 from flux.base.services import import_provider_payload
 from flux_sim.tag_data import DeviceInventoryEntry, DeviceTagBinding, parse_device_inventory, tag_data_catalog_from_payload
 
 
 INGEST_BATCH_SIZE = 5000
+DEFAULT_SIM_SERVER_NAME = "Flux sim OPC-UA Server"
+IGNITION_OPC_SERVER_NAMES = {
+    "ignition opc ua server",
+    "ignition opc-ua server",
+}
 
 
 @dataclass(frozen=True)
@@ -83,6 +88,9 @@ def ingest_tag_data_catalog_payload(
             source_name=source_name,
             keep_raw_config=keep_raw_config,
         )
+        bindings = catalog.device_tag_bindings()
+        import_result.provider.sim_server = infer_sim_server(bindings)
+        import_result.provider.save(update_fields=["sim_server"])
         devices_by_name: dict[str, SimDevice] = {}
         for device in catalog.devices.values():
             driver = upsert_driver(device.driver, device.strategy_key)
@@ -99,7 +107,7 @@ def ingest_tag_data_catalog_payload(
             )
             devices_by_name[device.name] = sim_device
 
-        source_paths = bulk_upsert_device_tags(import_result.provider, devices_by_name, catalog.device_tag_bindings())
+        source_paths = bulk_upsert_device_tags(import_result.provider, devices_by_name, bindings)
 
         delete_stale_device_tags(import_result.provider, source_paths)
 
@@ -110,6 +118,61 @@ def ingest_tag_data_catalog_payload(
         unknown_device_count=len(catalog.unknown_device_names),
         unreferenced_device_count=len(catalog.unreferenced_device_names),
     )
+
+
+def infer_sim_server(bindings: list[DeviceTagBinding]) -> SimServer:
+    opc_server = predominant_opc_server(bindings)
+    if not opc_server or normalized_opc_server_name(opc_server) in IGNITION_OPC_SERVER_NAMES:
+        return default_sim_server()
+    return SimServer.objects.get_or_create(
+        name=sim_server_name(opc_server),
+        defaults={
+            "endpoint_url": "opc.tcp://0.0.0.0:4840/flux/sim/%s" % safe_name(opc_server),
+            "application_uri": "urn:flux:sim:%s" % safe_name(opc_server).lower(),
+            "product_uri": "urn:flux:sim",
+            "namespace_uri": "urn:flux:sim:%s" % safe_name(opc_server).lower(),
+            "enabled": True,
+            "security_policy": "None",
+            "description": "Inferred from imported opcServer=%s" % opc_server,
+        },
+    )[0]
+
+
+def predominant_opc_server(bindings: list[DeviceTagBinding]) -> str:
+    counts: dict[str, int] = {}
+    for binding in bindings:
+        if binding.opc_server:
+            counts[binding.opc_server] = counts.get(binding.opc_server, 0) + 1
+    if not counts:
+        return ""
+    return sorted(counts.items(), key=lambda item: (-item[1], item[0]))[0][0]
+
+
+def default_sim_server() -> SimServer:
+    return SimServer.objects.get_or_create(
+        name=DEFAULT_SIM_SERVER_NAME,
+        defaults={
+            "endpoint_url": "opc.tcp://0.0.0.0:4840/flux/sim",
+            "application_uri": "urn:flux:sim",
+            "product_uri": "urn:flux:sim",
+            "namespace_uri": "urn:flux:sim",
+            "enabled": True,
+            "security_policy": "None",
+        },
+    )[0]
+
+
+def sim_server_name(opc_server: str) -> str:
+    return "Flux sim %s Server" % opc_server.strip()
+
+
+def normalized_opc_server_name(opc_server: str) -> str:
+    return " ".join(opc_server.lower().replace("_", " ").split())
+
+
+def safe_name(value: str) -> str:
+    cleaned = "".join(character if character.isalnum() or character in "-_" else "_" for character in value.strip())
+    return cleaned or "server"
 
 
 def devices_from_fluxy(devices: list[Any]) -> list[DeviceInventoryEntry]:

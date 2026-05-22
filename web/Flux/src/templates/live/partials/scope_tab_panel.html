@@ -1,0 +1,18 @@
+<div id="live-scope-panel" class="live-tab-panel">
+  <div class="live-tabs" role="tablist" aria-label="Live card group">
+    {% for group in group_tabs %}
+      <a
+        class="live-tab{% if group == selected_group %} is-active{% endif %}"
+        href="{% url 'live:scope_detail' scope_slug %}?group={{ group|lower|urlencode }}"
+        role="tab"
+        aria-selected="{% if group == selected_group %}true{% else %}false{% endif %}"
+        hx-get="{% url 'live:scope_panel' scope_slug %}?group={{ group|lower|urlencode }}"
+        hx-target="#live-scope-panel"
+        hx-swap="outerHTML"
+        hx-push-url="{% url 'live:scope_detail' scope_slug %}?group={{ group|lower|urlencode }}"
+      >{{ group }}</a>
+    {% endfor %}
+  </div>
+
+  {% include "live/partials/scope_refresh_panel.html" %}
+</div>

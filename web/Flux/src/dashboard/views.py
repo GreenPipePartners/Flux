@@ -1,18 +1,46 @@
+import csv
+from io import StringIO
+
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login
+from django.conf import settings
+from django.core.management.base import CommandError
 from django.shortcuts import redirect, render
+from django.template.response import TemplateResponse
+from dataclasses import replace
 
 from flux.base.runtime import RuntimeTag
+from flux.base.models import FieldEndpoint, FieldTag
+from flux.live.management.commands.import_live_scope_csv import import_live_scope_rows
+from flux.live.models import LiveScope
+from flux.opt.models import RefreshLane
+from flux.opt.services import REFRESH_LANES
+from flux.trace.models import TraceProfile
+from trace.importer import import_trace_scopes_csv
 
-from .forms import InitialSuperuserForm
+from .copy_context import (
+    DOCS_URL,
+    dashboard_card_copy_context,
+    render_bridge_llm_markdown,
+    render_bridge_table_markdown,
+    serve_heartbeat_copy_context,
+    simserver_copy_context,
+    stale_recovery_copy_context,
+)
+from .forms import IgnitionBridgeConfigForm, InitialSuperuserForm
+from .models import IgnitionBridgeConfig
 from .services import (
     bridge_config,
     dashboard_readiness,
     dashboard_runtime_state,
     excluded_interface_runtime_tag_count,
     field_device_status,
+    ignition_bridge_status,
     interface_runtime_tags,
     refresh_runtime_tags,
+    serve_status,
+    start_sim_server,
+    stop_sim_server,
     test_bridge,
     update_bridge_config,
 )
@@ -26,25 +54,54 @@ def home(request):
     if setup_required():
         return redirect("dashboard:setup")
 
+    if request.method == "GET" and request.GET.get("partial") == "simserver_card":
+        return simserver_card_response(request)
+
     if request.method == "POST":
         action = request.POST.get("action", "")
         if action == "save_bridge":
-            base_url = request.POST.get("fluxy_base_url", "").strip()
-            token = request.POST.get("fluxy_token", "")
-            clear_token = request.POST.get("clear_fluxy_token") == "on"
-            if base_url:
-                update_bridge_config(base_url=base_url, token=token if token else None, clear_token=clear_token)
-                messages.success(request, "Saved Live Ignition Bridge configuration.")
+            if "name" in request.POST:
+                bridge_form = IgnitionBridgeConfigForm(request.POST)
+                if bridge_form.is_valid():
+                    config = bridge_form.save()
+                    messages.success(request, f"Saved Ignition bridge {config.name}.")
+                    if not request.htmx:
+                        return redirect("dashboard:home")
+                elif not request.htmx:
+                    messages.warning(request, "Ignition bridge configuration is invalid.")
+                    return redirect("dashboard:home")
             else:
-                messages.warning(request, "Live Ignition Bridge URL is required.")
-            return redirect("dashboard:home")
+                base_url = request.POST.get("fluxy_base_url", "").strip()
+                token = request.POST.get("fluxy_token", "")
+                clear_token = request.POST.get("clear_fluxy_token") == "on"
+                if base_url:
+                    update_bridge_config(base_url=base_url, token=token if token else None, clear_token=clear_token)
+                    messages.success(request, "Saved Live Ignition Bridge configuration.")
+                else:
+                    messages.warning(request, "Live Ignition Bridge URL is required.")
+                if not request.htmx:
+                    return redirect("dashboard:home")
         if action == "test_bridge":
-            config = test_bridge()
+            bridge_id = request.POST.get("bridge_id", "")
+            bridge = IgnitionBridgeConfig.objects.filter(id=bridge_id).first() if bridge_id.isdigit() else None
+            config = test_bridge(bridge)
             if config.last_test_ok:
                 messages.success(request, config.last_test_message)
             else:
-                messages.error(request, f"Live Ignition Bridge test failed: {config.last_test_message}")
-            return redirect("dashboard:home")
+                messages.error(request, f"Ignition bridge test failed: {config.last_test_message}")
+            if not request.htmx:
+                return redirect("dashboard:home")
+        if action == "delete_bridge":
+            bridge_id = request.POST.get("bridge_id", "")
+            config = IgnitionBridgeConfig.objects.filter(id=bridge_id).first() if bridge_id.isdigit() else None
+            if config is None:
+                messages.error(request, "Bridge not found.")
+            else:
+                name = config.name
+                config.delete()
+                messages.success(request, f"Deleted Ignition bridge {name}.")
+            if not request.htmx:
+                return redirect("dashboard:home")
         if action == "refresh_stale":
             stale_ids = [int(value) for value in request.POST.getlist("stale_tag_id") if value.isdigit()]
             stale_tags = list(RuntimeTag.objects.filter(id__in=stale_ids, enabled=True).select_related("schedule"))
@@ -54,14 +111,135 @@ def home(request):
                 messages.error(request, f"Stale tag refresh failed: {exc}")
             else:
                 messages.success(request, f"Refreshed {refreshed} stale runtime tags from Ignition.")
-            return redirect("dashboard:home")
+            if not request.htmx:
+                return redirect("dashboard:home")
+        if action == "import_live_scope_csv":
+            csv_upload = request.FILES.get("live_scope_csv")
+            if csv_upload is None:
+                messages.error(request, "Choose a Flux.live CSV file to import.")
+            else:
+                try:
+                    rows = list(csv.DictReader(StringIO(csv_upload.read().decode("utf-8-sig"))))
+                    result = import_live_scope_rows(
+                        rows,
+                        default_scope=(request.POST.get("live_scope") or None),
+                        replace=request.POST.get("replace_live_scope") == "on",
+                    )
+                except (UnicodeDecodeError, CommandError, ValueError) as exc:
+                    messages.error(request, f"Flux.live CSV import failed: {exc}")
+                else:
+                    messages.success(
+                        request,
+                        "Imported %(scopes)s live scopes, %(cards)s cards, and %(points)s points." % result,
+                    )
+            if not request.htmx:
+                return redirect("dashboard:home")
+        if action == "import_trace_scope_csv":
+            csv_upload = request.FILES.get("trace_scope_csv")
+            if csv_upload is None:
+                messages.error(request, "Choose a Flux.trace CSV file to import.")
+            else:
+                try:
+                    result = import_trace_scopes_csv(StringIO(csv_upload.read().decode("utf-8-sig")))
+                except (UnicodeDecodeError, ValueError) as exc:
+                    messages.error(request, f"Flux.trace CSV import failed: {exc}")
+                else:
+                    messages.success(
+                        request,
+                        "Imported %s trace charts, %s tags, and %s signals."
+                        % (result.profiles, result.tags, result.signals),
+                    )
+            if not request.htmx:
+                return redirect("dashboard:home")
+        if action == "save_live_refresh_lanes":
+            errors = []
+            updates = {}
+            for lane_name in ("hot", "warm", "cold"):
+                raw_value = request.POST.get(f"{lane_name}_interval_seconds", "").strip()
+                try:
+                    interval_seconds = int(raw_value)
+                except ValueError:
+                    errors.append(f"{lane_name.title()} refresh must be a whole number of seconds.")
+                    continue
+                if interval_seconds < 1:
+                    errors.append(f"{lane_name.title()} refresh must be at least 1 second.")
+                    continue
+                updates[lane_name] = interval_seconds
+            if errors:
+                for error in errors:
+                    messages.error(request, error)
+            else:
+                for lane_name, interval_seconds in updates.items():
+                    defaults = {**REFRESH_LANES[lane_name], "interval_seconds": interval_seconds}
+                    RefreshLane.objects.update_or_create(name=lane_name, defaults=defaults)
+                messages.success(request, "Saved Flux.live refresh intervals.")
+            if not request.htmx:
+                return redirect("dashboard:home")
+        if action == "start_sim_server":
+            endpoint_id = request.POST.get("endpoint_id", "")
+            if not endpoint_id.isdigit():
+                messages.error(request, "Cannot start SimServer: invalid endpoint id.")
+                if request.htmx and request.GET.get("partial") == "simserver_card":
+                    return simserver_card_response(request)
+                if not request.htmx:
+                    return redirect("dashboard:home")
+            try:
+                endpoint = start_sim_server(int(endpoint_id), requested_by=request.user)
+            except Exception as exc:
+                messages.error(request, f"Failed to start SimServer: {exc}")
+            else:
+                messages.success(request, f"Requested start for SimServer {endpoint.name}.")
+            if request.htmx and request.GET.get("partial") == "simserver_card":
+                return simserver_card_response(request)
+            if not request.htmx:
+                return redirect("dashboard:home")
+        if action == "stop_sim_server":
+            endpoint_id = request.POST.get("endpoint_id", "")
+            if not endpoint_id.isdigit():
+                messages.error(request, "Cannot stop SimServer: invalid endpoint id.")
+                if request.htmx and request.GET.get("partial") == "simserver_card":
+                    return simserver_card_response(request)
+                if not request.htmx:
+                    return redirect("dashboard:home")
+            try:
+                endpoint = stop_sim_server(int(endpoint_id), requested_by=request.user)
+            except Exception as exc:
+                messages.error(request, f"Failed to stop SimServer: {exc}")
+            else:
+                messages.success(request, f"Requested stop for SimServer {endpoint.name}.")
+            if request.htmx and request.GET.get("partial") == "simserver_card":
+                return simserver_card_response(request)
+            if not request.htmx:
+                return redirect("dashboard:home")
 
     tags = interface_runtime_tags()
     runtime_state = dashboard_runtime_state(tags)
-    readiness = dashboard_readiness(runtime_state)
+    service_status = serve_status()
+    bridge_status = ignition_bridge_status()
+    trace_profiles = list(TraceProfile.objects.filter(enabled=True).prefetch_related("signals").order_by("key"))
+    ensure_live_refresh_lanes()
+    live_refresh_lanes = RefreshLane.objects.filter(name__in=("hot", "warm", "cold")).in_bulk(field_name="name")
+    readiness = dashboard_readiness(runtime_state, service_status)
+    page_url = request.build_absolute_uri()
+    readiness = attach_readiness_copy_contexts(readiness, page_url=page_url)
+    readiness.insert(
+        0,
+        type(readiness[0])(
+            "Flux.bridge",
+            "ok" if bridge_status["connected_count"] else "offline",
+            "%s connected" % bridge_status["connected_count"],
+            "Configure",
+            "/bridges/",
+            (
+                "%s Production" % bridge_status["production_count"],
+                "%s Simulated" % bridge_status["simulator_count"],
+            ),
+        ),
+    )
     service_state = "ok" if all(item.state == "ok" for item in readiness) else "warning"
     bridge = bridge_config()
     device_status = field_device_status()
+    bridge_configs = bridge_status["configs"]
 
     return render(
         request,
@@ -80,6 +258,10 @@ def home(request):
             "stale_tag_items": runtime_state["stale_tag_items"][:12],
             "stale_tag_overflow": max(runtime_state["stale_count"] - 12, 0),
             "device_status": device_status,
+            "serve_status": service_status,
+            "trace_profiles": trace_profiles,
+            "live_scopes": LiveScope.objects.filter(enabled=True).order_by("slug"),
+            "live_refresh_lanes": [live_refresh_lanes[name] for name in ("hot", "warm", "cold") if name in live_refresh_lanes],
             "bridge": {
                 "base_url": bridge.base_url,
                 "token_set": bool(bridge.token),
@@ -87,8 +269,110 @@ def home(request):
                 "message": bridge.last_test_message,
                 "last_test_at": bridge.last_test_at,
             },
+            "bridge_status": bridge_status,
+            "sim_default_tag_provider": settings.FLUX_SIM_DEFAULT_TAG_PROVIDER,
+            "sim_tag_providers": settings.FLUX_SIM_TAG_PROVIDERS,
+            "bridge_form": locals().get("bridge_form") or IgnitionBridgeConfigForm(),
+            "bridge_copy_docs_url": DOCS_URL,
+            "bridge_copy_table_markdown": render_bridge_table_markdown(bridge_configs),
+            "bridge_copy_llm_markdown": render_bridge_llm_markdown(
+                bridge_configs,
+                page_url=page_url,
+            ),
+            "stale_recovery_copy": stale_recovery_copy_context(
+                runtime_state["stale_tag_items"][:12],
+                stale_count=runtime_state["stale_count"],
+                page_url=page_url,
+            ),
+            "simserver_copy": simserver_copy_context(device_status, page_url=page_url),
+            "serve_copy": serve_heartbeat_copy_context(service_status, page_url=page_url),
         },
     )
+
+
+def bridges(request):
+    if setup_required():
+        return redirect("dashboard:setup")
+    return redirect("/?card=bridges&mode=configure")
+
+
+def ensure_live_refresh_lanes() -> None:
+    for lane_name in ("hot", "warm", "cold"):
+        RefreshLane.objects.get_or_create(name=lane_name, defaults=REFRESH_LANES[lane_name])
+
+
+def simserver_card_response(request):
+    device_status = field_device_status()
+    return TemplateResponse(
+        request,
+        "dashboard/partials/simserver_card.html",
+        {"device_status": device_status, "simserver_copy": simserver_copy_context(device_status, page_url=request.build_absolute_uri())},
+    )
+
+
+def attach_readiness_copy_contexts(readiness, *, page_url: str):
+    contexts = {
+        "Flux.sim": (
+            "#sim-config",
+            "Flux.sim card context summarizes configured simulated OPC servers and tags.",
+        ),
+        "Flux.mine": (
+            "#fluxmine-readiness",
+            "Flux.mine readiness context summarizes recovered PLC and HMI source primitives.",
+        ),
+        "Flux.build": (
+            "#fluxbuild-readiness",
+            "Flux.build readiness context summarizes process cells built from recovered source primitives.",
+        ),
+        "Flux.live": (
+            "#latest-reads",
+            "Flux.live card context summarizes current runtime tag freshness and quality from Flux storage.",
+        ),
+        "Flux.serve": (
+            "#fluxserve-readiness",
+            "Flux.serve readiness context summarizes supervisor and worker heartbeat health for the local Flux stack.",
+        ),
+        "Flux.trace": (
+            "#fluxtrace-readiness",
+            "Flux.trace readiness context summarizes configured trace charts and signal definitions.",
+        ),
+    }
+    copied = []
+    for item in readiness:
+        config = contexts.get(item.label)
+        if config is None:
+            copied.append(item)
+            continue
+        docs_anchor, description = config
+        rows = [("State", item.state), ("Detail", item.detail)]
+        rows.extend(("Detail line", line) for line in item.detail_lines)
+        if item.action_label:
+            rows.append(("Action", "%s %s" % (item.action_label, item.action_url)))
+        context = dashboard_card_copy_context(
+            title=item.label,
+            description=description,
+            rows=rows,
+            payload={
+                "type": "flux.dashboard.readiness_card.context",
+                "label": item.label,
+                "state": item.state,
+                "detail": item.detail,
+                "detail_lines": item.detail_lines,
+                "action_label": item.action_label,
+                "action_url": item.action_url,
+            },
+            docs_anchor=docs_anchor,
+            page_url=page_url,
+        )
+        copied.append(
+            replace(
+                item,
+                copy_docs_url=context["docs_url"],
+                copy_table_markdown=context["table"],
+                copy_llm_markdown=context["llm"],
+            )
+        )
+    return copied
 
 
 def setup(request):

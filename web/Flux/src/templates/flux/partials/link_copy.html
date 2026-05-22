@@ -1,0 +1,10 @@
+<button
+  class="copy-corner"
+  type="button"
+  data-flux-link-copy
+  data-copy-docs-url="{{ link.docs_url }}"
+  aria-label="Copy {{ label|default:'card' }} context"
+  title="Copy {{ label|default:'card' }} context"
+></button>
+<template data-flux-link-copy-table>{{ link.table }}</template>
+<template data-flux-link-copy-llm>{{ link.llm }}</template>

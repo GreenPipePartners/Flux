@@ -15,6 +15,7 @@ from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 WEB_URL = "http://localhost:8000/"
+DOCS_URL = "http://localhost:8001/"
 WEB_DIR = ROOT_DIR / "web" / "Flux"
 WEB_ENV = WEB_DIR / ".env"
 FLUXY_PROJECT = ROOT_DIR / "web" / "ignition_flux_project"
@@ -30,6 +31,7 @@ Flux is a local Ignition companion stack for fast, database-backed operations vi
 
 Local stack:
   Web UI       {WEB_URL}
+  Docs         {DOCS_URL}
   FieldAgent   OPC UA simulator on opc.tcp://localhost:4840/flux/field
   QuestDB      Trace data plane on postgresql://admin:quest@localhost:8812/qdb
   Demo reader  Reads Ignition through Fluxy and stores latest values in Flux
@@ -37,10 +39,17 @@ Local stack:
 Common commands:
   flux doctor           Check local Flux + Ignition dev-cell health
   flux start            Start the Flux background service
+  flux start --web-mode dev
+                        Start with Django runserver for UI iteration
   flux stop             Stop the Flux background service
+  flux restart          Restart the Flux background service
+  flux restart --web-mode gunicorn
+                        Restart with prod-like Gunicorn workers
   flux status           Show service status
   flux logs             Follow service logs
   flux open             Open the web UI
+  flux docs serve       Start the local docs server
+  flux docs open        Open the local docs site
   flux install-service  Install/refresh the user service
 
 Ignition dev cell:
@@ -94,6 +103,10 @@ def run_uv_fluxy(args: list[str]) -> int:
 
 def run_manage(args: list[str]) -> int:
     return subprocess.call(["uv", "run", "python", "manage.py", *args], cwd=WEB_DIR, env=flux_env())
+
+
+def run_docs(args: list[str]) -> int:
+    return subprocess.call(["uv", "run", "--project", str(WEB_DIR), "mkdocs", *args], cwd=ROOT_DIR, env=flux_env())
 
 
 def capture(command: list[str], *, cwd: Path = ROOT_DIR) -> subprocess.CompletedProcess[str]:
@@ -152,6 +165,13 @@ def doctor() -> int:
     if not web_ok:
         print_fix("flux start")
     failures += 0 if web_ok else 1
+
+    docs_ok, docs_detail = check_http(DOCS_URL)
+    print_check(docs_ok, "Flux docs", f"{DOCS_URL} {docs_detail}")
+    if not docs_ok:
+        print_fix("flux docs serve")
+        print_fix("flux restart")
+    failures += 0 if docs_ok else 1
 
     field_ok, field_detail = check_port("localhost", 4840)
     print_check(field_ok, "FieldAgent OPC UA", f"localhost:4840 {field_detail}")
@@ -247,12 +267,23 @@ def doctor() -> int:
     return 0
 
 
-def run_script(name: str) -> int:
+def run_script(name: str, env_updates: dict[str, str] | None = None) -> int:
     path = script(name)
     if not path.exists():
         print(f"Flux command is not available on this platform yet: {path}", file=sys.stderr)
         return 1
-    return subprocess.call([str(path)], cwd=ROOT_DIR)
+    env = os.environ.copy()
+    if env_updates:
+        env.update(env_updates)
+    return subprocess.call([str(path)], cwd=ROOT_DIR, env=env)
+
+
+def service_env(args: argparse.Namespace) -> dict[str, str]:
+    updates = {}
+    web_mode = getattr(args, "web_mode", None)
+    if web_mode:
+        updates["FLUX_WEB_MODE"] = web_mode
+    return updates
 
 
 def open_ui() -> int:
@@ -262,6 +293,14 @@ def open_ui() -> int:
         return 1
     print(f"Opened {WEB_URL}")
     return 0
+
+
+def docs_serve(args: argparse.Namespace) -> int:
+    return run_docs(["serve", "--dev-addr", f"{args.host}:{args.port}"])
+
+
+def docs_build(_args: argparse.Namespace) -> int:
+    return run_docs(["build", "--strict"])
 
 
 def open_url(url: str) -> int:
@@ -417,11 +456,29 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     subparsers.add_parser("intro", help="Show the Flux getting-started intro")
     subparsers.add_parser("doctor", help="Check local Flux + Ignition dev-cell health")
     subparsers.add_parser("install-service", help="Install or refresh the user service")
-    subparsers.add_parser("start", help="Start the Flux background service")
+    start = subparsers.add_parser("start", help="Start the Flux background service")
+    start.add_argument(
+        "--web-mode",
+        choices=["gunicorn", "dev", "internal"],
+        help="Web serving mode: gunicorn for prod-like workers, dev/internal for Django runserver.",
+    )
     subparsers.add_parser("stop", help="Stop the Flux background service")
+    restart = subparsers.add_parser("restart", help="Restart the Flux background service")
+    restart.add_argument(
+        "--web-mode",
+        choices=["gunicorn", "dev", "internal"],
+        help="Web serving mode after restart: gunicorn for prod-like workers, dev/internal for Django runserver.",
+    )
     subparsers.add_parser("status", help="Show Flux service status")
     subparsers.add_parser("logs", help="Follow Flux service logs")
     subparsers.add_parser("open", help="Open the Flux web UI")
+    docs = subparsers.add_parser("docs", help="Serve, build, or open Flux documentation")
+    docs_subparsers = docs.add_subparsers(dest="docs_command")
+    docs_serve_parser = docs_subparsers.add_parser("serve", help="Start the local docs server")
+    docs_serve_parser.add_argument("--host", default="127.0.0.1")
+    docs_serve_parser.add_argument("--port", default="8001")
+    docs_subparsers.add_parser("build", help="Build the static docs site")
+    docs_subparsers.add_parser("open", help="Open the local docs site")
     ignition = subparsers.add_parser("ignition", help="Manage the Flux Ignition dev cell")
     ignition_subparsers = ignition.add_subparsers(dest="ignition_command")
 
@@ -493,15 +550,27 @@ def main(argv: list[str] | None = None) -> int:
     if command == "install-service":
         return run_script("flux-service-install")
     if command == "start":
-        return run_script("flux-service-start")
+        return run_script("flux-service-start", service_env(args))
     if command == "stop":
         return run_script("flux-service-stop")
+    if command == "restart":
+        stop_status = run_script("flux-service-stop")
+        start_status = run_script("flux-service-start", service_env(args))
+        return start_status if start_status else stop_status
     if command == "status":
         return run_script("flux-service-status")
     if command == "logs":
         return run_script("flux-service-logs")
     if command == "open":
         return open_ui()
+    if command == "docs":
+        docs_command = args.docs_command or "serve"
+        if docs_command == "serve":
+            return docs_serve(args)
+        if docs_command == "build":
+            return docs_build(args)
+        if docs_command == "open":
+            return open_url(DOCS_URL)
     if command == "ignition":
         ignition_command = args.ignition_command or "info"
         if ignition_command == "info":

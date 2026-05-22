@@ -1,10 +1,11 @@
 {% extends "flux/base.html" %}
-{% load static %}
+{% load static nav_extras %}
 
 {% block title %}Flux Trace{% endblock %}
 
 {% block content %}
-<section class="panel">
+{% if not trace_embed %}{% if request.GET.card == "trace-page" %}{% firstof request.GET.mode "summary" as trace_page_mode %}{% else %}{% firstof "summary" as trace_page_mode %}{% endif %}<section id="trace-page-comp-card" class="panel comp-card" data-comp-card data-comp-card-mode="{{ trace_page_mode }}">
+  {% include "flux/partials/link_copy.html" with link=trace_page_link label="Trace Page" %}
   <div class="panel-header">
     <div>
       <p class="eyebrow">flux.trace</p>
@@ -13,9 +14,15 @@
     <span class="status-pill" data-trace-set-label>{% if trace_chart.setLabel %}{{ trace_chart.setLabel }}{% elif trace_badge %}{{ trace_badge }}{% else %}uPlot{% endif %}</span>
   </div>
   <p>{{ trace_subtitle|default:"Trace uses uPlot for low-overhead historian-style inspection of local runtime samples." }}</p>
-</section>
+  {% if trace_page_mode == "detail" %}
+    <p class="muted">Use the chart verbose view for source selection, range reset, compression, and pinned trace controls.</p>
+  {% endif %}
+  {% include "flux/partials/comp_card_controls.html" with card_id="trace-page" current_mode=trace_page_mode show_detail=True %}
+</section>{% endif %}
 
-<section class="panel trace-chart-panel">
+{% if request.GET.card == "trace-chart" %}{% firstof request.GET.mode "detail" as trace_chart_mode %}{% else %}{% firstof "detail" as trace_chart_mode %}{% endif %}
+<section id="trace-chart-comp-card" class="panel trace-chart-panel comp-card" data-comp-card data-comp-card-mode="{{ trace_chart_mode }}">
+  {% include "flux/partials/link_copy.html" with link=trace_chart_link label="Trace Chart" %}
   <div class="panel-header">
     <div>
       <p class="eyebrow">trace.uplot</p>
@@ -23,19 +30,47 @@
     </div>
     <span class="status-pill">latest {{ trace_chart.windowLabel|default:"4 days" }}</span>
   </div>
+  {% if trace_chart_mode == "detail" or trace_chart_mode == "configure" %}
   <div class="trace-actions">
-    <a class="button button-secondary" href="{% url 'trace:live' %}">Live Trace</a>
+    {% if not trace_embed %}<a class="button button-secondary" href="{% url 'trace:live' %}">Live Trace</a>{% endif %}
+    {% if trace_source_options %}
+      <label class="trace-control-label">Source
+        <select data-trace-source-select aria-label="Trace source">
+          {% for option in trace_source_options %}
+            <option value="{{ option.value }}" data-set-index="{{ option.set_index }}"{% if option.value == trace_chart.wellId %} selected{% endif %}>{{ option.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    {% endif %}
     {% if trace_cycle_url %}
       <button class="button button-secondary" type="button" data-trace-prev-set>Previous {{ trace_cycle_label|default:"Set" }}</button>
       <button class="button button-secondary" type="button" data-trace-next-set>Next {{ trace_cycle_label|default:"Set" }}</button>
     {% endif %}
     <button class="button button-secondary" type="button" data-reset-trace-range>Reset Range</button>
     <button class="button button-secondary" type="button" data-clear-pinned-traces>Clear Pinned Traces</button>
+    {% if trace_cycle_url %}
+      <details class="trace-compression" data-trace-compression>
+        <summary>Compression</summary>
+        <form method="get" action="." class="trace-compression-form">
+          {% if trace_chart.wellId %}<input type="hidden" name="source" value="{{ trace_chart.wellId }}">{% endif %}
+          {% if trace_embed %}<input type="hidden" name="embed" value="1">{% endif %}
+          <label>Window minutes
+            <input name="window_minutes" type="number" min="60" max="{{ trace_window_max_minutes|default:10080 }}" step="60" value="{{ trace_window_minutes|default:1440 }}">
+          </label>
+          <label>Step minutes
+            <input name="step_minutes" type="number" min="1" max="1440" step="1" value="{{ trace_step_minutes|default:1 }}">
+          </label>
+          <button class="button button-secondary" type="submit">Apply</button>
+        </form>
+        <p class="form-help">Higher step minutes compress the trace by sampling fewer points from the same window.</p>
+      </details>
+    {% endif %}
     <p class="form-help">{{ trace_help|default:"Click inside the chart to pin a vertical trace cursor. Drag selects an x-range to zoom. Shift-drag pans. Wheel zooms; side-scroll pans. Use Previous/Next Set or left/right arrow keys to cycle sets." }}</p>
     <p class="form-help" data-trace-status>Ready to pin trace markers.</p>
   </div>
+  {% endif %}
   {% if trace_chart.series %}
-    <link rel="stylesheet" href="{% static 'flux/vendor/uplot/uPlot.min.css' %}?v=trace-shared-x-1">
+    <link rel="stylesheet" href="{% static 'flux/vendor/uplot/uPlot.min.css' %}?v=trace-shared-x-2">
     <div
       class="trace-chart"
       data-trace-chart
@@ -59,8 +94,8 @@
       </div>
     </section>
     {{ trace_chart|json_script:"trace-data" }}
-    <script src="{% static 'flux/vendor/uplot/uPlot.iife.min.js' %}?v=trace-shared-x-1"></script>
-    <script type="module" src="{% static 'flux/trace/historical-page.js' %}?v=trace-shared-x-1"></script>
+    <script src="{% static 'flux/vendor/uplot/uPlot.iife.min.js' %}?v=trace-shared-x-2"></script>
+    <script type="module" src="{% static 'flux/trace/historical-page.js' %}?v=trace-shared-x-2"></script>
   {% else %}
     {% if trace_error %}
       <p class="form-help">Trace query failed: {{ trace_error }}</p>
@@ -68,9 +103,19 @@
       <p>No numeric tag samples available for uPlot yet.</p>
     {% endif %}
   {% endif %}
+  {% include "flux/partials/comp_card_controls.html" with card_id="trace-chart" current_mode=trace_chart_mode show_detail=True show_configure=True %}
 </section>
 
-<section class="panel">
+{% if not trace_embed %}{% if request.GET.card == "trace-samples" %}{% firstof request.GET.mode "detail" as trace_samples_mode %}{% else %}{% firstof "detail" as trace_samples_mode %}{% endif %}<section id="trace-samples-comp-card" class="panel comp-card" data-comp-card data-comp-card-mode="{{ trace_samples_mode }}">
+  {% include "flux/partials/link_copy.html" with link=trace_chart_link label="Trace Samples" %}
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">trace samples</p>
+      <h2>Historical Samples</h2>
+    </div>
+    <span class="status-pill">{{ samples|length }} samples</span>
+  </div>
+  {% if trace_samples_mode == "detail" %}
   {% if samples %}
     <table>
       <thead><tr><th>Tag</th><th>Value</th><th>Quality</th><th>Read At</th></tr></thead>
@@ -88,5 +133,7 @@
   {% else %}
     <p>No historical samples recorded yet.</p>
   {% endif %}
-</section>
+  {% endif %}
+  {% include "flux/partials/comp_card_controls.html" with card_id="trace-samples" current_mode=trace_samples_mode show_detail=True %}
+</section>{% endif %}
 {% endblock %}

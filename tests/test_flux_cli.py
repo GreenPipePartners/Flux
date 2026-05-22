@@ -140,3 +140,71 @@ def test_field_configure_ignition_wraps_manage_command(monkeypatch):
     assert "--token" in calls[0][0]
     assert "secret" in calls[0][0]
     assert calls[0][1] == flux.WEB_DIR
+
+
+def test_restart_stops_then_starts_service(monkeypatch):
+    flux = load_flux_cli()
+    calls = []
+
+    def fake_run_script(name, env_updates=None):
+        calls.append((name, env_updates))
+        return 0
+
+    monkeypatch.setattr(flux, "run_script", fake_run_script)
+
+    status = flux.main(["restart"])
+
+    assert status == 0
+    assert calls == [("flux-service-stop", None), ("flux-service-start", {})]
+
+
+def test_start_service_accepts_web_mode(monkeypatch):
+    flux = load_flux_cli()
+    calls = []
+
+    def fake_run_script(name, env_updates=None):
+        calls.append((name, env_updates))
+        return 0
+
+    monkeypatch.setattr(flux, "run_script", fake_run_script)
+
+    status = flux.main(["start", "--web-mode", "dev"])
+
+    assert status == 0
+    assert calls == [("flux-service-start", {"FLUX_WEB_MODE": "dev"})]
+
+
+def test_doctor_checks_docs_server(monkeypatch, capsys):
+    flux = load_flux_cli()
+
+    class Result:
+        returncode = 0
+        stdout = "active"
+        stderr = ""
+
+    def fake_capture(command, cwd=flux.ROOT_DIR):
+        if command[:3] == ["uv", "run", "python"]:
+            return type(
+                "DoctorStateResult",
+                (),
+                {
+                    "returncode": 0,
+                    "stdout": '{"runtime":{"latest_read_age_seconds":0,"excluded_interface_tag_count":0,"tag_count":1,"stale_count":0,"bad_quality_count":0,"online_count":1},"bridge":{"online":true,"token_set":true,"base_url":"http://bridge","message":"","last_test_at":null},"historian":{"ok":true,"status":"Valid","db_type":"POSTGRES","database":"FluxyPostgres","error":""},"questdb":{"ok":true,"dsn":"qdb","trace_points":1}}',
+                    "stderr": "",
+                },
+            )()
+        return Result()
+
+    def fake_check_http(url, timeout=3.0):
+        return (url == flux.WEB_URL, "HTTP 200" if url == flux.WEB_URL else "connection refused")
+
+    monkeypatch.setattr(flux, "capture", fake_capture)
+    monkeypatch.setattr(flux, "check_http", fake_check_http)
+    monkeypatch.setattr(flux, "check_port", lambda host, port, timeout=2.0: (True, "listening"))
+
+    status = flux.doctor()
+
+    output = capsys.readouterr().out
+    assert status == 1
+    assert "[FAIL] Flux docs: http://localhost:8001/ connection refused" in output
+    assert "fix: flux docs serve" in output

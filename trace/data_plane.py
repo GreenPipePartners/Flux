@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from django.db import connection
-from django.utils import timezone
 
 from flux.trace.models import TraceCachePoint, TraceSignal
 
@@ -54,15 +53,47 @@ def postgres_trace_payload_json(
                 end_ts
             FROM bounds
         ),
-        grid AS (
-            SELECT generate_series(time_window.start_ts, time_window.end_ts - (%s::int * interval '1 minute'), %s::int * interval '1 minute') AS ts
-            FROM time_window
+        raw_points AS (
+            SELECT
+                s.id AS signal_id,
+                p.timestamp,
+                p.value_float,
+                CASE
+                    WHEN %s::int > 1
+                    THEN floor((EXTRACT(EPOCH FROM p.timestamp) - EXTRACT(EPOCH FROM time_window.start_ts)) / (%s::int * 60))::bigint
+                    ELSE EXTRACT(EPOCH FROM p.timestamp)::bigint
+                END AS bucket
+            FROM visible_signals s
+            CROSS JOIN time_window
+            JOIN {point_table} p ON p.signal_id = s.id
+            WHERE p.timestamp >= time_window.start_ts AND p.timestamp < time_window.end_ts
+        ),
+        bucketed_points AS (
+            SELECT DISTINCT ON (signal_id, bucket)
+                signal_id,
+                timestamp,
+                value_float
+            FROM raw_points
+            ORDER BY signal_id, bucket, timestamp DESC
+        ),
+        x_values AS (
+            SELECT epoch
+            FROM (
+                SELECT DISTINCT EXTRACT(EPOCH FROM timestamp)::bigint AS epoch
+                FROM bucketed_points
+            ) values_by_epoch
+            ORDER BY epoch
+        ),
+        x_payload AS (
+            SELECT COALESCE(jsonb_agg(epoch ORDER BY epoch), '[]'::jsonb) AS x_values
+            FROM x_values
         ),
         series_payload AS (
             SELECT
                 s.id,
+                s.sort_order,
                 jsonb_build_object(
-                    'rawCount', %s::int,
+                    'rawCount', COUNT(bp.value_float)::int,
                     'tagId', s.tag_id,
                     'signalId', s.id,
                     'name', s.name,
@@ -70,11 +101,11 @@ def postgres_trace_payload_json(
                     'unit', s.unit,
                     'axisKey', s.axis_key,
                     'x', '[]'::jsonb,
-                    'y', jsonb_agg(p.value_float ORDER BY g.ts)
+                    'y', COALESCE(jsonb_agg(bp.value_float ORDER BY xv.epoch) FILTER (WHERE xv.epoch IS NOT NULL), '[]'::jsonb)
                 ) AS series_json
             FROM visible_signals s
-            CROSS JOIN grid g
-            LEFT JOIN {point_table} p ON p.signal_id = s.id AND p.timestamp = g.ts
+            LEFT JOIN x_values xv ON true
+            LEFT JOIN bucketed_points bp ON bp.signal_id = s.id AND EXTRACT(EPOCH FROM bp.timestamp)::bigint = xv.epoch
             GROUP BY s.id, s.tag_id, s.name, s.full_path, s.unit, s.axis_key, s.sort_order
         ),
         axis_payload AS (
@@ -93,15 +124,11 @@ def postgres_trace_payload_json(
                 FROM visible_signals s
                 ORDER BY s.axis_key, s.sort_order
             ) grouped_axes
-        ),
-        x_payload AS (
-            SELECT jsonb_agg(EXTRACT(EPOCH FROM g.ts)::bigint ORDER BY g.ts) AS x_values
-            FROM grid g
         )
         SELECT jsonb_build_object(
             'traceChart', jsonb_build_object(
                 'x', COALESCE((SELECT x_values FROM x_payload), '[]'::jsonb),
-                'series', COALESCE((SELECT jsonb_agg(series_json ORDER BY id) FROM series_payload), '[]'::jsonb),
+                'series', COALESCE((SELECT jsonb_agg(series_json ORDER BY sort_order, id) FROM series_payload), '[]'::jsonb),
                 'axisGroups', COALESCE((SELECT axis_groups FROM axis_payload), '[]'::jsonb),
                 'latestReadAt', (SELECT (end_ts - interval '1 minute')::text FROM time_window),
                 'windowDays', (%s::float / 1440.0),
@@ -125,7 +152,6 @@ def postgres_trace_payload_json(
         window_minutes,
         step_minutes,
         step_minutes,
-        window_minutes // step_minutes,
         window_minutes,
         window_minutes,
         step_minutes,

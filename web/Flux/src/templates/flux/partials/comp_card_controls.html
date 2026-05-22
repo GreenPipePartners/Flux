@@ -1,0 +1,40 @@
+<nav class="comp-card-mode-controls" aria-label="Comp card view mode">
+  {% firstof target_id card_id|add:"-comp-card" as comp_target_id %}
+  <button
+    class="comp-card-mode-control{% if current_mode == 'summary' %} is-active{% endif %}"
+    type="button"
+    hx-get="?card={{ card_id }}&mode=summary"
+    hx-target="#{{ comp_target_id }}"
+    hx-select="#{{ comp_target_id }}"
+    hx-swap="outerHTML show:none"
+    aria-label="Show summary view"
+    aria-pressed="{% if current_mode == 'summary' %}true{% else %}false{% endif %}"
+    title="Show summary view"
+  >{% if current_mode == 'summary' %}[↖]{% else %}↖{% endif %}</button>
+  {% if show_detail %}
+    <button
+      class="comp-card-mode-control{% if current_mode == 'detail' %} is-active{% endif %}"
+      type="button"
+      hx-get="?card={{ card_id }}&mode=detail"
+      hx-target="#{{ comp_target_id }}"
+      hx-select="#{{ comp_target_id }}"
+      hx-swap="outerHTML show:none"
+      aria-label="Show detail view"
+      aria-pressed="{% if current_mode == 'detail' %}true{% else %}false{% endif %}"
+      title="Show detail view"
+    >{% if current_mode == 'detail' %}[↘]{% else %}↘{% endif %}</button>
+  {% endif %}
+  {% if show_configure %}
+    <button
+      class="comp-card-mode-control{% if current_mode == 'configure' %} is-active{% endif %}"
+      type="button"
+      hx-get="?card={{ card_id }}&mode=configure"
+      hx-target="#{{ comp_target_id }}"
+      hx-select="#{{ comp_target_id }}"
+      hx-swap="outerHTML show:none"
+      aria-label="Show configure view"
+      aria-pressed="{% if current_mode == 'configure' %}true{% else %}false{% endif %}"
+      title="Show configure view"
+    >{% if current_mode == 'configure' %}[⚙]{% else %}⚙{% endif %}</button>
+  {% endif %}
+</nav>

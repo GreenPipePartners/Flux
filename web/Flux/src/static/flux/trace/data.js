@@ -60,19 +60,53 @@ export function newestTraceTime(aligned) {
 }
 
 export function mergeLiveSeries(liveTraceData, seriesPayload) {
+  if (liveTraceData.sharedX) {
+    mergeSharedXSeries(liveTraceData, seriesPayload);
+    return;
+  }
+  const incomingSharedX = seriesPayload.x || [];
   for (const incoming of seriesPayload.series) {
     let existing = liveTraceData.find((series) => series.tagId === incoming.tagId);
     if (!existing) {
-      existing = { x: [], y: [], name: incoming.name, fullPath: incoming.fullPath, tagId: incoming.tagId };
+      existing = { x: [], y: [], name: incoming.name, fullPath: incoming.fullPath, tagId: incoming.tagId, axisKey: incoming.axisKey, unit: incoming.unit };
       liveTraceData.push(existing);
     }
+    const incomingTimes = incoming.x.length ? incoming.x : incomingSharedX;
     const existingTimes = new Set(existing.x);
-    for (let index = 0; index < incoming.x.length; index += 1) {
-      const time = incoming.x[index];
+    for (let index = 0; index < incomingTimes.length; index += 1) {
+      const time = incomingTimes[index];
       if (existingTimes.has(time)) continue;
       existingTimes.add(time);
       existing.x.push(time);
       existing.y.push(incoming.y[index]);
+    }
+  }
+}
+
+function mergeSharedXSeries(liveTraceData, seriesPayload) {
+  const incomingX = seriesPayload.x || [];
+  const existingTimes = new Set(liveTraceData.sharedX);
+  const appendedIndexes = [];
+  for (let index = 0; index < incomingX.length; index += 1) {
+    const time = incomingX[index];
+    if (existingTimes.has(time)) continue;
+    existingTimes.add(time);
+    liveTraceData.sharedX.push(time);
+    appendedIndexes.push([index, liveTraceData.sharedX.length - 1]);
+  }
+  if (!appendedIndexes.length) return;
+
+  for (const series of liveTraceData) {
+    for (let index = 0; index < appendedIndexes.length; index += 1) series.y.push(null);
+  }
+  for (const incoming of seriesPayload.series) {
+    let existing = liveTraceData.find((series) => series.tagId === incoming.tagId);
+    if (!existing) {
+      existing = { x: [], y: new Array(liveTraceData.sharedX.length).fill(null), name: incoming.name, fullPath: incoming.fullPath, tagId: incoming.tagId, axisKey: incoming.axisKey, unit: incoming.unit };
+      liveTraceData.push(existing);
+    }
+    for (const [incomingIndex, sharedIndex] of appendedIndexes) {
+      existing.y[sharedIndex] = incoming.y[incomingIndex];
     }
   }
 }

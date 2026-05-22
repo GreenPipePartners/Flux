@@ -1,0 +1,9 @@
+<div
+  id="live-scope-refresh-panel"
+  class="live-refresh-panel"
+  hx-get="{% url 'live:scope_cards' scope_slug %}?group={{ selected_group|lower|urlencode }}"
+  hx-trigger="every 1s"
+  hx-swap="outerHTML"
+>
+  {% include "live/partials/pad_overview_content.html" %}
+</div>

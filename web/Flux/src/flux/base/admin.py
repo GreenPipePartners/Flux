@@ -1,12 +1,12 @@
 from django.contrib import admin
 
-from .models import FieldAgentHeartbeat, FieldDevice, FieldEndpoint, FieldNode, FieldTag, SimDevice, SimDeviceTag, SimDriver, TagNode, TagProvider, TagSelection
+from .models import FieldAgentHeartbeat, FieldDevice, FieldEndpoint, FieldNode, FieldTag, SimDevice, SimDeviceTag, SimDriver, SimServer, TagNode, TagProvider, TagSelection
 
 
 @admin.register(TagProvider)
 class TagProviderAdmin(admin.ModelAdmin):
-    list_display = ("name", "source", "source_name", "total_nodes", "atomic_tag_count", "imported_at")
-    list_filter = ("source",)
+    list_display = ("name", "sim_server", "source", "source_name", "total_nodes", "atomic_tag_count", "imported_at")
+    list_filter = ("source", "sim_server")
     search_fields = ("name", "source_name")
 
 
@@ -24,6 +24,13 @@ class TagSelectionAdmin(admin.ModelAdmin):
     list_filter = ("purpose", "enabled", "provider")
     search_fields = ("provider__name", "path")
     list_select_related = ("provider",)
+
+
+@admin.register(SimServer)
+class SimServerAdmin(admin.ModelAdmin):
+    list_display = ("name", "endpoint_url", "enabled", "security_policy")
+    list_filter = ("enabled", "security_policy")
+    search_fields = ("name", "endpoint_url", "namespace_uri")
 
 
 @admin.register(SimDriver)

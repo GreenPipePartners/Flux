@@ -4,6 +4,7 @@ Flux is performance-first Ignition companion tooling. If a path creates unnecess
 
 Start here:
 
+- `docs/index.md`: MkDocs landing page for the local docs site.
 - `docs/operator-guide.md`: local `flux` CLI, background service, dashboard, and health workflow.
 - `docs/flux-architecture.md`: high-level system boundaries and ownership.
 - `docs/ignition-dev-cell.md`: managed local Ignition dev-cell commands.
@@ -24,6 +25,14 @@ flux start
 flux doctor
 ```
 
+Local docs loop:
+
+```bash
+flux docs serve
+flux docs open
+flux docs build
+```
+
 Current field simulation loop from `tag_data/`:
 
 ```bash
@@ -38,6 +47,7 @@ Main local URLs:
 
 ```text
 Flux web UI:      http://localhost:8000/
+Docs server:      http://localhost:8001/
 Live view:        http://localhost:8000/live/
 Trace:            http://localhost:8000/trace/
 Ignition Gateway: http://localhost:8088/web/home

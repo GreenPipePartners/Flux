@@ -1,18 +1,12 @@
 {% extends "flux/base.html" %}
+{% load nav_extras %}
 
 {% block title %}Flux Runtime Dashboard{% endblock %}
 
 {% block content %}
 <section class="hero">
   <div>
-    <p class="eyebrow">Flux service console</p>
-    <h1>Service readiness</h1>
-    <p>Current Flux runtime, FieldAgent, and latest-read status for this local dev cell.</p>
-    <div class="actions">
-      <a class="button" href="{% url 'live:index' %}">Open live view</a>
-      <a class="button button-secondary" href="{% url 'serve:index' %}">Serve status</a>
-      <a class="button button-secondary" href="{% url 'admin:runtime_runtimetag_changelist' %}">Configure tags</a>
-    </div>
+    <h1>Command Center</h1>
   </div>
   <div class="service-summary service-summary-{{ service_state }}">
     <span class="eyebrow">Overall</span>
@@ -22,170 +16,235 @@
   </div>
 </section>
 
-<section class="readiness-grid" aria-label="Flux readiness checks">
-  {% for item in readiness %}
-    <article class="readiness-card readiness-{{ item.state }}">
-      <div>
-        <span class="status-dot" aria-hidden="true"></span>
-        <p class="eyebrow">{{ item.state }}</p>
-        <h2>{{ item.label }}</h2>
-      </div>
-      <p>{{ item.detail }}</p>
-      {% if item.action_url %}<a href="{{ item.action_url }}">{{ item.action_label }}</a>{% endif %}
+<section id="dashboard-comp-surface" data-comp-surface data-selected-card="{{ request.GET.card }}" data-comp-mode="{{ request.GET.mode|default:'summary' }}">
+{% if request.GET.mode == "detail" or request.GET.mode == "configure" %}
+<section id="dashboard-comp-focus" class="comp-focus-region">
+  {% if request.GET.card == "bridges" %}
+    <article id="bridges-comp-focus" class="panel comp-focus" data-comp-focus data-comp-card="bridges" data-comp-mode="{{ request.GET.mode }}" tabindex="-1">
+      <button class="copy-corner" type="button" data-bridge-copy data-copy-docs-url="{{ bridge_copy_docs_url }}" aria-label="Copy Ignition bridge context" title="Copy Ignition bridge context"></button>
+      <template data-bridge-copy-table>{{ bridge_copy_table_markdown }}</template>
+      <template data-bridge-copy-llm>{{ bridge_copy_llm_markdown }}</template>
+      <section data-comp-view="detail">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Configured bridges</p>
+            <h2>Production and simulator gateways</h2>
+          </div>
+          <span class="status-pill">{{ bridge_status.total_count }} bridges</span>
+        </div>
+        <div class="bridge-mini-list">
+          {% for bridge in bridge_status.configs %}
+            <div class="bridge-mini-row bridge-config-row-{{ bridge.status_label }}">
+              <strong>{{ bridge.name }} / {{ bridge.get_role_display }}</strong>
+              <small>{{ bridge.base_url }}</small>
+              <span class="bridge-status-line">
+                <span class="status-pill bridge-status-{{ bridge.status_label }}">{{ bridge.status_label|title }}</span>
+                <span class="status-pill bridge-token-{% if bridge.token %}set{% else %}missing{% endif %}">{% if bridge.token %}Token set{% else %}No token{% endif %}</span>
+                {% if bridge.last_test_at %}<small>Tested {{ bridge.last_test_at }}</small>{% endif %}
+              </span>
+              {% if bridge.last_test_summary %}<small class="bridge-message">{{ bridge.last_test_summary }}</small>{% endif %}
+            </div>
+          {% empty %}
+            <p class="muted">No Flux.bridge endpoints configured yet.</p>
+          {% endfor %}
+        </div>
+      </section>
+      {% if request.GET.mode == "configure" %}
+        <section class="comp-configure-panel" data-comp-view="configure">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Configure</p>
+              <h2>Bridge endpoints</h2>
+            </div>
+          </div>
+          <form method="post" class="form-stack" hx-post="{% url 'dashboard:home' %}?card=bridges&mode=configure" hx-target="#dashboard-comp-surface" hx-select="#dashboard-comp-surface" hx-swap="outerHTML show:none">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="save_bridge">
+            <label>Name {{ bridge_form.name }}</label>
+            <label>Role {{ bridge_form.role }}</label>
+            <label>Fluxy base URL {{ bridge_form.base_url }}</label>
+            <label>Token {{ bridge_form.token }}</label>
+            <label class="checkbox-row">{{ bridge_form.clear_token }} Clear stored token</label>
+            {% if bridge_form.errors %}<p class="error-text">{{ bridge_form.errors }}</p>{% endif %}
+            <button class="button" type="submit">Save bridge</button>
+          </form>
+          <p class="muted">Leaving token blank preserves an existing token when updating a bridge by name. Tokens are never rendered back into this page.</p>
+          {% if bridge_status.configs %}
+            <div class="stale-list">
+              {% for bridge in bridge_status.configs %}
+                <div class="stale-row bridge-config-row bridge-config-row-{{ bridge.status_label }}">
+                  <div>
+                    <strong>{{ bridge.name }} / {{ bridge.get_role_display }}</strong>
+                    <small>{{ bridge.base_url }}</small>
+                  </div>
+                  <form method="post" class="inline-form" hx-post="{% url 'dashboard:home' %}?card=bridges&mode=configure" hx-target="#dashboard-comp-surface" hx-select="#dashboard-comp-surface" hx-swap="outerHTML show:none">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="test_bridge">
+                    <input type="hidden" name="bridge_id" value="{{ bridge.id }}">
+                    <button class="button button-secondary" type="submit">Test</button>
+                  </form>
+                  <form method="post" class="inline-form" hx-post="{% url 'dashboard:home' %}?card=bridges&mode=configure" hx-target="#dashboard-comp-surface" hx-select="#dashboard-comp-surface" hx-swap="outerHTML show:none">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete_bridge">
+                    <input type="hidden" name="bridge_id" value="{{ bridge.id }}">
+                    <button class="button button-secondary" type="submit">Delete</button>
+                  </form>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </section>
+      {% endif %}
+      {% include "flux/partials/comp_card_controls.html" with card_id="bridges" current_mode=request.GET.mode show_detail=True show_configure=True target_id="dashboard-comp-surface" %}
     </article>
+  {% elif request.GET.card == "sim-config" %}
+    <article id="sim-config-comp-focus" class="panel comp-focus" data-comp-focus data-comp-card="sim-config" data-comp-mode="{{ request.GET.mode }}" tabindex="-1" {% if device_status.refresh_endpoint_state %}hx-get="{% url 'dashboard:home' %}?card=sim-config&mode={{ request.GET.mode }}" hx-trigger="every 2s" hx-target="#dashboard-comp-surface" hx-select="#dashboard-comp-surface" hx-swap="outerHTML show:none"{% endif %}>
+      <button class="copy-corner" type="button" data-flux-link-copy data-copy-docs-url="{{ simserver_copy.docs_url }}" aria-label="Copy SimServer context" title="Copy SimServer context"></button>
+      <template data-flux-link-copy-table>{{ simserver_copy.table }}</template><template data-flux-link-copy-llm>{{ simserver_copy.llm }}</template>
+      <section data-comp-view="detail"><div class="panel-header"><div><p class="eyebrow">Flux.sim</p><h2>Runtime Connection</h2></div><span class="status-pill">{{ device_status.running_endpoint_count }}/{{ device_status.enabled_endpoint_count }} OPC servers running</span></div><p class="muted">SimServer endpoints are the running OPC side of Flux.sim and are supervised by Flux.serve. {{ device_status.enabled_device_count }} configured device namespaces, {{ device_status.enabled_tag_count }} field tags{% if device_status.latest_seen_at %} · latest heartbeat {{ device_status.latest_seen_at }}{% endif %}</p><div class="stale-list">{% for item in device_status.endpoint_items %}<div class="stale-row"><div><strong>{{ item.endpoint.name }}</strong><small>{{ item.endpoint.status }} · {{ item.enabled_device_count }} device namespaces · {{ item.enabled_tag_count }} tags{% if item.age_seconds != None %} · seen {{ item.age_seconds }}s ago{% endif %}</small>{% if item.endpoint.last_error %}<small>{{ item.endpoint.last_error }}</small>{% endif %}</div></div>{% empty %}<p class="muted">No Flux.sim OPC runtime endpoints configured yet.</p>{% endfor %}</div></section>
+      {% if request.GET.mode == "configure" %}<section class="comp-configure-panel" data-comp-view="configure"><div class="panel-header"><div><p class="eyebrow">Configure</p><h2>OPC server runtime</h2></div></div><div class="stale-list">{% for item in device_status.endpoint_items %}<div class="stale-row"><div><strong>{{ item.endpoint.name }}</strong><small>{{ item.endpoint.status }}</small></div>{% if item.online %}<form method="post" class="inline-form" hx-post="{% url 'dashboard:home' %}?card=sim-config&mode=configure" hx-target="#dashboard-comp-surface" hx-select="#dashboard-comp-surface" hx-swap="outerHTML show:none">{% csrf_token %}<input type="hidden" name="action" value="stop_sim_server"><input type="hidden" name="endpoint_id" value="{{ item.endpoint.id }}"><button class="button button-secondary" type="submit">■ Stop</button></form>{% elif item.endpoint.enabled and item.endpoint.status == "starting" %}<button class="button button-secondary" type="button" disabled>Starting...</button>{% else %}<form method="post" class="inline-form" hx-post="{% url 'dashboard:home' %}?card=sim-config&mode=configure" hx-target="#dashboard-comp-surface" hx-select="#dashboard-comp-surface" hx-swap="outerHTML show:none">{% csrf_token %}<input type="hidden" name="action" value="start_sim_server"><input type="hidden" name="endpoint_id" value="{{ item.endpoint.id }}"><button class="button button-secondary" type="submit">▶ Start</button></form>{% endif %}</div>{% endfor %}</div></section>{% endif %}
+      {% include "flux/partials/comp_card_controls.html" with card_id="sim-config" current_mode=request.GET.mode show_detail=True show_configure=True target_id="dashboard-comp-surface" %}
+    </article>
+  {% elif request.GET.card == "live" %}
+    <article id="live-comp-focus" class="panel comp-focus" data-comp-focus data-comp-card="live" data-comp-mode="{{ request.GET.mode }}" tabindex="-1">
+      <button class="copy-corner" type="button" data-flux-link-copy data-copy-docs-url="{{ stale_recovery_copy.docs_url }}" aria-label="Copy Flux.live stale recovery context" title="Copy Flux.live stale recovery context"></button>
+      <template data-flux-link-copy-table>{{ stale_recovery_copy.table }}</template>
+      <template data-flux-link-copy-llm>{{ stale_recovery_copy.llm }}</template>
+      <section data-comp-view="detail"><div class="panel-header"><div><p class="eyebrow">Flux.live</p><h2>Stale tag recovery</h2></div><span class="status-pill">{{ stale_count }} stale</span></div><p class="muted">Refresh stale runtime tags with one consolidated Fluxy block read.</p>{% if stale_tag_items %}<div class="stale-list">{% for item in stale_tag_items %}<div class="stale-row"><div><strong>{{ item.tag.asset_name|default:"-" }} / {{ item.tag.display_name }}</strong><small>{{ item.reason }}{% if item.age_seconds %} · {{ item.age_seconds }}s old{% endif %}</small></div><a href="{{ item.admin_url }}">Inspect</a></div>{% endfor %}{% if stale_tag_overflow %}<p class="muted">{{ stale_tag_overflow }} more stale tags not shown.</p>{% endif %}</div>{% else %}<p class="muted">No stale runtime tags detected.</p>{% endif %}</section>
+      {% if request.GET.mode == "configure" %}<section class="comp-configure-panel" data-comp-view="configure"><div class="panel-header"><div><p class="eyebrow">Configure</p><h2>Flux.live inputs</h2></div></div><form method="post" class="form-stack" hx-post="{% url 'dashboard:home' %}?card=live&mode=configure" hx-target="#dashboard-comp-surface" hx-select="#dashboard-comp-surface" hx-swap="outerHTML show:none">{% csrf_token %}<input type="hidden" name="action" value="save_live_refresh_lanes"><div class="stage-grid">{% for lane in live_refresh_lanes %}<article class="stage-card"><span>{{ lane.name|title }}</span><label>Refresh seconds <input name="{{ lane.name }}_interval_seconds" type="number" min="1" value="{{ lane.interval_seconds }}" required></label><p>{{ lane.max_batch_size }} max tags · priority {{ lane.priority }}</p></article>{% endfor %}</div><button class="button" type="submit">Save refresh intervals</button></form><form method="post" class="form-stack" hx-post="{% url 'dashboard:home' %}?card=live&mode=configure" hx-target="#dashboard-comp-surface" hx-select="#dashboard-comp-surface" hx-swap="outerHTML show:none">{% csrf_token %}<input type="hidden" name="action" value="refresh_stale">{% for item in stale_tag_items %}<input type="hidden" name="stale_tag_id" value="{{ item.tag.id }}">{% endfor %}<button class="button button-secondary" type="submit"{% if not stale_tag_items %} disabled{% endif %}>Refresh stale reads now</button></form><form method="post" class="form-stack" enctype="multipart/form-data" hx-post="{% url 'dashboard:home' %}?card=live&mode=configure" hx-target="#dashboard-comp-surface" hx-select="#dashboard-comp-surface" hx-swap="outerHTML show:none">{% csrf_token %}<input type="hidden" name="action" value="import_live_scope_csv"><label>Live scope CSV <input type="file" name="live_scope_csv" accept=".csv,text/csv" required></label><label>Default scope slug <input name="live_scope" placeholder="pad-overview"></label><label class="checkbox-row"><input type="checkbox" name="replace_live_scope"> Replace existing cards for imported scopes</label><button class="button button-secondary" type="submit">Import live CSV</button></form>{% if live_scopes %}<div class="stale-list">{% for scope in live_scopes %}<div class="stale-row"><div><strong>{{ scope.name }}</strong><small>{{ scope.slug }}</small></div><a href="{% url 'live:scope_detail' scope.slug %}">Open</a></div>{% endfor %}</div>{% endif %}</section>{% endif %}
+      {% include "flux/partials/comp_card_controls.html" with card_id="live" current_mode=request.GET.mode show_detail=True show_configure=True target_id="dashboard-comp-surface" %}
+    </article>
+  {% elif request.GET.card == "trace" %}
+    <article id="trace-comp-focus" class="panel comp-focus" data-comp-focus data-comp-card="trace" data-comp-mode="{{ request.GET.mode }}" tabindex="-1">
+      {% for item in readiness %}{% if item.label == "Flux.trace" %}{% if item.copy_table_markdown %}<button class="copy-corner" type="button" data-flux-link-copy data-copy-docs-url="{{ item.copy_docs_url }}" aria-label="Copy Flux.trace context" title="Copy Flux.trace context"></button><template data-flux-link-copy-table>{{ item.copy_table_markdown }}</template><template data-flux-link-copy-llm>{{ item.copy_llm_markdown }}</template>{% endif %}{% endif %}{% endfor %}
+      <section data-comp-view="detail"><div class="panel-header"><div><p class="eyebrow">Flux.trace</p><h2>Trace charts</h2></div><span class="status-pill">{{ trace_profiles|length }} charts</span></div><p class="muted">Configured historical chart endpoints. Open a chart to inspect the trace surface and cached signal set.</p><div class="stale-list"><div class="stale-row"><div><strong>Navigation wells</strong><small>Generic rotating well trace endpoint</small></div><a href="{% url 'trace:nav-well-trace' %}">Open</a></div>{% for profile in trace_profiles %}<div class="stale-row"><div><strong>{{ profile.label }}</strong><small>{{ profile.key }} · {{ profile.signals.count }} signals</small></div><a href="{% url 'trace:scope-profile' profile.key %}">Open</a></div>{% empty %}<p class="muted">No Flux.trace charts imported yet.</p>{% endfor %}</div></section>
+      {% if request.GET.mode == "configure" %}<section class="comp-configure-panel" data-comp-view="configure"><div class="panel-header"><div><p class="eyebrow">Configure</p><h2>Import trace CSV</h2></div></div><form method="post" class="form-stack" enctype="multipart/form-data" hx-post="{% url 'dashboard:home' %}?card=trace&mode=configure" hx-target="#dashboard-comp-surface" hx-select="#dashboard-comp-surface" hx-swap="outerHTML show:none">{% csrf_token %}<input type="hidden" name="action" value="import_trace_scope_csv"><label>Trace scope CSV <input type="file" name="trace_scope_csv" accept=".csv,text/csv" required></label><p class="muted">Imports CSV-defined Flux.trace scopes into TraceProfile, RuntimeTag, and TraceSignal records.</p><button class="button" type="submit">Import trace CSV</button></form></section>{% endif %}
+      {% include "flux/partials/comp_card_controls.html" with card_id="trace" current_mode=request.GET.mode show_detail=True show_configure=True target_id="dashboard-comp-surface" %}
+    </article>
+  {% elif request.GET.card == "serve" %}
+    <article id="serve-comp-focus" class="panel comp-focus" data-comp-focus data-comp-card="serve" data-comp-mode="{{ request.GET.mode }}" tabindex="-1">
+      <button class="copy-corner" type="button" data-flux-link-copy data-copy-docs-url="{{ serve_copy.docs_url }}" aria-label="Copy Flux.serve context" title="Copy Flux.serve context"></button><template data-flux-link-copy-table>{{ serve_copy.table }}</template><template data-flux-link-copy-llm>{{ serve_copy.llm }}</template>
+      {% if serve_status.source == "snapshots" %}<section data-comp-view="detail"><div class="panel-header"><div><p class="eyebrow">Observed service health</p><h2>Flux.serve</h2></div><span class="status-pill">{{ serve_status.ok_count }}/{{ serve_status.total_count }} services healthy</span></div><p class="muted">Observed service health is the consolidated Flux.serve platform view. Raw process heartbeats are retained as evidence.</p>{% if serve_status.items %}<div class="stale-list">{% for item in serve_status.items %}<div class="stale-row"><div><strong>{{ item.service_key }}</strong><small>{{ item.observed_state }} · {{ item.severity }}{% if item.age_seconds != None %} · checked {{ item.age_seconds }}s ago{% endif %}</small>{% if item.summary %}<small>{{ item.summary }}</small>{% endif %}</div></div>{% endfor %}</div>{% else %}<p class="muted">No service snapshots recorded yet.</p>{% endif %}<div class="actions"><a class="button button-secondary" href="{% url 'serve:index' %}">Service Platform</a></div></section>{% else %}<section data-comp-view="detail"><div class="panel-header"><div><p class="eyebrow">Service heartbeats</p><h2>Flux.serve</h2></div><span class="status-pill">{{ serve_status.running_count }}/{{ serve_status.total_count }} services running</span></div><p class="muted">Heartbeat rows describe supervisor and worker health. Stale rows are artifacts until deleted or refreshed.</p>{% if serve_status.items %}<div class="stale-list">{% for item in serve_status.items %}<div class="stale-row"><div><strong>{{ item.heartbeat.service_name }} / {{ item.heartbeat.instance_id }}</strong><small>{{ item.state }}{% if item.age_seconds != None %} · {{ item.age_seconds }}s old{% endif %}</small></div></div>{% endfor %}</div>{% else %}<p class="muted">No worker heartbeats recorded yet.</p>{% endif %}<div class="actions"><a class="button button-secondary" href="{% url 'serve:index' %}">Serve Logs</a></div></section>{% endif %}
+      {% include "flux/partials/comp_card_controls.html" with card_id="serve" current_mode=request.GET.mode show_detail=True target_id="dashboard-comp-surface" %}
+    </article>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="readiness-grid" aria-label="Flux readiness checks" data-comp-card-grid>
+  {% for item in readiness %}
+    {% if item.label == "Flux.bridge" %}
+    {% if request.GET.card == "bridges" %}{% firstof request.GET.mode "summary" as bridges_mode %}{% else %}{% firstof "summary" as bridges_mode %}{% endif %}
+    <article id="bridges-comp-card" class="readiness-card readiness-{{ item.state }} comp-card{% if request.GET.card == 'bridges' and request.GET.mode != 'summary' %} comp-card-anchor{% endif %}" data-comp-card data-comp-card-mode="{{ bridges_mode }}">
+      <button
+        class="copy-corner"
+        type="button"
+        data-bridge-copy
+        data-copy-docs-url="{{ bridge_copy_docs_url }}"
+        aria-label="Copy Ignition bridge context"
+        title="Copy Ignition bridge context"
+      ></button>
+      <template data-bridge-copy-table>{{ bridge_copy_table_markdown }}</template>
+      <template data-bridge-copy-llm>{{ bridge_copy_llm_markdown }}</template>
+      <section data-comp-view="summary">
+        <div>
+          <span class="status-dot" aria-hidden="true"></span>
+          <p class="eyebrow">{{ item.state }}</p>
+          <h2>{{ item.label }}</h2>
+        </div>
+        <p>{% for line in item.detail_lines %}<span class="readiness-detail-line">{{ line }}</span>{% endfor %}</p>
+      </section>
+      {% include "flux/partials/comp_card_controls.html" with card_id="bridges" current_mode=bridges_mode show_detail=True show_configure=True target_id="dashboard-comp-surface" %}
+    </article>
+    {% elif item.label == "Flux.sim" %}
+    {% if request.GET.card == "sim-config" %}{% firstof request.GET.mode "summary" as sim_config_mode %}{% else %}{% firstof "summary" as sim_config_mode %}{% endif %}
+    <article id="sim-config-comp-card" class="readiness-card readiness-{{ item.state }} comp-card{% if request.GET.card == 'sim-config' and request.GET.mode != 'summary' %} comp-card-anchor{% endif %}" data-comp-card data-comp-card-mode="{{ sim_config_mode }}">
+      {% if item.copy_table_markdown %}
+        <button class="copy-corner" type="button" data-flux-link-copy data-copy-docs-url="{{ item.copy_docs_url }}" aria-label="Copy {{ item.label }} context" title="Copy {{ item.label }} context"></button>
+        <template data-flux-link-copy-table>{{ item.copy_table_markdown }}</template>
+        <template data-flux-link-copy-llm>{{ item.copy_llm_markdown }}</template>
+      {% endif %}
+      <section data-comp-view="summary">
+        <div><span class="status-dot" aria-hidden="true"></span><p class="eyebrow">{{ item.state }}</p><h2>{{ item.label }}</h2></div>
+        <p>{% for line in item.detail_lines %}<span class="readiness-detail-line">{{ line }}</span>{% endfor %}</p>
+      </section>
+      {% include "flux/partials/comp_card_controls.html" with card_id="sim-config" current_mode=sim_config_mode show_detail=True show_configure=True target_id="dashboard-comp-surface" %}
+    </article>
+    {% elif item.label == "Flux.live" %}
+    {% if request.GET.card == "live" %}{% firstof request.GET.mode "summary" as live_mode %}{% else %}{% firstof "summary" as live_mode %}{% endif %}
+    <article id="live-comp-card" class="readiness-card readiness-{{ item.state }} comp-card{% if request.GET.card == 'live' and request.GET.mode != 'summary' %} comp-card-anchor{% endif %}" data-comp-card data-comp-card-mode="{{ live_mode }}">
+      {% if item.copy_table_markdown %}
+        <button class="copy-corner" type="button" data-flux-link-copy data-copy-docs-url="{{ item.copy_docs_url }}" aria-label="Copy {{ item.label }} context" title="Copy {{ item.label }} context"></button>
+        <template data-flux-link-copy-table>{{ item.copy_table_markdown }}</template>
+        <template data-flux-link-copy-llm>{{ item.copy_llm_markdown }}</template>
+      {% endif %}
+      <section data-comp-view="summary">
+        <div><span class="status-dot" aria-hidden="true"></span><p class="eyebrow">{{ item.state }}</p><h2>{{ item.label }}</h2></div>
+        <p>{% for line in item.detail_lines %}<span class="readiness-detail-line">{{ line }}</span>{% endfor %}</p>
+      </section>
+      {% include "flux/partials/comp_card_controls.html" with card_id="live" current_mode=live_mode show_detail=True show_configure=True target_id="dashboard-comp-surface" %}
+    </article>
+    {% elif item.label == "Flux.trace" %}
+    {% if request.GET.card == "trace" %}{% firstof request.GET.mode "summary" as trace_mode %}{% else %}{% firstof "summary" as trace_mode %}{% endif %}
+    <article id="trace-comp-card" class="readiness-card readiness-{{ item.state }} comp-card{% if request.GET.card == 'trace' and request.GET.mode != 'summary' %} comp-card-anchor{% endif %}" data-comp-card data-comp-card-mode="{{ trace_mode }}">
+      {% if item.copy_table_markdown %}
+        <button class="copy-corner" type="button" data-flux-link-copy data-copy-docs-url="{{ item.copy_docs_url }}" aria-label="Copy {{ item.label }} context" title="Copy {{ item.label }} context"></button>
+        <template data-flux-link-copy-table>{{ item.copy_table_markdown }}</template>
+        <template data-flux-link-copy-llm>{{ item.copy_llm_markdown }}</template>
+      {% endif %}
+      <section data-comp-view="summary">
+        <div><span class="status-dot" aria-hidden="true"></span><p class="eyebrow">{{ item.state }}</p><h2>{{ item.label }}</h2></div>
+        <p>{% for line in item.detail_lines %}<span class="readiness-detail-line">{{ line }}</span>{% endfor %}</p>
+      </section>
+      {% include "flux/partials/comp_card_controls.html" with card_id="trace" current_mode=trace_mode show_detail=True show_configure=True target_id="dashboard-comp-surface" %}
+    </article>
+    {% elif item.label == "Flux.serve" %}
+    {% if request.GET.card == "serve" %}{% firstof request.GET.mode "summary" as serve_mode %}{% else %}{% firstof "summary" as serve_mode %}{% endif %}
+    <article id="serve-comp-card" class="readiness-card readiness-{{ item.state }} comp-card{% if request.GET.card == 'serve' and request.GET.mode != 'summary' %} comp-card-anchor{% endif %}" data-comp-card data-comp-card-mode="{{ serve_mode }}">
+      {% if item.copy_table_markdown %}
+        <button class="copy-corner" type="button" data-flux-link-copy data-copy-docs-url="{{ item.copy_docs_url }}" aria-label="Copy {{ item.label }} context" title="Copy {{ item.label }} context"></button>
+        <template data-flux-link-copy-table>{{ item.copy_table_markdown }}</template>
+        <template data-flux-link-copy-llm>{{ item.copy_llm_markdown }}</template>
+      {% endif %}
+      <section data-comp-view="summary">
+        <div><span class="status-dot" aria-hidden="true"></span><p class="eyebrow">{{ item.state }}</p><h2>{{ item.label }}</h2></div>
+        <p>{% for line in item.detail_lines %}<span class="readiness-detail-line">{{ line }}</span>{% endfor %}</p>
+      </section>
+      {% include "flux/partials/comp_card_controls.html" with card_id="serve" current_mode=serve_mode show_detail=True target_id="dashboard-comp-surface" %}
+    </article>
+    {% else %}
+    <article id="{{ item.label|slugify }}-comp-card" class="readiness-card readiness-{{ item.state }} comp-card" data-comp-card data-comp-card-mode="summary">
+      {% if item.copy_table_markdown %}
+        <button
+          class="copy-corner"
+          type="button"
+          data-flux-link-copy
+          data-copy-docs-url="{{ item.copy_docs_url }}"
+          aria-label="Copy {{ item.label }} context"
+          title="Copy {{ item.label }} context"
+        ></button>
+        <template data-flux-link-copy-table>{{ item.copy_table_markdown }}</template>
+        <template data-flux-link-copy-llm>{{ item.copy_llm_markdown }}</template>
+      {% endif %}
+      <section data-comp-view="summary">
+        <div>
+          <span class="status-dot" aria-hidden="true"></span>
+          <p class="eyebrow">{{ item.state }}</p>
+          <h2>{{ item.label }}</h2>
+        </div>
+        {% if item.detail_lines %}
+          <p>
+            {% for line in item.detail_lines %}<span class="readiness-detail-line">{{ line }}</span>{% endfor %}
+          </p>
+        {% else %}
+          <p>{{ item.detail }}</p>
+        {% endif %}
+        {% if item.action_url %}<a href="{{ item.action_url }}">{{ item.action_label }}</a>{% endif %}
+      </section>
+    </article>
+    {% endif %}
   {% endfor %}
 </section>
 
-<section class="ops-grid" aria-label="Flux operations">
-  <article class="panel action-panel bridge-panel bridge-panel-{% if bridge.online %}online{% else %}offline{% endif %}">
-    <div class="panel-header">
-      <div>
-        <p class="eyebrow">{% if bridge.online %}online{% else %}offline{% endif %}</p>
-        <h2>Live Ignition Bridge</h2>
-      </div>
-      <span class="status-pill">{% if bridge.token_set %}token set{% else %}no token{% endif %}</span>
-    </div>
-    <form method="post" class="form-stack">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="save_bridge">
-      <label>
-        Fluxy base URL
-        <input name="fluxy_base_url" value="{{ bridge.base_url }}" autocomplete="off">
-      </label>
-      <label>
-        Token
-        <input name="fluxy_token" type="password" placeholder="Leave blank to keep current token" autocomplete="off">
-      </label>
-      <label class="inline-check">
-        <input name="clear_fluxy_token" type="checkbox">
-        Clear stored token
-      </label>
-      <p class="form-help">Flux never renders the stored token back into the page. Blank keeps the existing token.</p>
-      {% if bridge.message %}<p class="form-help">{{ bridge.message }}{% if bridge.last_test_at %} · {{ bridge.last_test_at }}{% endif %}</p>{% endif %}
-      <div class="actions">
-        <button class="button" type="submit">Save bridge</button>
-        <button class="button button-secondary" type="submit" name="action" value="test_bridge">Test connection</button>
-      </div>
-    </form>
-  </article>
-
-  <article class="panel action-panel action-panel-{% if stale_count %}warning{% else %}ok{% endif %}">
-    <div class="panel-header">
-      <div>
-        <p class="eyebrow">Runtime correction</p>
-        <h2>Stale tag recovery</h2>
-      </div>
-      <span class="status-pill">{{ stale_count }} stale</span>
-    </div>
-    {% if stale_tag_items %}
-      <p class="muted">Refresh the stale runtime tags with one block read through the configured Fluxy bridge.</p>
-      <form method="post" class="form-stack">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="refresh_stale">
-        {% for item in stale_tag_items %}<input type="hidden" name="stale_tag_id" value="{{ item.tag.id }}">{% endfor %}
-        <button class="button" type="submit">Refresh stale reads now</button>
-      </form>
-      <div class="stale-list">
-        {% for item in stale_tag_items %}
-          <div class="stale-row">
-            <div>
-              <strong>{{ item.tag.asset_name|default:"-" }} / {{ item.tag.display_name }}</strong>
-              <small>{{ item.reason }}{% if item.age_seconds %} · {{ item.age_seconds }}s old{% endif %}</small>
-            </div>
-            <a href="{{ item.admin_url }}">Inspect</a>
-          </div>
-        {% endfor %}
-        {% if stale_tag_overflow %}<p class="muted">{{ stale_tag_overflow }} more stale tags not shown.</p>{% endif %}
-      </div>
-    {% else %}
-      <p class="muted">No stale runtime tags detected. Latest reads are within the {{ stale_after_seconds }}s stale window.</p>
-    {% endif %}
-  </article>
-
-  <article class="panel action-panel action-panel-{% if device_status.running_endpoint_count %}ok{% else %}warning{% endif %}">
-    <div class="panel-header">
-      <div>
-        <p class="eyebrow">Device status</p>
-        <h2>FieldAgent Devices</h2>
-      </div>
-      <span class="status-pill">{{ device_status.running_endpoint_count }}/{{ device_status.enabled_endpoint_count }} endpoints running</span>
-    </div>
-    <p class="muted">
-      {{ device_status.enabled_device_count }} enabled devices, {{ device_status.enabled_tag_count }} enabled field tags{% if device_status.latest_seen_at %} · latest heartbeat {{ device_status.latest_seen_at }}{% endif %}
-    </p>
-    {% if device_status.endpoint_items %}
-      <div class="stale-list">
-        {% for item in device_status.endpoint_items %}
-          <div class="stale-row">
-            <div>
-              <strong>{{ item.endpoint.name }}</strong>
-              <small>{{ item.endpoint.status }} · {{ item.enabled_device_count }} devices · {{ item.enabled_tag_count }} tags{% if item.age_seconds != None %} · seen {{ item.age_seconds }}s ago{% endif %}</small>
-              {% if item.endpoint.last_error %}<small>{{ item.endpoint.last_error }}</small>{% endif %}
-            </div>
-            <a href="{% url 'admin:base_fieldendpoint_change' item.endpoint.id %}">Inspect</a>
-          </div>
-        {% endfor %}
-      </div>
-    {% else %}
-      <p class="muted">No FieldAgent endpoints configured yet.</p>
-    {% endif %}
-  </article>
-</section>
-
-<section class="panel">
-  <div class="panel-header">
-    <div>
-      <p class="eyebrow">Runtime values</p>
-      <h1>Latest Tag Snapshots</h1>
-    </div>
-    <span class="status-pill">DB-backed</span>
-  </div>
-  {% if tags %}
-    <table>
-      <thead>
-        <tr>
-          <th>Asset</th>
-          <th>Tag</th>
-          <th>Value</th>
-          <th>Quality</th>
-          <th>Read At</th>
-          <th>Schedule</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for tag in tags %}
-          <tr>
-            <td>{{ tag.asset_name|default:"-" }}</td>
-            <td><span title="{{ tag.full_path }}">{{ tag.display_name }}</span></td>
-            <td>
-              {% if tag.latest_value %}
-                {{ tag.latest_value.value }} {{ tag.engineering_units }}
-              {% else %}
-                <span class="status-missing">missing</span>
-              {% endif %}
-            </td>
-            <td>
-              {% if tag.latest_value %}
-                <span class="status-pill">{{ tag.latest_value.quality_code }}</span>
-              {% else %}
-                <span class="status-pill status-missing">No read</span>
-              {% endif %}
-            </td>
-            <td>{% if tag.latest_value %}{{ tag.latest_value.read_at }}{% else %}-{% endif %}</td>
-            <td>{{ tag.schedule.name }} / {{ tag.schedule.interval_seconds }}s</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <div class="empty-state">
-      <h2>No tags configured yet</h2>
-      <p>Add schedules and runtime tags in admin to populate the first Flux dashboard.</p>
-      <div class="actions">
-        <a class="button" href="{% url 'admin:runtime_tagschedule_add' %}">Add schedule</a>
-        <a class="button button-secondary" href="{% url 'admin:runtime_runtimetag_add' %}">Add tag</a>
-      </div>
-    </div>
-  {% endif %}
 </section>
 {% endblock %}

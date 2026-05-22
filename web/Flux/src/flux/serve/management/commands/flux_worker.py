@@ -19,7 +19,6 @@ class Command(BaseCommand):
         parser.add_argument("--interval", type=float, default=5.0)
         parser.add_argument("--once", action="store_true")
         parser.add_argument("--trace-cache", action="store_true")
-        parser.add_argument("--sim", action="store_true", help="Service Flux Sim scheduled tag writes.")
         parser.add_argument("--nav-well-live", action="store_true")
         parser.add_argument("--nav-well-limit", type=int, default=None)
         parser.add_argument("--trace-profile-key", default="")
@@ -29,7 +28,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         job = None
         job_name = "heartbeat"
-        if options["trace_cache"] or options["nav_well_live"] or options["sim"]:
+        if options["trace_cache"] or options["nav_well_live"]:
             try:
                 import fluxy
             except ImportError as exc:
@@ -38,14 +37,7 @@ class Command(BaseCommand):
             fx = fluxy.Fluxy(base_url=options["base_url"], token=options["token"])
             profile_key = options["trace_profile_key"] or None
 
-            if options["sim"]:
-                from flux.sim.engine import write_due_tags
-
-                def job():
-                    return "wrote=%s" % write_due_tags(fx)
-
-                job_name = "sim"
-            elif options["nav_well_live"]:
+            if options["nav_well_live"]:
                 from trace.providers.nav_wells import sync_nav_well_trace_cache, update_nav_well_live_values
 
                 def job():

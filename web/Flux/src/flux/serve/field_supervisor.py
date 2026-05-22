@@ -8,14 +8,14 @@ from typing import Any, Protocol
 
 from django.conf import settings
 
-from flux.base.field_config import single_device_endpoint_config
-from flux.base.models import FieldDevice
+from flux.base.field_config import endpoint_config
+from flux.base.models import FieldEndpoint
 
 
 @dataclass(frozen=True)
-class FieldDeviceProcessSpec:
+class FieldServerProcessSpec:
     key: str
-    device: FieldDevice
+    endpoint: FieldEndpoint
     config_path: Path
     endpoint_url: str
     command: list[str]
@@ -37,7 +37,7 @@ class FieldAgentProcess(Protocol):
 class FieldSupervisorPlan:
     keep_keys: list[str]
     stop_keys: list[str]
-    start_specs: list[FieldDeviceProcessSpec]
+    start_specs: list[FieldServerProcessSpec]
     failed: dict[str, int]
 
     @property
@@ -53,35 +53,53 @@ class FieldSupervisorPlan:
         }
 
 
-def enabled_field_devices():
+def enabled_field_endpoints():
     return (
-        FieldDevice.objects.select_related("endpoint")
-        .prefetch_related("tags")
-        .filter(enabled=True, endpoint__enabled=True)
-        .order_by("endpoint__name", "name")
+        FieldEndpoint.objects.prefetch_related("devices__tags")
+        .filter(enabled=True, devices__enabled=True)
+        .distinct()
+        .order_by("name")
     )
 
 
-def device_endpoint_url(device: FieldDevice, *, base_port: int) -> str:
-    port = base_port + int(device.id)
-    return "opc.tcp://0.0.0.0:%s/flux/field/%s" % (port, safe_name(device.name))
+def server_endpoint_url(endpoint: FieldEndpoint, *, base_port: int, host: str = "0.0.0.0") -> str:
+    port = base_port + int(endpoint.id)
+    return "opc.tcp://%s:%s/flux/sim/%s" % (host, port, safe_name(endpoint.name))
 
 
-def write_device_config(device: FieldDevice, *, runtime_dir: Path, base_port: int) -> tuple[Path, str, dict[str, Any]]:
-    endpoint_url = device_endpoint_url(device, base_port=base_port)
-    config = {"endpoints": [single_device_endpoint_config(device, endpoint_url=endpoint_url)]}
-    config_dir = runtime_dir / safe_name(device.endpoint.name)
+def write_server_config(
+    endpoint: FieldEndpoint,
+    *,
+    runtime_dir: Path,
+    base_port: int,
+    host: str = "0.0.0.0",
+) -> tuple[Path, str, dict[str, Any]]:
+    endpoint_url = server_endpoint_url(endpoint, base_port=base_port, host=host)
+    config = {"endpoints": [endpoint_config(endpoint, endpoint_url=endpoint_url)]}
+    config_dir = runtime_dir
     config_dir.mkdir(parents=True, exist_ok=True)
-    config_path = config_dir / (safe_name(device.name) + ".json")
+    config_path = config_dir / (safe_name(endpoint.name) + ".json")
     config_path.write_text(json.dumps(config, indent=2, sort_keys=True), encoding="utf-8")
     return config_path, endpoint_url, config
 
 
-def process_spec(device: FieldDevice, *, runtime_dir: Path, base_port: int, project_path: Path) -> FieldDeviceProcessSpec:
-    config_path, endpoint_url, _config = write_device_config(device, runtime_dir=runtime_dir, base_port=base_port)
-    return FieldDeviceProcessSpec(
-        key="field-agent:%s:%s" % (device.endpoint_id, device.id),
-        device=device,
+def process_spec(
+    endpoint: FieldEndpoint,
+    *,
+    runtime_dir: Path,
+    base_port: int,
+    project_path: Path,
+    host: str = "0.0.0.0",
+) -> FieldServerProcessSpec:
+    config_path, endpoint_url, _config = write_server_config(
+        endpoint,
+        runtime_dir=runtime_dir,
+        base_port=base_port,
+        host=host,
+    )
+    return FieldServerProcessSpec(
+        key="field-agent:%s" % endpoint.id,
+        endpoint=endpoint,
         config_path=config_path,
         endpoint_url=endpoint_url,
         command=[
@@ -94,12 +112,12 @@ def process_spec(device: FieldDevice, *, runtime_dir: Path, base_port: int, proj
     )
 
 
-def start_process(spec: FieldDeviceProcessSpec) -> subprocess.Popen:
+def start_process(spec: FieldServerProcessSpec) -> subprocess.Popen:
     return subprocess.Popen(spec.command, cwd=settings.BASE_DIR.parents[1])
 
 
 def reconciliation_plan(
-    specs: list[FieldDeviceProcessSpec],
+    specs: list[FieldServerProcessSpec],
     processes: dict[str, FieldAgentProcess],
 ) -> FieldSupervisorPlan:
     desired = {spec.key: spec for spec in specs}

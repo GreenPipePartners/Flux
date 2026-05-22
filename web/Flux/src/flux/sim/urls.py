@@ -7,8 +7,6 @@ app_name = "sim"
 
 urlpatterns = [
     path("", views.index, name="index"),
-    path("set-enabled/", views.set_enabled, name="set_enabled"),
-    path("set-behavior/", views.set_behavior, name="set_behavior"),
     path("import/json/", views.import_provider_json, name="import_provider_json"),
     path("import/ignition/", views.import_provider_ignition, name="import_provider_ignition"),
     path("remove-ignition-tags/", views.remove_ignition_sim_tags, name="remove_ignition_sim_tags"),

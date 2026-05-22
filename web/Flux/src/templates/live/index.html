@@ -1,9 +1,12 @@
 {% extends "flux/base.html" %}
+{% load nav_extras %}
 
 {% block title %}Flux Live{% endblock %}
 
 {% block content %}
-<section class="panel">
+{% if request.GET.card == "live-platform" %}{% firstof request.GET.mode "summary" as live_platform_mode %}{% else %}{% firstof "summary" as live_platform_mode %}{% endif %}
+<section id="live-platform-comp-card" class="panel comp-card" data-comp-card data-comp-card-mode="{{ live_platform_mode }}">
+  {% include "flux/partials/link_copy.html" with link=live_index_link label="Live Tag Snapshots" %}
   <div class="panel-header">
     <div>
       <p class="eyebrow">flux.live</p>
@@ -12,9 +15,12 @@
     <span class="status-pill">current state</span>
   </div>
   <p>Flux Live renders the latest cached tag values without live Perspective binding pressure.</p>
+  {% if live_platform_mode == "detail" %}
   <div class="actions">
     <a class="button" href="{% url 'live:pad_overview' %}">Open Pad Overview Demo</a>
   </div>
+  {% endif %}
+  {% include "flux/partials/comp_card_controls.html" with card_id="live-platform" current_mode=live_platform_mode show_detail=True %}
 </section>
 
 <section class="terminal-strip">
@@ -24,7 +30,17 @@
   <span>&gt; bad_quality={{ bad_quality_count }}</span>
 </section>
 
-<section class="panel">
+{% if request.GET.card == "live-tag-table" %}{% firstof request.GET.mode "detail" as live_tag_table_mode %}{% else %}{% firstof "detail" as live_tag_table_mode %}{% endif %}
+<section id="live-tag-table-comp-card" class="panel comp-card" data-comp-card data-comp-card-mode="{{ live_tag_table_mode }}">
+  {% include "flux/partials/link_copy.html" with link=live_index_link label="Live Tag Table" %}
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">runtime tags</p>
+      <h1>Live Tag Table</h1>
+    </div>
+    <span class="status-pill">{{ tags|length }} tags</span>
+  </div>
+  {% if live_tag_table_mode == "detail" %}
   {% if tags %}
     <table>
       <thead><tr><th>Asset</th><th>Tag</th><th>Value</th><th>Quality</th><th>Read At</th><th>Schedule</th></tr></thead>
@@ -34,7 +50,7 @@
             <td>{{ tag.asset_name|default:"-" }}</td>
             <td><span title="{{ tag.full_path }}">{{ tag.display_name }}</span></td>
             <td>{% if tag.latest_value %}{{ tag.latest_value.value }} {{ tag.engineering_units }}{% else %}<span class="status-missing">missing</span>{% endif %}</td>
-            <td>{% if tag.latest_value %}<span class="status-pill">{{ tag.latest_value.quality_code }}</span>{% else %}<span class="status-pill status-missing">No read</span>{% endif %}</td>
+            <td>{% if tag.latest_value %}<span class="status-pill {% if tag.latest_value.quality_code != 'Good' %}status-failed{% endif %}">{{ tag.latest_value.quality_code }}</span>{% else %}<span class="status-pill status-missing">No read</span>{% endif %}</td>
             <td>{% if tag.latest_value %}{{ tag.latest_value.read_at }}{% else %}-{% endif %}</td>
             <td>{{ tag.schedule.name }} / {{ tag.schedule.interval_seconds }}s</td>
           </tr>
@@ -44,5 +60,7 @@
   {% else %}
     <p>No live tags configured yet. Existing runtime models will feed this view.</p>
   {% endif %}
+  {% endif %}
+  {% include "flux/partials/comp_card_controls.html" with card_id="live-tag-table" current_mode=live_tag_table_mode show_detail=True %}
 </section>
 {% endblock %}
