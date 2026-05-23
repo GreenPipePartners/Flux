@@ -1,0 +1,27 @@
+{% extends "flux/base.html" %}
+
+{% block title %}Flux Mine{% endblock %}
+
+{% block content %}
+<section class="feature-hero">
+  <div class="feature-hero-title">
+    <h1>Flux.mine</h1>
+  </div>
+  <div class="service-summary service-summary-{{ platform_status.state }}">
+    <span class="eyebrow">Platform</span>
+    <strong>{{ platform_status.label }}</strong>
+    <small>{{ plc_count }} PLCs mined · {{ hmi_count }} HMIs mined</small>
+  </div>
+</section>
+
+<section class="panel comp-card" data-comp-card data-comp-card-mode="detail">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">Flux.mine</p>
+      <h2>Recover Tags and HMI Primitives</h2>
+    </div>
+    <span class="status-pill">planned</span>
+  </div>
+  <p class="muted">Flux.mine will recover useful tag, PLC, and HMI primitives from existing SCADA projects for downstream simulation and build workflows.</p>
+</section>
+{% endblock %}

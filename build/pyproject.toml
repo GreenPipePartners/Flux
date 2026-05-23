@@ -1,0 +1,28 @@
+[project]
+name = "flux-build"
+version = "0.1.0"
+description = "Flux.build core target generation primitives."
+requires-python = ">=3.12"
+dependencies = ["flux-mine"]
+
+[project.scripts]
+flux-build = "flux_build.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/flux_build"]
+
+[tool.uv.sources]
+flux-mine = { path = "../mine", editable = true }
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "../mine/src"]
+testpaths = ["tests"]

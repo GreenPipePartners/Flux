@@ -142,6 +142,121 @@ def test_field_configure_ignition_wraps_manage_command(monkeypatch):
     assert calls[0][1] == flux.WEB_DIR
 
 
+def test_mine_parse_l5x_wraps_core_package(monkeypatch):
+    flux = load_flux_cli()
+    calls = []
+
+    def fake_call(command, cwd=None, env=None):
+        calls.append((command, cwd, env))
+        return 0
+
+    monkeypatch.setattr(flux.subprocess, "call", fake_call)
+
+    status = flux.main(["mine", "parse-l5x", "sample.L5X"])
+
+    assert status == 0
+    assert calls[0][0] == ["uv", "run", "--project", "mine", "flux-mine", "parse-l5x", "sample.L5X"]
+    assert calls[0][1] == flux.ROOT_DIR
+
+
+def test_mine_parse_l5k_wraps_core_package(monkeypatch):
+    flux = load_flux_cli()
+    calls = []
+
+    def fake_call(command, cwd=None, env=None):
+        calls.append((command, cwd, env))
+        return 0
+
+    monkeypatch.setattr(flux.subprocess, "call", fake_call)
+
+    status = flux.main(["mine", "parse-l5k", "sample.L5K"])
+
+    assert status == 0
+    assert calls[0][0] == ["uv", "run", "--project", "mine", "flux-mine", "parse-l5k", "sample.L5K"]
+    assert calls[0][1] == flux.ROOT_DIR
+
+
+def test_mine_source_wraps_django_command(monkeypatch):
+    flux = load_flux_cli()
+    calls = []
+
+    def fake_call(command, cwd=None, env=None):
+        calls.append((command, cwd, env))
+        return 0
+
+    monkeypatch.setattr(flux.subprocess, "call", fake_call)
+
+    status = flux.main(["mine", "source", "Screens", "--source-type", "factorytalk", "--label", "FTV"])
+
+    assert status == 0
+    assert calls[0][0] == [
+        "uv",
+        "run",
+        "python",
+        "manage.py",
+        "flux_mine_source",
+        "Screens",
+        "--source-type",
+        "factorytalk",
+        "--label",
+        "FTV",
+    ]
+    assert calls[0][1] == flux.WEB_DIR
+
+
+def test_build_ignition_tags_wraps_core_package(monkeypatch):
+    flux = load_flux_cli()
+    calls = []
+
+    def fake_call(command, cwd=None, env=None):
+        calls.append((command, cwd, env))
+        return 0
+
+    monkeypatch.setattr(flux.subprocess, "call", fake_call)
+
+    status = flux.main(["build", "ignition-tags", "sample.L5X", "--output", "provider.json"])
+
+    assert status == 0
+    assert calls[0][0] == [
+        "uv",
+        "run",
+        "--project",
+        "build",
+        "flux-build",
+        "ignition-tags",
+        "sample.L5X",
+        "--output",
+        "provider.json",
+    ]
+    assert calls[0][1] == flux.ROOT_DIR
+
+
+def test_build_ignition_tags_run_wraps_django_command(monkeypatch):
+    flux = load_flux_cli()
+    calls = []
+
+    def fake_call(command, cwd=None, env=None):
+        calls.append((command, cwd, env))
+        return 0
+
+    monkeypatch.setattr(flux.subprocess, "call", fake_call)
+
+    status = flux.main(["build", "ignition-tags-run", "42", "--output", "provider.json"])
+
+    assert status == 0
+    assert calls[0][0] == [
+        "uv",
+        "run",
+        "python",
+        "manage.py",
+        "flux_build_ignition_tags",
+        "42",
+        "--output",
+        "provider.json",
+    ]
+    assert calls[0][1] == flux.WEB_DIR
+
+
 def test_restart_stops_then_starts_service(monkeypatch):
     flux = load_flux_cli()
     calls = []

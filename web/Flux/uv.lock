@@ -206,6 +206,8 @@ dependencies = [
     { name = "django" },
     { name = "django-environ" },
     { name = "django-htmx" },
+    { name = "flux-build" },
+    { name = "flux-mine" },
     { name = "flux-sim" },
     { name = "fluxy-ign" },
     { name = "gunicorn" },
@@ -234,6 +236,8 @@ requires-dist = [
     { name = "django", specifier = ">=5.0,<6.0" },
     { name = "django-environ", specifier = ">=0.11" },
     { name = "django-htmx", specifier = ">=1.18" },
+    { name = "flux-build", editable = "../../build" },
+    { name = "flux-mine", editable = "../../mine" },
     { name = "flux-sim", editable = "../../sim" },
     { name = "fluxy-ign", editable = "../../fluxy" },
     { name = "gunicorn", specifier = ">=26.0.0" },
@@ -253,6 +257,30 @@ dev = [
     { name = "ruff", specifier = ">=0.6" },
 ]
 linux = [{ name = "gunicorn", specifier = ">=23.0" }]
+
+[[package]]
+name = "flux-build"
+version = "0.1.0"
+source = { editable = "../../build" }
+dependencies = [
+    { name = "flux-mine" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "flux-mine", editable = "../../mine" }]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=8.0" }]
+
+[[package]]
+name = "flux-mine"
+version = "0.1.0"
+source = { editable = "../../mine" }
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=8.0" }]
 
 [[package]]
 name = "flux-sim"

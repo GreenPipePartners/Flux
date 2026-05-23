@@ -1,0 +1,27 @@
+{% extends "flux/base.html" %}
+
+{% block title %}Flux Build{% endblock %}
+
+{% block content %}
+<section class="feature-hero">
+  <div class="feature-hero-title">
+    <h1>Flux.build</h1>
+  </div>
+  <div class="service-summary service-summary-{{ platform_status.state }}">
+    <span class="eyebrow">Platform</span>
+    <strong>{{ platform_status.label }}</strong>
+    <small>{{ cell_count }} cells built</small>
+  </div>
+</section>
+
+<section class="panel comp-card" data-comp-card data-comp-card-mode="detail">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">Flux.build</p>
+      <h2>Design Flux.cells</h2>
+    </div>
+    <span class="status-pill">planned</span>
+  </div>
+  <p class="muted">Flux.build will turn mined SCADA primitives into Flux.cell process objects and operational structures.</p>
+</section>
+{% endblock %}

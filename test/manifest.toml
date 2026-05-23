@@ -1,0 +1,169 @@
+[workspace]
+name = "Flux.test"
+version = 1
+description = "Report-only acceptance spine for Flux verification suites."
+
+[[suite]]
+name = "fluxolot-fishtank"
+description = "Verify the persistent Fluxolot Fishtank fixture contract and predictable history seed."
+command = ["uv", "run", "python", "manage.py", "test", "flux.sim.tests_fluxolot_fishtank"]
+cwd = "web/Flux"
+required_env = []
+timeout_seconds = 120
+external_services = ["django-db"]
+cleanup_expectations = "Fluxolot Fishtank remains installed; temporary history/config rows may be recreated idempotently."
+destructive_scope = "persistent-fixture-only"
+
+[[suite]]
+name = "live-csv"
+description = "Validate CSV-defined live card scope contracts without requiring product auto-fixes."
+command = ["uv", "run", "python", "manage.py", "test", "flux.live.tests"]
+cwd = "web/Flux"
+required_env = []
+timeout_seconds = 120
+external_services = ["django-db"]
+cleanup_expectations = "Temporary live scope/card definitions should be removed by tests."
+destructive_scope = "temporary-flux-db-rows"
+
+[[suite]]
+name = "trace-csv"
+description = "Validate CSV-defined trace scope/profile contracts and reporting boundaries."
+command = ["uv", "run", "python", "manage.py", "test", "flux.trace.tests"]
+cwd = "web/Flux"
+required_env = []
+timeout_seconds = 120
+external_services = ["django-db", "questdb"]
+cleanup_expectations = "Temporary trace scopes/profiles should be removed; historical data is report-only unless a test owns it."
+destructive_scope = "temporary-flux-db-rows"
+
+[[suite]]
+name = "sampling"
+description = "Describe hot/warm/cold sampling lifecycle checks and demand reset behavior."
+command = ["uv", "run", "python", "manage.py", "test", "flux.opt.tests"]
+cwd = "web/Flux"
+required_env = []
+timeout_seconds = 120
+external_services = ["django-db"]
+cleanup_expectations = "Sampling demand state created by tests should be temporary."
+destructive_scope = "temporary-flux-db-rows"
+
+[[suite]]
+name = "sim-profile"
+description = "Verify simulator profile/import/export behavior against known Flux.sim shapes."
+command = ["uv", "run", "--project", "sim", "pytest", "sim/tests"]
+cwd = "."
+required_env = []
+timeout_seconds = 180
+external_services = []
+cleanup_expectations = "Generated simulator configs should stay in ignored runtime/output paths or be removed by tests."
+destructive_scope = "temporary-files-only"
+
+[[suite]]
+name = "closed-loop"
+description = "Run Fluxolot Fishtank full live/trace/sim acceptance; env-gated tests own disposable resources."
+command = ["uv", "run", "pytest", "--reuse-db", "src/flux/serve/test_full_integration_fluxolot_fishtank.py", "-m", "acceptance"]
+cwd = "web/Flux"
+required_env = ["FLUX_FULL_INTEGRATION", "FLUXY_TOKEN"]
+timeout_seconds = 300
+external_services = ["ignition", "opc-ua", "field-agent", "django-db"]
+cleanup_expectations = "Temporary live/trace/sim configs are deleted; persistent Fluxolot Fishtank must remain installed."
+destructive_scope = "temporary-flux-db-rows"
+
+[[suite]]
+name = "unit-root"
+description = "Existing top-level Python unit tests."
+command = ["uv", "run", "pytest", "tests"]
+cwd = "."
+required_env = []
+timeout_seconds = 120
+external_services = []
+cleanup_expectations = "No external cleanup expected."
+destructive_scope = "none"
+
+[[suite]]
+name = "unit-fluxy"
+description = "Existing Fluxy non-integration tests."
+command = ["uv", "run", "--project", "fluxy", "pytest", "fluxy/tests", "-m", "not integration"]
+cwd = "."
+required_env = []
+timeout_seconds = 180
+external_services = []
+cleanup_expectations = "No external cleanup expected."
+destructive_scope = "none"
+
+[[suite]]
+name = "integration-fluxy"
+description = "Existing Fluxy live Ignition integration tests."
+command = ["uv", "run", "--project", "fluxy", "pytest", "fluxy/tests", "-m", "integration"]
+cwd = "."
+required_env = ["FLUXY_BASE_URL", "FLUXY_TOKEN"]
+timeout_seconds = 600
+external_services = ["ignition", "fluxy-webdev"]
+cleanup_expectations = "Integration tests should create disposable Ignition resources and clean them up."
+destructive_scope = "disposable-ignition-resources"
+
+[[suite]]
+name = "unit-sim"
+description = "Existing Flux simulator non-integration tests."
+command = ["uv", "run", "--project", "sim", "pytest", "sim/tests", "-m", "not integration"]
+cwd = "."
+required_env = []
+timeout_seconds = 180
+external_services = []
+cleanup_expectations = "No external cleanup expected."
+destructive_scope = "none"
+
+[[suite]]
+name = "unit-mine"
+description = "Flux.mine parser and reconciliation core tests."
+command = ["uv", "run", "pytest"]
+cwd = "mine"
+required_env = []
+timeout_seconds = 120
+external_services = []
+cleanup_expectations = "No external cleanup expected."
+destructive_scope = "none"
+
+[[suite]]
+name = "unit-build"
+description = "Flux.build target generation core tests."
+command = ["uv", "run", "pytest"]
+cwd = "build"
+required_env = []
+timeout_seconds = 120
+external_services = []
+cleanup_expectations = "Generated build artifacts should stay in ignored/output paths; current tests are pure."
+destructive_scope = "none"
+
+[[suite]]
+name = "integration-sim"
+description = "Existing Flux simulator live Ignition/FieldAgent integration tests."
+command = ["uv", "run", "--project", "sim", "pytest", "sim/tests", "-m", "integration"]
+cwd = "."
+required_env = ["FLUXY_BASE_URL", "FLUXY_TOKEN"]
+timeout_seconds = 600
+external_services = ["ignition", "fluxy-webdev", "field-agent"]
+cleanup_expectations = "Integration tests should own and clean disposable simulator/Ignition resources."
+destructive_scope = "disposable-live-resources"
+
+[[suite]]
+name = "unit-web"
+description = "Existing Django app non-integration tests."
+command = ["uv", "run", "python", "manage.py", "test", "flux", "--exclude-tag", "integration"]
+cwd = "web/Flux"
+required_env = []
+timeout_seconds = 300
+external_services = ["django-db"]
+cleanup_expectations = "Django test database owns cleanup."
+destructive_scope = "test-database-only"
+
+[[suite]]
+name = "integration-web"
+description = "Existing Django app integration/e2e tests."
+command = ["uv", "run", "python", "manage.py", "test", "flux", "--tag", "integration"]
+cwd = "web/Flux"
+required_env = ["FLUXY_BASE_URL", "FLUXY_TOKEN"]
+timeout_seconds = 600
+external_services = ["ignition", "opc-ua", "field-agent", "django-db"]
+cleanup_expectations = "Integration tests should own disposable live resources and clean them up."
+destructive_scope = "disposable-live-resources"

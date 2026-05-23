@@ -9,6 +9,8 @@ dependencies = [
     "django>=5.0,<6.0",
     "django-environ>=0.11",
     "django-htmx>=1.18",
+    "flux-build",
+    "flux-mine",
     "flux-sim",
     "fluxy-ign",
     "gunicorn>=26.0.0",
@@ -35,6 +37,8 @@ linux = [
 package = false
 
 [tool.uv.sources]
+flux-build = { path = "../../build", editable = true }
+flux-mine = { path = "../../mine", editable = true }
 fluxy-ign = { path = "../../fluxy", editable = true }
 flux-sim = { path = "../../sim", editable = true }
 

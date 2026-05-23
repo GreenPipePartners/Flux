@@ -42,6 +42,8 @@ INSTALLED_APPS = [
     "flux.sim",
     "flux.time",
     "flux.field",
+    "flux.mine",
+    "flux.build",
     "flux.nav",
     "flux.live",
     "flux.trace",

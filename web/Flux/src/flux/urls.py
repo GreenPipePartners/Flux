@@ -8,6 +8,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("field/", include("flux.field.urls")),
     path("serve/", include("flux.serve.urls")),
+    path("mine/", include("flux.mine.urls")),
+    path("build/", include("flux.build.urls")),
     path("sim/", include("flux.sim.urls")),
     path("live/", include("flux.live.urls")),
     path("trace/", include("flux.trace.urls")),

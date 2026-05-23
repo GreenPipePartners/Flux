@@ -65,6 +65,13 @@ Field simulation:
   flux field configure-ignition Configure Ignition OPC UA connections and OPC tags
   flux field supervisor        Run supervised per-device FieldAgent processes
 
+Migration mining/build:
+  flux mine source PATH        Persist mine facts from PLC or FactoryTalk source
+  flux mine parse-l5x FILE       Parse an L5X file and print recovered PLC summary
+  flux mine parse-l5k FILE       Parse an L5K file and print recovered PLC summary
+  flux build ignition-tags FILE  Generate Ignition tag provider JSON from an L5X/L5K file
+  flux build ignition-tags-run ID Generate Ignition tag provider JSON from a mine run
+
 First local setup:
   1. Run: flux install-service
   2. Run: flux start
@@ -99,6 +106,14 @@ def flux_env() -> dict[str, str]:
 
 def run_uv_fluxy(args: list[str]) -> int:
     return subprocess.call(["uv", "run", "--project", "fluxy", *args], cwd=ROOT_DIR, env=flux_env())
+
+
+def run_uv_mine(args: list[str]) -> int:
+    return subprocess.call(["uv", "run", "--project", "mine", *args], cwd=ROOT_DIR, env=flux_env())
+
+
+def run_uv_build(args: list[str]) -> int:
+    return subprocess.call(["uv", "run", "--project", "build", *args], cwd=ROOT_DIR, env=flux_env())
 
 
 def run_manage(args: list[str]) -> int:
@@ -450,6 +465,29 @@ def field_supervisor(args: argparse.Namespace) -> int:
     return run_manage(command)
 
 
+def mine_parse_l5x(args: argparse.Namespace) -> int:
+    return run_uv_mine(["flux-mine", "parse-l5x", args.path])
+
+
+def mine_parse_l5k(args: argparse.Namespace) -> int:
+    return run_uv_mine(["flux-mine", "parse-l5k", args.path])
+
+
+def mine_source(args: argparse.Namespace) -> int:
+    command = ["flux_mine_source", args.path, "--source-type", args.source_type]
+    if args.label:
+        command.extend(["--label", args.label])
+    return run_manage(command)
+
+
+def build_ignition_tags(args: argparse.Namespace) -> int:
+    return run_uv_build(["flux-build", "ignition-tags", args.path, "--output", args.output])
+
+
+def build_ignition_tags_run(args: argparse.Namespace) -> int:
+    return run_manage(["flux_build_ignition_tags", str(args.mine_run_id), "--output", args.output])
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Flux local development helper.")
     subparsers = parser.add_subparsers(dest="command")
@@ -501,6 +539,32 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     scan.add_argument("--fluxy-base-url", default=flux_env().get("FLUXY_BASE_URL", DEFAULT_FLUXY_BASE_URL))
     scan.add_argument("--token", default=None)
     ignition_subparsers.add_parser("open", help="Open the Ignition Gateway home page")
+
+    mine = subparsers.add_parser("mine", help="Recover PLC/HMI primitives from legacy SCADA projects")
+    mine_subparsers = mine.add_subparsers(dest="mine_command", required=True)
+    mine_source_parser = mine_subparsers.add_parser("source", help="Persist mine facts from a PLC or FactoryTalk source")
+    mine_source_parser.add_argument("path", help="Path to an .L5X/.L5K file, FactoryTalk XML/PAR file, or FactoryTalk directory")
+    mine_source_parser.add_argument(
+        "--source-type",
+        default="auto",
+        choices=["auto", "plc", "plc_l5x", "plc_l5k", "factorytalk"],
+    )
+    mine_source_parser.add_argument("--label", default="", help="Optional label for the mine run")
+    mine_l5x = mine_subparsers.add_parser("parse-l5x", help="Parse an L5X file and print a summary")
+    mine_l5x.add_argument("path", help="Path to an L5X file")
+    mine_l5k = mine_subparsers.add_parser("parse-l5k", help="Parse an L5K file and print a summary")
+    mine_l5k.add_argument("path", help="Path to an L5K file")
+
+    build = subparsers.add_parser("build", help="Generate target artifacts from mined primitives")
+    build_subparsers = build.add_subparsers(dest="build_command", required=True)
+    build_tags = build_subparsers.add_parser("ignition-tags", help="Generate Ignition tag provider JSON from an L5X/L5K file")
+    build_tags.add_argument("path", help="Path to an L5X/L5K file")
+    build_tags.add_argument("--output", required=True, help="Path to generated provider JSON")
+    build_tags_run = build_subparsers.add_parser(
+        "ignition-tags-run", help="Generate Ignition tag provider JSON from a persisted mine run"
+    )
+    build_tags_run.add_argument("mine_run_id", type=int, help="Mine run id to build from")
+    build_tags_run.add_argument("--output", required=True, help="Path to generated provider JSON")
 
     field = subparsers.add_parser("field", help="Manage Flux FieldAgent simulation workflow")
     field_subparsers = field.add_subparsers(dest="field_command")
@@ -583,6 +647,20 @@ def main(argv: list[str] | None = None) -> int:
             return ignition_request_scan(args)
         if ignition_command == "open":
             return open_url(flux_env()["IGNITION_GATEWAY_URL"].rstrip("/") + "/web/home")
+    if command == "mine":
+        mine_command = args.mine_command or "parse-l5x"
+        if mine_command == "source":
+            return mine_source(args)
+        if mine_command == "parse-l5x":
+            return mine_parse_l5x(args)
+        if mine_command == "parse-l5k":
+            return mine_parse_l5k(args)
+    if command == "build":
+        build_command = args.build_command or "ignition-tags"
+        if build_command == "ignition-tags":
+            return build_ignition_tags(args)
+        if build_command == "ignition-tags-run":
+            return build_ignition_tags_run(args)
     if command == "field":
         field_command = args.field_command or "materialize"
         if field_command == "import-tag-data":
