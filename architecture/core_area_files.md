@@ -1,0 +1,202 @@
+# Architecture Core Area Files
+
+Last updated: 2026-05-25 during Flux.build L5X parity implementation.
+
+## Architecture-Owned Files
+
+- `architecture/core_area_files.md` - continuous index of architecture review context, high-value boundaries, recurring commands, and report/log paths.
+- `architecture/daily/architecture_YYYY-MM-DD/architecture_YYYY-MM-DD.md` - append-only architecture activity ledger.
+- `architecture/mine/flux_mine_exploration.md` - dedicated Flux.mine PLC recovery/rebuild/emulation exploration notes.
+- `architecture/schematics_architecture.md` - Deep.schematics work scope for source/circuit/component primitives and the isolated `schematics` schema.
+- `arch_review.md` or requested output-directory `arch_review.md` - architecture review report when explicitly requested or after significant Build work.
+
+## High-Value Boundaries Reviewed
+
+- Flux.live renders server-side Django/HTMX Comp Surfaces from cached `LatestTagValue` rows; it does not directly bind the browser to Ignition.
+- Flux.opt owns runtime sampling, demand leases, due tag selection, and writes to `LatestTagValue`/`TagSample`.
+- Flux.serve owns long-running worker process commands and heartbeats, including `flux_sampling_worker`, `flux_field_supervisor`, and monitor snapshots.
+- Flux.sim owns Fluxolot fixture construction and Ignition tag/OPC configuration helpers.
+- FieldAgent processes expose OPC UA endpoints; Ignition OPC UA connections read them; Fluxy reads Ignition tags in blocks.
+- Dashboard interface health should be a cached-state view over a required Flux.serve/Flux.opt sampler, not a browser/page-refresh-owned sampling mechanism.
+- OPC runtime truth should be composed from Flux.serve evidence: desired endpoint state, fresh FieldAgent heartbeat, PID, endpoint URL/port, optional probe, and service snapshot.
+- Flux.charts stress data is preserved through nav-well `TraceProfile`/`TraceSignal`/`RuntimeTag(TRACE_STRESS)` rows and `/charts/wells/`; dashboard navigation must aggregate or paginate it.
+- Current broad transition spans Mine, Build, Sim, Serve, Live, Charts, dashboard, docs, static assets, and CLI; split into coherent review/commit units before treating the tree as releasable.
+- `flux.trace` is currently a compatibility/model namespace while `flux.charts` owns user-facing chart routes, payloads, workers, and large-set navigation.
+- Bridge connection health should be a Flux.serve-scheduled probe over Flux.bridge behavior; Flux.web should render/request manual refreshes, not own periodic external IO.
+- Flux.web's site-wide pulse should mean cached HTMX display refresh only; backend freshness remains owned by Flux.serve/Flux.opt and domain semantics by Flux.live.
+- Planned naming target: `Flux.live` becomes `Flux.spot`; `Flux.charts` becomes `Flux.chart`; use compatibility routes/import aliases before removing old names.
+- `flux.trace` remains the chart/history persistence namespace unless a separate data-model migration is explicitly planned.
+- Former public `base_*` tables were active Flux.sim catalog/materialization or Flux.serve FieldAgent runtime state; they have now moved to `sim.*` and `serve.sim_agent_heartbeat`. `base_fieldnode` was removed via `base.0009_drop_fieldnode`, and duplicate `flux.field` tables were removed via `field.0005_drop_legacy_field_models`.
+- `serve.sim_agent_heartbeat` is active runtime evidence, but its current writer is `flux_field_supervisor`; `version` and `started_at` are schema placeholders unless a real FieldAgent self-report path writes them, while `last_error` is used by Flux.serve monitor error classification.
+- Legacy `base_fielddevice`, `base_fieldtag`, `base_simdevice`, and `base_simdevicetag` were retired through `base.0011_drop_legacy_device_tag_tables`; FieldAgent runtime config now reads materialized `sim.device`/`sim.tag` rows backed by kernel `base.device`/`base.tag`.
+- Master Design `base.tag` is now implemented as central kernel tag identity for known tags, but current Spot membership still stores `LiveCardPointDefinition.full_path` as text and should migrate to a Spot-owned FK extension table.
+- Master Design `Flux.base` direction is sound if Base remains a shared identity/kernel schema; domain config/observations should move to schema-owned namespaces such as `bridge`, `serve`, `sim`, `spot`, `chart`, and `mine`.
+- Schema-qualified Django tables require an explicit migration/test convention; current `bridge.ignition_bridge` proves the pattern but is bespoke via quoted `db_table` and `RunSQL` schema moves.
+- Planned device/tag direction: migrate current `base_fielddevice`/`base_fieldtag` into kernel `base.device`/`base.tag` identity rows plus supplemental `sim.device`/`sim.tag` behavior/materialization tables.
+- Implemented additive device/tag split: `base.Device`/`base.Tag` map to `"base"."device"`/`"base"."tag"`, and `sim.DeviceConfig`/`sim.TagConfig` map to `"sim"."device"`/`"sim"."tag"` with legacy FieldAgent config parity.
+- `flux.sim.kernel_sync` now owns direct upsert helpers for `base.device`/`base.tag` and `sim.device`/`sim.tag`; do not reintroduce legacy table sync paths.
+- `flux.base.field_selectors` owns materialized runtime device/tag counts; dashboard, Sim runtime, and FieldAgent supervisor should use these selectors rather than hand-rolled joins.
+- Flux.spot should treat `base.tag` as tag identity and keep Spot presentation/membership in a Spot-owned table such as `spot.point`/`SpotTag`, keyed to `base.Tag` with role/label/order/display metadata. Do not put Spot card membership or UI state on `base.tag`.
+- Shared Spot/Chart data access should consolidate through a Plane-owned series/stream registry rather than duplicate runtime tag references per surface. Recommended target: `base.tag` = physical tag identity, `plane.series`/`plane.tag_stream` = data-plane acquisition/storage contract for that tag, `spot.point` and `chart.signal` = UI membership/presentation rows that reference the Plane series.
+- Flux.spot's current-state card data is not only latest value; it should read a bounded Plane snapshot containing latest value, quality/status, and fixed rollup windows such as today, rolling 7 days, and rolling 30 days. These summaries should be precomputed or incrementally maintained by Plane/Serve workers, not calculated from raw samples in web requests.
+- Tag/series status ownership: Flux.serve supervises the workers/probes that produce status evidence, while Flux.plane owns the persisted per-series status/snapshot schema. Spot and Chart consume status; they do not own or recompute it.
+- Flux.opt is the right owner for Ignition retrieval optimization into Flux.plane: it should plan block reads, apply hot/warm/cold cadence and demand leases, enforce batch/time/window bounds, and write results through Plane-owned storage APIs. Flux.serve supervises Opt workers; Flux.plane owns storage/schema/query contracts.
+- Documentation state: dedicated Flux.serve workers are documented, but scattered. `docs/apps/live.md` describes `Flux.serve worker -> Flux.opt sampler -> LatestTagValue + TagSample -> Flux.spot cards`; `docs/operator-guide.md` documents `flux_charts_worker`; Master Design does not yet explicitly document the durable `Flux.serve supervises Opt workers over Flux.bridge into Flux.plane` pipeline.
+- Master Design status direction: a single latest-status table is useful as a consolidated read model, but it should stay narrow: latest operational evidence keyed by bounded target kind + target guid + status kind. Do not make it the owner of domain truth, history/logs, latest values, rollups, or configuration enabled flags.
+- Placement caution: `base.status` is acceptable only if Flux.base is explicitly acting as shared kernel/read-model storage. Architecturally cleaner ownership is `serve.status` or a future observability/logs namespace because status is operational evidence produced by Flux.serve/Flux.opt workers, not identity/configuration.
+- Updated target: use a dedicated `status` namespace for latest operational evidence and formalize a kernel `base.entity` registry for cross-domain targets. `status.latest` should FK to `base.entity`; domain tables such as `base.tag`, `base.device`, `plane.series`, bridge connections, serve workers, and field endpoints should link to one entity row each.
+- Recommended Master Design edits: remove status ownership language from Flux.base, add `base.entity`, add `Flux.status` with `status.latest` and future `status.event`, expand `Flux.plane` around `plane.series`/latest/window stats, and clarify Serve→Bridge→Opt→Plane→Status producer flow with Spot/Chart as consumers.
+- Current Master Design review notes: remove leftover `base.status`; remove duplicate `Flux.serve data acquisition workers` sections; route bridge connection health to `status.latest` instead of `Flux.base`/`bridge.IgnitionBridge.last_test_message`; avoid `base.entity.enabled` because domain tables own enablement; prefer entity lifecycle fields such as `retired_at` or `lifecycle_state` if needed.
+- Implemented kickoff state: `base.Entity`/`base.entity`, `status.LatestStatus`/`status.latest`, and Plane `Series`/`Latest`/`WindowStat` schema-qualified tables exist. Existing `base.tag`/`base.device` rows have entities, every current `base.tag` has a Plane series, and current Spot/Chart membership rows have nullable transition FKs linked to `plane.series`.
+- Implemented continuation state: existing runtime sampling now mirrors latest values and quality status into Plane/Status, `sample_runtime_bad_quality()` mirrors bad-quality samples into Plane/Status, `serve.worker` records worker status into `status.latest`, and `flux.serve.monitor` writes service/bridge/field endpoint probe status into `status.latest` alongside legacy `ServeServiceSnapshot`.
+- Spot scoped-card reads now prefer `plane.series`/`plane.latest`/`plane.window_stat` when a point is linked and Plane latest exists, with RuntimeTag fallback for unlinked or not-yet-populated points.
+- Chart profile payloads now prefer `TraceSignal.series` / `plane.series.storage_key` for chart-facing identity and historian paths while retaining `RuntimeTag` as the cache/acquisition fallback during transition.
+- Generic Flux.chart historical and streaming sample payloads now read through `flux.plane.samples` from `plane.sample` and expose `seriesId`/`storageKey`; direct `TagSample` imports were removed from `flux.chart` view/selector code.
+- `TraceCachePoint` active storage was replaced by schema-qualified `plane.sample`; migration `plane.0004_sample_backfill_trace_cache` backfills existing cache rows before `trace.0004_drop_trace_cache_point` drops the old model/table.
+- QuestDB chart export/read paths now use a series-scoped `plane_samples` table keyed by `plane.series` instead of signal-scoped trace rows; `TraceSignal` remains chart rendering metadata only.
+- Implemented Flux.sim provider catalog schema move: `public.base_tagprovider`, `public.base_tagnode`, `public.base_tagselection`, `public.base_simserver`, and `public.base_simdriver` now live as `sim.provider`, `sim.provider_node`, `sim.provider_selection`, `sim.server`, and `sim.driver`. Remaining public `base_*` tables are phase-2 endpoint/runtime tables: `base_fieldendpoint` and `base_fieldagentheartbeat`.
+- Implemented endpoint/runtime schema move: `public.base_fieldendpoint` now lives as `sim.endpoint`, and `public.base_fieldagentheartbeat` now lives as `serve.sim_agent_heartbeat`. No `public.base_*` tables should remain after migrations are applied.
+- Public `base_*` table review implementation is complete for the reviewed cluster: provider catalog moved to Flux.sim, endpoint config moved to `sim.endpoint`, and heartbeat evidence moved to `serve.sim_agent_heartbeat`.
+- Flux.mine PLC recovery target: Mine owns deserialization and persisted source facts for L5X/L5K; Build owns regenerated artifacts; Deep.plc owns bounded functional emulation/transpilation. Do not collapse these responsibilities into one parser/build/runtime module.
+- Deep.schematics target: model Flux-native schematics as source/circuit/component primitives under an isolated `schematics` PostgreSQL schema; do not begin with source drawing ingestion or live IO.
+- Deep.schematics component templates declare terminals, roles, potential interfaces, and internal relations; circuits/sources/compiler output resolve concrete terminal potential bindings.
+- Deep.schematics cross-circuit devices such as starters and power supplies must use behavioral relations between roles, not direct electrical continuity between 24 VDC and 480 VAC circuits.
+- `logix_samples/hello_world.L5X` and `.L5K` are the first small Logix parity fixtures for controller/program/routine/rung/tag modeling. The `.ACD` file is reference material only until an explicit supported import/export path exists.
+- For PLC rebuild, Mine must persist programs, tasks, routines, rungs, scoped tags, tag data payloads, and instruction/tag references; controller/tag facts alone are insufficient for Flux.build or Deep.plc.
+- L5X should be the first canonical serializer target because structure is explicit XML; L5K should initially be a parser parity check and later a serializer target.
+- Mine schema migration target: move current `public.mine_*` tables into PostgreSQL schema `mine` before adding PLC program/task/routine/rung tables. Keep Python model names stable first; use explicit `Meta.db_table` and a manual `SeparateDatabaseAndState` migration with `CREATE SCHEMA`, `ALTER TABLE SET SCHEMA`, `RENAME`, and postcondition checks.
+- Target Mine table names: `mine.run`, `mine.plc_controller`, `mine.plc_data_type`, `mine.plc_member`, `mine.plc_tag`, `mine.hmi_screen`, `mine.hmi_component`, `mine.hmi_tag_reference`, `mine.hmi_parameter_file`, `mine.hmi_parameter`, `mine.hmi_component_action`, `mine.hmi_component_parameter`, `mine.hmi_component_state`, `mine.hmi_global_object_link`, and `mine.hmi_vba_link`.
+- Implemented Mine schema move: `web/Flux/src/flux/mine/migrations/0003_mine_schema_tables.py` moves current Mine tables from `public.mine_*` to `mine.*` with row counts preserved locally and Build/Cell FK targets resolving to `mine.*`.
+- Implemented PLC graph slice: pure parsers now recover hello_world programs, routines, rungs, tasks, scheduled programs, and L5X tag data payloads; Django Mine persists them under `mine.plc_program`, `mine.plc_task`, `mine.plc_scheduled_program`, `mine.plc_routine`, and `mine.plc_rung`.
+- Implemented bounded RLL reference slice: hello_world instructions `XIO`, `XIC`, `TON`, `OTL`, `OTU`, and `COP` now parse into instruction/tag-reference dataclasses and persist under `mine.plc_instruction` and `mine.plc_tag_reference`.
+- Implemented first Flux.build L5X parity loop: persisted Mine rows serialize to generated L5X, generated L5X parses back through Flux.mine, and canonical hello_world graph/reference counts must match before a `logix_l5x` artifact is marked complete.
+
+## Important Files
+
+- `web/Flux/src/flux/live/views.py` - scope/detail views lease demand and render cached cards.
+- `web/Flux/src/flux/live/selectors.py` - maps `LiveScope` point definitions to cached `LatestTagValue` state and stale status.
+- `web/Flux/src/flux/live/apps.py` - current Django app identity; rename to `flux.spot` needs an app-label/table strategy.
+- `web/Flux/src/flux/spot/models.py` - current Spot compatibility re-export of `flux.live.models`; target should become the canonical Spot model boundary only after app-label/table migration is explicit.
+- `web/Flux/src/flux/live/models.py` - current Spot presentation tables; `LiveCardPointDefinition.full_path` is the immediate candidate to migrate to a `base.Tag` FK while preserving compatibility during import/display.
+- `web/Flux/src/flux/opt/services.py` - demand leases, due runtime tag selection, block reads, and sample persistence.
+- `web/Flux/src/flux/serve/management/commands/flux_sampling_worker.py` - long-running runtime tag sampler; Fluxolot profile sampler service is `fluxolot-live-sampler`.
+- `serve/worker.py` - generic heartbeat loop wrapper used by long-running workers.
+- `web/Flux/src/runtime/models.py` - `RuntimeTag`, `LatestTagValue`, `TagSample`, scheduler config, and stale calculation.
+- `web/Flux/src/runtime/models.py` - currently acts like a mixed Plane series/latest/sample model; likely migration source for a future `plane.series`, `plane.latest_value`, and sample/QuestDB key model.
+- `web/Flux/src/flux/plane/runtime.py` - current helper for writing Latest/TagSample bad-quality evidence; target Plane ownership should absorb this kind of latest/history write contract.
+- `web/Flux/src/flux/plane/sample_seed.py` - bridge from legacy RuntimeTag sample history into `plane.sample` rows for chart profiles.
+- `web/Flux/src/flux/plane/models.py` - Plane schema models: `Series`, `Latest`, `Sample`, and `WindowStat`.
+- `web/Flux/src/flux/plane/services.py` - transition services to resolve/create Plane series from full paths, mirror RuntimeTag samples into `plane.latest`/`plane.sample`, recompute fixed window stats, and emit per-series quality status.
+- `web/Flux/src/flux/plane/samples.py` - Plane sample-read boundary over `plane.sample` for Chart generic/streaming reads.
+- `web/Flux/src/flux/chart/cache.py` - profile chart payloads and historian sync; reads/writes `plane.sample` through linked `TraceSignal.series`.
+- `web/Flux/src/flux/chart/data_plane.py` - PostgreSQL JSON payload path for Plane-sample-backed charts; joins `plane.series`/`base.tag` for series-preferring metadata.
+- `web/Flux/src/flux/chart/questdb_data_plane.py` - QuestDB JSON/export path for chart data; exports local `plane.sample` rows to series-scoped QuestDB `plane_samples` rows.
+- `web/Flux/src/flux/status/models.py` - new consolidated latest operational status read model keyed to `base.Entity`.
+- `web/Flux/src/flux/status/services.py` - status entity resolution and latest-status upsert/bulk-upsert helpers used by workers and monitors.
+- `scripts/flux-start.sh` - local stack launcher; starts FieldAgent supervisor and Fluxolot sampler.
+- `web/Flux/src/dashboard/services.py` - dashboard readiness, interface runtime state, field-device status, and stale refresh bridge.
+- `web/Flux/src/templates/dashboard/home.html` - dashboard Comp Surface and current Overall/OPC/charts rendering boundary.
+- `web/Flux/src/flux/serve/monitor.py` - service snapshot and FieldAgent heartbeat freshness truth logic.
+- `web/Flux/src/flux/serve/management/commands/flux_serve_monitor.py` - 5-second service monitor loop; intended owner for periodic bridge health checks.
+- `web/Flux/src/dashboard/models.py` - current `IgnitionBridgeConfig` latest bridge health cache fields.
+- `web/Flux/src/flux/serve/field_supervisor.py` - FieldAgent process specs and deterministic endpoint port derivation.
+- `web/Flux/src/flux/charts/providers/nav_wells.py` - preserved nav-well stress chart seeding, live update, cache sync, and source-data path.
+- `web/Flux/src/flux/charts/views.py` - Flux.charts one-page nav-well/Fluxolot/profile chart surfaces and payload routes.
+- `web/Flux/src/flux/charts/urls.py` / `routes.py` - current chart URL namespace; target is singular `flux.chart` with `/charts/` compatibility.
+- `web/Flux/src/flux/sim/jobs.py` - queued Sim provider import/output apply orchestration; watch desired-state versus external Ignition mutation boundary.
+- `web/Flux/src/flux/base/models.py` - active kernel `base.device`/`base.tag`/`base.entity`; legacy Sim/Serve aliases remain for transition only.
+- `web/Flux/src/flux/base/services.py` - compatibility provider import/tree/selection service layer now importing Flux.sim provider catalog models.
+- `web/Flux/src/flux/sim/models.py` - Flux.sim catalog/configuration models: `sim.provider`, `sim.provider_node`, `sim.provider_selection`, `sim.server`, `sim.driver`, `sim.endpoint`, `sim.device`, and `sim.tag`.
+- `web/Flux/src/flux/serve/models.py` - Flux.serve runtime evidence models including `serve.sim_agent_heartbeat`.
+- `web/Flux/src/flux/base/field_config.py` - serializes `FieldEndpoint` plus materialized `sim.device`/`sim.tag` rows into FieldAgent/Ignition config.
+- `web/Flux/src/flux/field/ignition.py` - FieldAgent-to-Ignition helper module; `flux.field` now owns helper code only, not models/tables/routes.
+- `web/Flux/src/templates/sim/index.html` - Sim Comp Surface for catalog/import/output flows; watch Comp Surface consistency and large provider rendering.
+- `web/Flux/src/flux/pagination.py` - shared bounded table/page helper for large UI surfaces.
+- `logix_samples/hello_world.L5X` / `logix_samples/hello_world.L5K` - small Logix source pair for Mine/Build/Deep.plc PLC round-trip and behavior tests.
+- `mine/src/flux_mine/plc/models.py` - current pure Python PLC dataclasses including controller, tags, tasks, programs, routines, and rungs.
+- `mine/src/flux_mine/plc/l5x.py` - current L5X parser; reads controller/data types/tags/programs/routines/rungs/tasks for the hello_world subset.
+- `mine/src/flux_mine/plc/l5k.py` - current L5K parser; reads tags/data types plus hello_world program/routine/rung/task structure.
+- `web/Flux/src/flux/mine/models.py` - current persisted Mine facts mapped to `mine.*`; still needs instruction/tag-reference tables for Logix reconstruction.
+- `web/Flux/src/flux/mine/migrations/0003_mine_schema_tables.py` - data-preserving Mine schema move from public `mine_*` tables to `mine.*` ownership.
+- `web/Flux/src/flux/mine/migrations/0004_plc_source_graph.py` - first PLC source graph tables under `mine.*`: programs, tasks, scheduled programs, routines, and rungs.
+- `web/Flux/src/flux/mine/migrations/0005_plc_instruction_references.py` - bounded RLL instruction and tag-reference persistence under `mine.*`.
+- `web/Flux/src/flux/mine/services.py` - persistence bridge from pure `flux_mine` parsed models into Django Mine facts.
+- `web/Flux/src/flux/build/models.py` / `web/Flux/src/flux/build/services.py` - current Build run/artifact boundary; needs L5X/L5K artifact target types when reconstruction starts.
+- `build/src/flux_build/targets/logix_l5x.py` - minimal generated L5X serializer from the canonical Mine PLC project model.
+- `web/Flux/src/flux/build/management/commands/flux_build_logix_l5x.py` - CLI entrypoint for Mine-run-to-generated-L5X builds.
+- `web/Flux/src/flux/build/migrations/0003_buildrun_logix_l5x_target.py` - Build target choice extension for `logix_l5x`.
+- `deep/src/flux_deep/hello_world.py` - current isolated Deep hello_world workspace generator; useful precedent but not yet generated from mined Logix facts.
+- `docs/deep-openplc.md` / `deep/README.md` - Deep.plc boundary: OpenPLC target is executable, L5X remains source intent.
+- `architecture/schematics_architecture.md` - Deep.schematics schema/model scope for the first 480 VAC motor starter + 24 VDC control fixture.
+
+## Recurring Architecture Checks
+
+- If Live shows `Good` and `Stale`, source quality was Good at the last sample, but no fresh `LatestTagValue.read_at` has been written inside `STALE_AFTER_SECONDS`.
+- Verify worker contract before blaming OPC: Flux.live depends on `flux_sampling_worker` or a demand sampler, not just FieldAgent and Ignition connections.
+- Prefer block tag reads through Flux.opt sampling paths; avoid browser-driven Ignition bindings or per-card read loops.
+- Fluxolot operator Live expects `fluxolot-live-sampler` to be continuously alive; architecture risk remains that `flux.serve.monitor` currently classifies it as `EXPECTED` rather than `REQUIRED`.
+- Do not trust `FieldEndpoint.status == RUNNING` by itself in UI copy; require fresh FieldAgent heartbeat evidence before showing `running` as runtime truth.
+- Do not delete stress `TraceProfile`/`RuntimeTag` rows to clean the UI; aggregate or paginate dashboard/chart navigation instead.
+- Large chart sets should use `/charts/wells/` or paginated/search index surfaces, never thousands of dashboard links.
+- Treat `flux.trace` route/model aliases as migration compatibility; add new chart UI/service behavior under `flux.charts`.
+- For Sim output, prefer bulk desired-state writes and resumable job phases before Fluxy/Ignition mutation.
+- Do not let `dashboard.services.test_bridge()` remain the canonical bridge health owner; extract bridge probing to Flux.bridge and call it from Flux.serve monitor snapshots.
+- Keep UI display pulse language separate from backend hot/warm/cold sampler lane language to avoid browser-driven IO assumptions.
+- For `Flux.spot` rename, do not casually change Django app labels/table names; preserve compatibility unless Build owns explicit migrations.
+- For `Flux.chart` rename, keep `flux.trace` models stable and migrate UI/service imports/routes first.
+- Do not reintroduce `public.base_*` tables. Provider catalog ownership moved to Flux.sim, endpoint config moved to `sim.endpoint`, and FieldAgent heartbeat evidence moved to `serve.sim_agent_heartbeat`.
+- Do not keep inert FieldAgent runtime columns indefinitely: either wire `FieldAgentHeartbeat.version`/`started_at` to a bounded FieldAgent self-report contract or remove/relocate them when moving runtime evidence under Flux.serve.
+- Keep `base.tag` low-churn and identity-focused; do not put latest values, samples, health observations, or per-surface membership directly on the central tag row.
+- Do not directly rename `base_fielddevice`/`base_fieldtag` into `base.device`/`base.tag`; first split identity fields from simulation/FieldAgent behavior and prove FieldAgent JSON parity through selectors.
+- `sim.TagConfig.materialized` distinguishes full sim catalog rows from tags actually exposed through FieldAgent endpoint config; endpoint config must filter materialized+enabled extension rows.
+- `sim.TagConfig.base_tag` is FK, not one-to-one; kernel tag identity can be reused by more than one simulation/device context.
+- Spot/Chart/Cell membership should reference `base.Tag` by FK and own only domain-specific metadata; `base.Tag` should remain low-churn tag identity shared across domains.
+- If both Spot and Chart consume the same physical tag, avoid two sampler/storage identities. Use one Plane series/stream row for the tag, then let Spot read the latest state and Chart read bounded time-series arrays from that same data-plane key.
+- Prefer `plane.series` or `plane.tag_stream` over `plane.tag` unless the name is explicitly documented as a storage contract, not another canonical tag identity competing with `base.tag`.
+- Spot summary windows must have explicit bounds and timezone semantics. Prefer names like `today`, `rolling_7d`, and `rolling_30d` over ambiguous `week` unless the business wants calendar-week behavior.
+- Retrieval optimization belongs in Flux.opt, not Spot/Chart/web requests: group reads by bridge/provider, prefer block reads, cap batch sizes and worker fan-out, use explicit timeouts/retry limits, and persist both success and failure status per Plane series.
+- Current serve commands to keep in mind: `flux_sampling_worker` reads runtime tags through Fluxy/WebDev and writes latest/sample rows; `flux_charts_worker`/`flux_trace_worker` synchronize chart cache and QuestDB export; `flux_serve_monitor` monitors worker/bridge/service health; `flux_field_supervisor` is FieldAgent OPC endpoint supervision, not Ignition data acquisition.
+- Avoid polymorphic FK ambiguity in a consolidated status table. A single `target_guid` cannot be a true DB FK to many tables unless there is a shared entity registry. Simpler first pass: `target_kind` choices + `target_guid` + unique/index constraints, with application-level validation; stronger later pass: `base.entity` or per-target nullable FKs with strict checks.
+- If `base.entity` is added, keep it deliberately boring: stable GUID, bounded kind enum, natural key/display name, enabled flag, timestamps. It must not become a junk drawer for app-specific config, latest values, or status details.
+- Sim catalog import paths should use bulk sync helpers, not per-row sync loops, because real providers can include hundreds of thousands of tags.
+- New read surfaces should query `base.Device`/`base.Tag` or `sim.DeviceConfig`/`sim.TagConfig`; direct `FieldDevice`/`FieldTag` reads are compatibility-only unless they are inside legacy writer/sync code.
+- Before expanding Postgres schemas beyond `bridge`, document schema creation, `db_table` quoting, FK naming, reverse migrations, permissions, and test DB behavior.
+- `base_fieldnode` was removed from active base models/admin/tests with `base.0009_drop_fieldnode`.
+- Do not reintroduce `flux.field.models`; duplicate legacy `field_*` tables were dropped with `field.0005_drop_legacy_field_models`.
+- For PLC mining, do not treat tag extraction as the whole job. Rebuild/emulation requires controller -> task/program -> routine -> rung structure plus tag data payloads and references.
+- For L5X/L5K round trips, first promise canonical semantic parity: parse original, persist model, serialize generated artifact, parse generated artifact, compare canonical model. Do not promise byte-perfect rebuild without raw source replay/fragment retention.
+- For Deep.plc tests, use explicit scan/time bounds and a named instruction subset. The hello_world first subset is `XIO`, `XIC`, `TON`, `OTL`, `OTU`, and `COP` over BOOL/TIMER/STRING state.
+- Keep Deep.plc isolated from Django/Ignition/FieldAgent until there is a narrow runtime adapter; OpenPLC does not execute Rockwell L5X directly.
+- For Mine schema migration, move tables as metadata operations rather than copying data. Do not combine schema movement, Python model renames, and new PLC source graph tables in one migration.
+- Verify cross-app FKs from Build/Cell after moving Mine tables; PostgreSQL OID-backed constraints should survive `SET SCHEMA`/`RENAME`, but tests and catalog checks must prove it.
+- After `mine.0003`, add future PLC graph tables directly under `mine.*`; do not reintroduce new public Mine tables.
+- After `mine.0004`, the remaining source-graph gap is instruction/tag-reference extraction. Keep this as a bounded hello_world subset before attempting broad Logix grammar support.
+- After `mine.0005`, the next Build target is generated L5X parity from persisted Mine rows; do not jump to Deep.plc until generated-source round trip is proven.
+- After `build.0003`, L5X parity is semantic/count-based, not byte-perfect. Do not promise exact Rockwell export reproduction without raw source replay/fragment retention.
+- For Deep.schematics, keep first persistence isolated to `schematics.*`; avoid `base`, `plane`, `sim`, `mine`, `status`, or live Ignition FKs until the source/circuit/component compiler is proven.
+- Component generators should be deterministic and side-effect free: no tag reads, no Ignition access, no PLC execution, and no final potential resolution without a circuit/source context.
+- Schematic renderings are projections; canonical truth is typed topology, terminals, roles, potential systems, and internal relations.
+
+## Recent Reports
+
+- `arch_review.md` - 2026-05-25 architectural state review; highest risks are broad dirty worktree coherence and insufficiently hard live/interface sampler contract.
+- `arch_review.md` - 2026-05-25 bridge connection test refactor plan; highest risk is Flux.serve snapshots reporting stale bridge truth because they read `last_test_*` instead of executing the bridge probe.
+- `arch_review.md` - 2026-05-25 Master Design Flux.web review; highest risk is interpreting the site-wide 5-second pulse as backend sampling/IO ownership rather than cached display refresh.
+- `arch_review.md` - 2026-05-25 dashboard/Spot/Chart refactor plan; highest risks are dashboard overload and unsafe Django app-label/table rename during `Flux.live` -> `Flux.spot`.
+- `arch_review.md` - 2026-05-25 base table legacy/removal review and `base_fieldnode` cleanup; highest risk is deleting active `base_*` sim/runtime tables instead of migrating their schema/ownership.
+- `arch_review.md` - 2026-05-25 Master Design Flux.base database modeling review; highest risk is migrating physical schemas before the logical identity model for `base.tag`/`base.device` and domain-owned observation/config tables is settled.
+- `arch_review.md` - 2026-05-25 base device/tag kernel migration path; highest risk is copying current FieldAgent/sim behavior wholesale into Base instead of splitting kernel identity from `sim.device`/`sim.tag` extensions.
+- `arch_review.md` - 2026-05-25 base device/tag kernel migration implementation; result is additive schema split with migrated row counts and FieldAgent JSON parity preserved.
+- `arch_review.md` - 2026-05-25 device/tag compatibility sync continuation; result is legacy materialization writers syncing into new schema rows with parity preserved.
+- `arch_review.md` - 2026-05-25 bulk sim catalog sync continuation; result is tag-data/value-profile/output catalog paths syncing non-materialized rows without dematerializing FieldAgent config.
+- `arch_review.md` - 2026-05-25 selector-backed device/tag read cutover; result is dashboard/Sim/supervisor runtime reads using new schema selectors with legacy fallback and parity preserved.
+- `arch_review.md` - 2026-05-25 public `base_*` table ownership review; highest risk is dropping active provider catalog/FieldAgent endpoint tables as legacy instead of migrating them to Flux.sim/Flux.serve ownership schemas.
+- `web/Flux/src/flux/sim/migrations/0014_provider_catalog_schema.py` and `web/Flux/src/flux/base/migrations/0013_remove_sim_catalog_state.py` - data-preserving migration of the provider catalog cluster from public `base_*` names into `sim.*` schema ownership.
+- `web/Flux/src/flux/sim/migrations/0015_endpoint_schema.py`, `web/Flux/src/flux/serve/migrations/0004_sim_agent_heartbeat_schema.py`, and `web/Flux/src/flux/base/migrations/0014_remove_endpoint_runtime_state.py` - data-preserving migration of endpoint config/runtime evidence out of public `base_*` names.
+- `architecture/mine/flux_mine_exploration.md` - 2026-05-25 initial Flux.mine/Build/Deep.plc Logix hello_world round-trip and functional-testing exploration.
+- `architecture/mine/flux_mine_exploration.md` - 2026-05-25 Mine schema migration strategy; highest risk is mixing schema movement with PLC model expansion or Python class renames.
+- `architecture/mine/flux_mine_exploration.md` - 2026-05-25 Mine schema migration implementation; current Mine tables now target `mine.*` and local migration preserved counts.
+- `architecture/mine/flux_mine_exploration.md` - 2026-05-25 PLC source graph implementation; hello_world L5X/L5K task/program/routine/rung structure now parses and L5X persists through Mine.
+- `architecture/mine/flux_mine_exploration.md` - 2026-05-25 RLL instruction reference implementation; hello_world bounded instruction/tag references now parse and persist through Mine.
+- `architecture/mine/flux_mine_exploration.md` - 2026-05-25 Flux.build L5X parity implementation; generated L5X parses back through Flux.mine with matching hello_world canonical counts.
+- `architecture/schematics_architecture.md` - 2026-05-25 Deep.schematics work scope; first slice is an isolated `schematics` schema and a compiled 480 VAC motor-starter / 24 VDC control fixture.

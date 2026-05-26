@@ -4,12 +4,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from flux.base.field_config import single_device_endpoint_config
-from flux.base.models import FieldDevice
 from flux.field.ignition import (
     FieldIgnitionConfiguration,
     configure_field_agent_ignition,
     opc_tag_configs,
 )
+from flux.sim.models import DeviceConfig
 
 
 IMPORTANT_TAG_FIELDS = (
@@ -36,7 +36,7 @@ class IgnitionTagExportCompareResult:
 
 def configure_export_compare_field_device_ignition(
     fx: Any,
-    device: FieldDevice,
+    device: DeviceConfig,
     *,
     tag_provider: str = "default",
     tag_folder: str | None = None,
@@ -50,7 +50,7 @@ def configure_export_compare_field_device_ignition(
         fx,
         config,
         tag_provider=tag_provider,
-        tag_folder=tag_folder or device.name,
+        tag_folder=tag_folder or device.base_device.name,
         connection_names=[connection_name] if connection_name else None,
         cleanup_existing=cleanup_existing,
         collision_policy=collision_policy,

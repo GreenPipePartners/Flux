@@ -9,7 +9,7 @@ class Command(BaseCommand):
     help = "Mine PLC or FactoryTalk sources into Flux.mine persistence tables."
 
     def add_arguments(self, parser):
-        parser.add_argument("source", help="Path to an .L5X/.L5K file, FactoryTalk XML/PAR file, or FactoryTalk directory")
+        parser.add_argument("source", help="Path to an .L5X/.L5K file, FactoryTalk XML/PAR file, FactoryTalk directory, or FactoryTalk ZIP")
         parser.add_argument(
             "--source-type",
             default="auto",

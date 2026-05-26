@@ -39,7 +39,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('service_name', models.CharField(max_length=120)),
                 ('instance_id', models.CharField(max_length=120)),
-                ('platform', models.CharField(choices=[('windows', 'Windows'), ('linux', 'Linux'), ('unknown', 'Unknown')], default='unknown', max_length=20)),
+                ('platform', models.CharField(choices=[('linux', 'Linux'), ('unknown', 'Unknown')], default='unknown', max_length=20)),
                 ('status', models.CharField(choices=[('starting', 'Starting'), ('running', 'Running'), ('paused', 'Paused'), ('stopped', 'Stopped'), ('error', 'Error')], default='starting', max_length=20)),
                 ('pid', models.PositiveIntegerField(blank=True, null=True)),
                 ('version', models.CharField(blank=True, max_length=80)),

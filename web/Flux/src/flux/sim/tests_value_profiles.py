@@ -3,7 +3,7 @@ import json
 from django.test import TestCase
 from flux_sim.value_profile import PRODUCTION_PROFILE_CONFIG_KEY, ValueProfile
 
-from flux.base.models import FieldTag
+from flux.base.models import Tag
 from flux.sim.fluxolot_fishtank import FLUXOLOT_TAGS, ensure_fluxolot_fishtank
 from flux.sim.value_profiles import (
     PROFILE_X_UNIT,
@@ -18,7 +18,7 @@ class SimValueProfileTests(TestCase):
 
         profile_map = build_production_profile_map(result.runtime_tags)
 
-        numeric_tag_count = sum(1 for spec in FLUXOLOT_TAGS if spec.data_type not in (FieldTag.DataType.STRING, FieldTag.DataType.BOOL)) * 2
+        numeric_tag_count = sum(1 for spec in FLUXOLOT_TAGS if spec.data_type not in (Tag.DataType.STRING, Tag.DataType.BOOL)) * 2
         self.assertEqual(len(profile_map), numeric_tag_count)
         self.assertNotIn("[default]FluxolotFishtank/Sir-Fluxolot-Fishtank_PUMP_START_STOP_COMMAND", profile_map)
 

@@ -2,13 +2,25 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Protocol, TypedDict
+
+
+class AddressFields(TypedDict, total=False):
+    raw: str
+    device: str
+    member: str
+    symbol: str
+    scope: str
+    local_member: str
+    array_index: str
+    register: str
+    address: str
 
 
 class AddressStrategy(Protocol):
     key: str
 
-    def parse(self, opc_item_path: str) -> dict[str, str]:
+    def parse(self, opc_item_path: str) -> AddressFields:
         ...
 
 
@@ -16,7 +28,7 @@ class AddressStrategy(Protocol):
 class GenericAddressStrategy:
     key: str = "generic"
 
-    def parse(self, opc_item_path: str) -> dict[str, str]:
+    def parse(self, opc_item_path: str) -> AddressFields:
         device, member = split_opc_symbol(opc_item_path)
         return {"raw": opc_item_path, "device": device, "member": member}
 
@@ -25,9 +37,9 @@ class GenericAddressStrategy:
 class LogixAddressStrategy:
     key: str = "logix"
 
-    def parse(self, opc_item_path: str) -> dict[str, str]:
+    def parse(self, opc_item_path: str) -> AddressFields:
         device, member = split_opc_symbol(opc_item_path)
-        result = {"raw": opc_item_path, "device": device, "symbol": member}
+        result: AddressFields = {"raw": opc_item_path, "device": device, "symbol": member}
         if ":" in member:
             scope, local_member = member.split(":", 1)
             result["scope"] = scope
@@ -42,7 +54,7 @@ class LogixAddressStrategy:
 class AcmAddressStrategy:
     key: str = "acm"
 
-    def parse(self, opc_item_path: str) -> dict[str, str]:
+    def parse(self, opc_item_path: str) -> AddressFields:
         device, member = split_opc_symbol(opc_item_path)
         return {"raw": opc_item_path, "device": device, "member": member}
 
@@ -51,7 +63,7 @@ class AcmAddressStrategy:
 class ModbusAddressStrategy:
     key: str = "modbus"
 
-    def parse(self, opc_item_path: str) -> dict[str, str]:
+    def parse(self, opc_item_path: str) -> AddressFields:
         device, member = split_opc_symbol(opc_item_path)
         return {"raw": opc_item_path, "device": device, "register": member}
 
@@ -60,7 +72,7 @@ class ModbusAddressStrategy:
 class SiemensAddressStrategy:
     key: str = "siemens"
 
-    def parse(self, opc_item_path: str) -> dict[str, str]:
+    def parse(self, opc_item_path: str) -> AddressFields:
         device, member = split_opc_symbol(opc_item_path)
         return {"raw": opc_item_path, "device": device, "address": member}
 
@@ -76,7 +88,7 @@ def strategy_for_key(key: str) -> AddressStrategy:
     return strategies.get(key, strategies["generic"])
 
 
-def parse_address(strategy_key: str, opc_item_path: str) -> dict[str, str]:
+def parse_address(strategy_key: str, opc_item_path: str) -> AddressFields:
     return strategy_for_key(strategy_key).parse(opc_item_path)
 
 

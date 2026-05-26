@@ -10,13 +10,15 @@ from django.template.response import TemplateResponse
 from dataclasses import replace
 
 from flux.base.runtime import RuntimeTag
-from flux.base.models import FieldEndpoint, FieldTag
-from flux.live.management.commands.import_live_scope_csv import import_live_scope_rows
-from flux.live.models import LiveScope
+from flux.bridge.models import IgnitionBridgeConfig
+from flux.bridge.services import bridge_config, test_bridge, update_bridge_config
+from flux.spot.management.commands.import_spot_scope_csv import import_live_scope_rows
+from flux.spot.models import LiveScope
 from flux.opt.models import RefreshLane
 from flux.opt.services import REFRESH_LANES
-from flux.trace.models import TraceProfile
-from trace.importer import import_trace_scopes_csv
+from flux.chart.importer import import_trace_scopes_csv
+from flux.pagination import table_page
+from flux.web_pulse import display_pulse_context
 
 from .copy_context import (
     DOCS_URL,
@@ -28,9 +30,7 @@ from .copy_context import (
     stale_recovery_copy_context,
 )
 from .forms import IgnitionBridgeConfigForm, InitialSuperuserForm
-from .models import IgnitionBridgeConfig
 from .services import (
-    bridge_config,
     dashboard_readiness,
     dashboard_runtime_state,
     excluded_interface_runtime_tag_count,
@@ -41,8 +41,6 @@ from .services import (
     serve_status,
     start_sim_server,
     stop_sim_server,
-    test_bridge,
-    update_bridge_config,
 )
 
 
@@ -53,6 +51,14 @@ def setup_required() -> bool:
 def home(request):
     if setup_required():
         return redirect("dashboard:setup")
+
+    aliased_card = {"live": "spot", "trace": "chart"}.get(request.GET.get("card", ""))
+    if aliased_card:
+        query = request.GET.copy()
+        query["card"] = aliased_card
+        if request.method == "GET":
+            return redirect(f"{request.path}?{query.urlencode()}")
+        request.GET = query
 
     if request.method == "GET" and request.GET.get("partial") == "simserver_card":
         return simserver_card_response(request)
@@ -76,9 +82,9 @@ def home(request):
                 clear_token = request.POST.get("clear_fluxy_token") == "on"
                 if base_url:
                     update_bridge_config(base_url=base_url, token=token if token else None, clear_token=clear_token)
-                    messages.success(request, "Saved Live Ignition Bridge configuration.")
+                    messages.success(request, "Saved Ignition Bridge configuration.")
                 else:
-                    messages.warning(request, "Live Ignition Bridge URL is required.")
+                    messages.warning(request, "Ignition Bridge URL is required.")
                 if not request.htmx:
                     return redirect("dashboard:home")
         if action == "test_bridge":
@@ -116,37 +122,37 @@ def home(request):
         if action == "import_live_scope_csv":
             csv_upload = request.FILES.get("live_scope_csv")
             if csv_upload is None:
-                messages.error(request, "Choose a Flux.live CSV file to import.")
+                messages.error(request, "Choose a Flux.spot CSV file to import.")
             else:
                 try:
                     rows = list(csv.DictReader(StringIO(csv_upload.read().decode("utf-8-sig"))))
                     result = import_live_scope_rows(
                         rows,
-                        default_scope=(request.POST.get("live_scope") or None),
+                        default_scope=(request.POST.get("live_scope") or "Fluxolot"),
                         replace=request.POST.get("replace_live_scope") == "on",
                     )
                 except (UnicodeDecodeError, CommandError, ValueError) as exc:
-                    messages.error(request, f"Flux.live CSV import failed: {exc}")
+                    messages.error(request, f"Flux.spot CSV import failed: {exc}")
                 else:
                     messages.success(
                         request,
-                        "Imported %(scopes)s live scopes, %(cards)s cards, and %(points)s points." % result,
+                        "Imported %(scopes)s spot scopes, %(cards)s cards, and %(points)s points." % result,
                     )
             if not request.htmx:
                 return redirect("dashboard:home")
         if action == "import_trace_scope_csv":
             csv_upload = request.FILES.get("trace_scope_csv")
             if csv_upload is None:
-                messages.error(request, "Choose a Flux.trace CSV file to import.")
+                messages.error(request, "Choose a Flux.chart CSV file to import.")
             else:
                 try:
                     result = import_trace_scopes_csv(StringIO(csv_upload.read().decode("utf-8-sig")))
                 except (UnicodeDecodeError, ValueError) as exc:
-                    messages.error(request, f"Flux.trace CSV import failed: {exc}")
+                    messages.error(request, f"Flux.chart CSV import failed: {exc}")
                 else:
                     messages.success(
                         request,
-                        "Imported %s trace charts, %s tags, and %s signals."
+                        "Imported %s charts, %s tags, and %s signals."
                         % (result.profiles, result.tags, result.signals),
                     )
             if not request.htmx:
@@ -172,7 +178,7 @@ def home(request):
                 for lane_name, interval_seconds in updates.items():
                     defaults = {**REFRESH_LANES[lane_name], "interval_seconds": interval_seconds}
                     RefreshLane.objects.update_or_create(name=lane_name, defaults=defaults)
-                messages.success(request, "Saved Flux.live refresh intervals.")
+                messages.success(request, "Saved Flux.spot refresh intervals.")
             if not request.htmx:
                 return redirect("dashboard:home")
         if action == "start_sim_server":
@@ -216,10 +222,12 @@ def home(request):
     runtime_state = dashboard_runtime_state(tags)
     service_status = serve_status()
     bridge_status = ignition_bridge_status()
-    trace_profiles = list(TraceProfile.objects.filter(enabled=True).prefetch_related("signals").order_by("key"))
     ensure_live_refresh_lanes()
     live_refresh_lanes = RefreshLane.objects.filter(name__in=("hot", "warm", "cold")).in_bulk(field_name="name")
     readiness = dashboard_readiness(runtime_state, service_status)
+    charts_readiness = next((item for item in readiness if item.label == "Flux.chart"), None)
+    trace_profile_count = charts_readiness.meta.get("chart_count", 0) if charts_readiness else 0
+    trace_signal_count = charts_readiness.meta.get("signal_count", 0) if charts_readiness else 0
     page_url = request.build_absolute_uri()
     readiness = attach_readiness_copy_contexts(readiness, page_url=page_url)
     readiness.insert(
@@ -237,9 +245,17 @@ def home(request):
         ),
     )
     service_state = "ok" if all(item.state == "ok" for item in readiness) else "warning"
+    pulse_state = dashboard_pulse_state(runtime_state, service_state)
     bridge = bridge_config()
     device_status = field_device_status()
     bridge_configs = bridge_status["configs"]
+    active_stale_tag_items, legacy_source_missing_items = split_legacy_source_missing_items(
+        runtime_state["stale_tag_items"]
+    )
+    stale_tag_page = table_page(request, active_stale_tag_items, "live_stale_page")
+    stale_tag_items = list(stale_tag_page.object_list)
+    serve_status_page = table_page(request, service_status.get("items", []), "dashboard_serve_page")
+    service_status = {**service_status, "items": list(serve_status_page.object_list)}
 
     return render(
         request,
@@ -255,11 +271,15 @@ def home(request):
             "excluded_runtime_tag_count": excluded_interface_runtime_tag_count(),
             "readiness": readiness,
             "service_state": service_state,
-            "stale_tag_items": runtime_state["stale_tag_items"][:12],
-            "stale_tag_overflow": max(runtime_state["stale_count"] - 12, 0),
+            "stale_tag_items": stale_tag_items,
+            "stale_tag_page": stale_tag_page,
+            "active_stale_count": len(active_stale_tag_items),
+            "legacy_source_missing_count": len(legacy_source_missing_items),
             "device_status": device_status,
             "serve_status": service_status,
-            "trace_profiles": trace_profiles,
+            "serve_status_page": serve_status_page,
+            "trace_profile_count": trace_profile_count,
+            "trace_signal_count": trace_signal_count,
             "live_scopes": LiveScope.objects.filter(enabled=True).order_by("slug"),
             "live_refresh_lanes": [live_refresh_lanes[name] for name in ("hot", "warm", "cold") if name in live_refresh_lanes],
             "bridge": {
@@ -272,7 +292,13 @@ def home(request):
             "bridge_status": bridge_status,
             "sim_default_tag_provider": settings.FLUX_SIM_DEFAULT_TAG_PROVIDER,
             "sim_tag_providers": settings.FLUX_SIM_TAG_PROVIDERS,
-            "bridge_form": locals().get("bridge_form") or IgnitionBridgeConfigForm(),
+            "bridge_form": locals().get("bridge_form") or IgnitionBridgeConfigForm(
+                initial={
+                    "name": bridge.name,
+                    "role": bridge.role,
+                    "base_url": bridge.base_url,
+                }
+            ),
             "bridge_copy_docs_url": DOCS_URL,
             "bridge_copy_table_markdown": render_bridge_table_markdown(bridge_configs),
             "bridge_copy_llm_markdown": render_bridge_llm_markdown(
@@ -280,14 +306,42 @@ def home(request):
                 page_url=page_url,
             ),
             "stale_recovery_copy": stale_recovery_copy_context(
-                runtime_state["stale_tag_items"][:12],
+                stale_tag_items,
                 stale_count=runtime_state["stale_count"],
                 page_url=page_url,
             ),
             "simserver_copy": simserver_copy_context(device_status, page_url=page_url),
             "serve_copy": serve_heartbeat_copy_context(service_status, page_url=page_url),
+            "flux_web_pulse": display_pulse_context(
+                source_label="Flux.storage interface tags",
+                last_backend_at=runtime_state["last_read_at"],
+                state=pulse_state,
+                detail="%s/%s interface runtime tags online"
+                % (runtime_state["online_count"], runtime_state["tag_count"]),
+            ),
         },
     )
+
+
+def dashboard_pulse_state(runtime_state: dict[str, object], service_state: str) -> str:
+    if runtime_state["last_read_at"] is None:
+        return "offline" if runtime_state["tag_count"] else "unknown"
+    if runtime_state["stale_count"]:
+        return "stale"
+    if runtime_state["bad_quality_count"]:
+        return "warning"
+    return service_state
+
+
+def split_legacy_source_missing_items(stale_items: list[dict]) -> tuple[list[dict], list[dict]]:
+    active_items = []
+    legacy_items = []
+    for item in stale_items:
+        if item.get("legacy_source_missing"):
+            legacy_items.append(item)
+        else:
+            active_items.append(item)
+    return active_items, legacy_items
 
 
 def bridges(request):
@@ -324,17 +378,17 @@ def attach_readiness_copy_contexts(readiness, *, page_url: str):
             "#fluxbuild-readiness",
             "Flux.build readiness context summarizes process cells built from recovered source primitives.",
         ),
-        "Flux.live": (
+        "Flux.spot": (
             "#latest-reads",
-            "Flux.live card context summarizes current runtime tag freshness and quality from Flux storage.",
+            "Flux.spot card context summarizes current runtime tag freshness and quality from Flux storage.",
         ),
         "Flux.serve": (
             "#fluxserve-readiness",
             "Flux.serve readiness context summarizes supervisor and worker heartbeat health for the local Flux stack.",
         ),
-        "Flux.trace": (
-            "#fluxtrace-readiness",
-            "Flux.trace readiness context summarizes configured trace charts and signal definitions.",
+        "Flux.chart": (
+            "#fluxcharts-readiness",
+            "Flux.chart readiness context summarizes configured charts and signal definitions.",
         ),
     }
     copied = []
@@ -385,7 +439,7 @@ def setup(request):
             user = form.save()
             login(request, user)
             messages.success(request, "Initial Flux superuser created.")
-            return redirect("admin:index")
+            return redirect("dashboard:home")
     else:
         form = InitialSuperuserForm()
 

@@ -11,6 +11,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 env = environ.Env(
+    FLUX_ENVIRONMENT=(str, "development"),
     DJANGO_DEBUG=(bool, True),
     DJANGO_ALLOWED_HOSTS=(list, ["localhost", "127.0.0.1"]),
     DJANGO_CSRF_TRUSTED_ORIGINS=(list, []),
@@ -24,12 +25,12 @@ if env_file.exists():
     environ.Env.read_env(env_file)
 
 SECRET_KEY = env("DJANGO_SECRET_KEY", default="dev-only-insecure-flux-secret-key")
+FLUX_ENVIRONMENT = env("FLUX_ENVIRONMENT")
 DEBUG = env("DJANGO_DEBUG")
 ALLOWED_HOSTS = env("DJANGO_ALLOWED_HOSTS")
 CSRF_TRUSTED_ORIGINS = env("DJANGO_CSRF_TRUSTED_ORIGINS")
 
 INSTALLED_APPS = [
-    "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -37,13 +38,18 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django_htmx",
     "flux.base",
+    "flux.status",
+    "flux.bridge",
     "flux.serve",
     "flux.opt",
+    "flux.plane",
+    "flux.schematics",
     "flux.sim",
     "flux.time",
     "flux.field",
     "flux.mine",
     "flux.build",
+    "flux.cell",
     "flux.nav",
     "flux.live",
     "flux.trace",
@@ -121,7 +127,7 @@ if not DEBUG:
     STORAGES["staticfiles"] = {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-LOGIN_URL = "admin:login"
+LOGIN_URL = "/"
 STALE_AFTER_SECONDS = env("STALE_AFTER_SECONDS")
 FLUX_SIM_DEFAULT_TAG_PROVIDER = env("FLUX_SIM_DEFAULT_TAG_PROVIDER")
 FLUX_SIM_TAG_PROVIDERS = env("FLUX_SIM_TAG_PROVIDERS")

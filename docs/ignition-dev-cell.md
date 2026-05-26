@@ -76,6 +76,6 @@ This is the first managed-cell slice. The next useful layers are:
 - `flux doctor` for whole-stack checks: local service, ports, Postgres, FieldAgent, Gateway, Fluxy.
 - `flux ignition configure-demo` to create the known demo OPC/tag setup through Fluxy.
 - `flux ignition reset-demo-cell` to return a Gateway to a known-good demo state.
-- Windows VM smoke checks that run these same commands inside the target OS.
+- Linux dev-cell smoke checks that run these same commands inside the target OS.
 
 Keep the boundary clear: systemd owns whether the local Flux stack is running; Fluxy owns safe Gateway automation; `flux.serve` should grow into domain lifecycle/status, not raw process ownership from web requests.

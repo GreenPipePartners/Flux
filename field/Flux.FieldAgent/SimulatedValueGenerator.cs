@@ -52,6 +52,10 @@ public static class SimulatedValueGenerator
         {
             return Convert.ToInt32(InitialValue(tag));
         }
+        if (tag.SimulationType == "random_walk")
+        {
+            return min + (int)Math.Round(PseudoRandom01(tag, sampleIndex) * (max - min));
+        }
         return min + (int)(sampleIndex % (max - min + 1));
     }
 
@@ -67,6 +71,10 @@ public static class SimulatedValueGenerator
         {
             return Convert.ToDouble(InitialValue(tag));
         }
+        if (tag.SimulationType == "random_walk")
+        {
+            return min + (PseudoRandom01(tag, sampleIndex) * (max - min));
+        }
         var midpoint = min + ((max - min) / 2.0);
         var amplitude = (max - min) / 2.0;
         var wave = Math.Sin(sampleIndex / 10.0) * amplitude;
@@ -78,5 +86,23 @@ public static class SimulatedValueGenerator
     {
         var prefix = string.IsNullOrWhiteSpace(tag.InitialValue) ? tag.Name : tag.InitialValue;
         return tag.SimulationType == "static" ? prefix : $"{prefix}-{sampleIndex}";
+    }
+
+    private static double PseudoRandom01(FieldTagConfig tag, long sampleIndex)
+    {
+        unchecked
+        {
+            var hash = 2166136261u;
+            foreach (var character in tag.Name)
+            {
+                hash ^= character;
+                hash *= 16777619u;
+            }
+            hash ^= (uint)sampleIndex;
+            hash *= 16777619u;
+            hash ^= (uint)(sampleIndex >> 32);
+            hash *= 16777619u;
+            return (hash % 10000) / 9999.0;
+        }
     }
 }

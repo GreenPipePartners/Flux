@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from .models import IgnitionBridgeConfig
+from flux.bridge.models import IgnitionBridgeConfig
 
 
 DOCS_URL = "http://localhost:8001/apps/dashboard/#ignition-bridges"
@@ -174,21 +174,22 @@ def simserver_copy_context(device_status: dict[str, Any], *, page_url: str = "")
             {
                 "name": endpoint.name,
                 "status": endpoint.status,
-                "online": item["online"],
+                "verified_online": item["online"],
+                "observed_state": item.get("observed_state", ""),
                 "device_count": item["enabled_device_count"],
                 "tag_count": item["enabled_tag_count"],
                 "last_error": endpoint.last_error,
             }
         )
     rows = [
-        ("Servers running", "%s/%s" % (device_status.get("running_endpoint_count", 0), device_status.get("enabled_endpoint_count", 0))),
+        ("Servers verified running", "%s/%s" % (device_status.get("running_endpoint_count", 0), device_status.get("enabled_endpoint_count", 0))),
         ("Device namespaces", device_status.get("enabled_device_count", 0)),
         ("Field tags", device_status.get("enabled_tag_count", 0)),
         ("Latest heartbeat", device_status.get("latest_seen_at") or "-"),
     ]
     return dashboard_card_copy_context(
         title="Flux.sim Runtime Connection",
-        description="Runtime connection context describes the SimServer OPC endpoints used by Flux.sim and supervised by Flux.serve.",
+        description="Runtime connection context describes the SimServer OPC endpoints used by Flux.sim. Dashboard rows show last reported endpoint state plus heartbeat evidence; verified process and TCP truth belongs to Flux.serve snapshots.",
         rows=rows,
         payload={"type": "flux.dashboard.simserver.context", "summary": dict(rows), "endpoints": endpoint_rows},
         docs_anchor="#sim-config",
@@ -228,22 +229,33 @@ def serve_heartbeat_copy_context(serve_status: dict[str, Any], *, page_url: str 
     )
 
 
-def stale_recovery_copy_context(stale_items: list[dict[str, Any]], *, stale_count: int, page_url: str = "") -> dict[str, str]:
-    rows = [("Stale count", stale_count)]
+def stale_recovery_copy_context(
+    stale_items: list[dict[str, Any]],
+    *,
+    stale_count: int,
+    page_url: str = "",
+) -> dict[str, str]:
+    rows = [("Stale count", stale_count), ("Active refresh rows", len(stale_items))]
     rows.extend(
         (
             "%s / %s" % (item["tag"].asset_name or "-", item["tag"].display_name),
-            "%s%s" % (item["reason"], " (%ss old)" % item["age_seconds"] if item.get("age_seconds") else ""),
+            "%s%s · %s"
+            % (
+                item["reason"],
+                " (%ss old)" % item["age_seconds"] if item.get("age_seconds") else "",
+                item.get("status_label", "stale"),
+            ),
         )
         for item in stale_items
     )
     return dashboard_card_copy_context(
-        title="Flux.live Stale Tag Recovery",
-        description="Stale recovery context lists Flux.live runtime tags selected for a consolidated Fluxy block refresh.",
+        title="Flux.spot Stale Tag Recovery",
+        description="Stale recovery context lists Flux.spot runtime tags selected for a consolidated Fluxy block refresh.",
         rows=rows,
         payload={
             "type": "flux.dashboard.stale_recovery.context",
             "stale_count": stale_count,
+            "active_refresh_count": len(stale_items),
             "tags": [
                 {
                     "full_path": item["tag"].full_path,
@@ -251,6 +263,8 @@ def stale_recovery_copy_context(stale_items: list[dict[str, Any]], *, stale_coun
                     "display_name": item["tag"].display_name,
                     "reason": item["reason"],
                     "age_seconds": item.get("age_seconds"),
+                    "source_context": item.get("source_context", ""),
+                    "legacy_source_missing": item.get("legacy_source_missing", False),
                 }
                 for item in stale_items
             ],

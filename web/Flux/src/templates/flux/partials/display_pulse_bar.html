@@ -1,0 +1,12 @@
+{% if flux_web_pulse.enabled and not embed_mode %}
+  <div class="flux-web-pulse-timer" data-flux-web-pulse-timer data-refresh-seconds="{{ flux_web_pulse.refresh_seconds }}" style="--pulse-countdown-percent: 100%;" role="status" aria-live="polite" aria-label="Next display refresh">
+    <span class="flux-web-pulse-next-label">Next display refresh</span>
+    <span class="flux-web-pulse-visual">
+      <span class="flux-web-pulse-track" aria-hidden="true">
+        <span class="flux-web-pulse-line"></span>
+        <span class="flux-web-pulse-square"></span>
+      </span>
+      <strong data-flux-web-pulse-countdown>{{ flux_web_pulse.refresh_seconds }}s</strong>
+    </span>
+  </div>
+{% endif %}

@@ -1,6 +1,6 @@
-"""Flux Live presentation boundary.
+"""Flux Spot presentation boundary.
 
-Runtime value storage is exposed through `flux.base.runtime` so Live remains a read-only
+Runtime value storage is exposed through `flux.base.runtime` so Spot remains a read-only
 current-state visualization surface.
 """
 
@@ -44,6 +44,7 @@ class LiveCardDefinition(models.Model):
 
 class LiveCardPointDefinition(models.Model):
     card = models.ForeignKey(LiveCardDefinition, on_delete=models.CASCADE, related_name="points")
+    series = models.ForeignKey("plane.Series", on_delete=models.SET_NULL, related_name="spot_points", blank=True, null=True)
     label = models.CharField(max_length=255)
     full_path = models.CharField(max_length=1124)
     sort_order = models.PositiveIntegerField(default=0)

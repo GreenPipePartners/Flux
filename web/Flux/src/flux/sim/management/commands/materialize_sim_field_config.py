@@ -4,7 +4,7 @@ from flux.sim.field_bridge import materialize_enabled_sim_devices
 
 
 class Command(BaseCommand):
-    help = "Materialize enabled SimDevice catalog rows into FieldAgent runtime configuration."
+    help = "Materialize enabled sim.device catalog rows into FieldAgent runtime configuration."
 
     def add_arguments(self, parser):
         parser.add_argument(

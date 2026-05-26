@@ -12,7 +12,6 @@ import urllib.request
 import webbrowser
 from pathlib import Path
 
-
 ROOT_DIR = Path(__file__).resolve().parents[1]
 WEB_URL = "http://localhost:8000/"
 DOCS_URL = "http://localhost:8001/"
@@ -66,11 +65,18 @@ Field simulation:
   flux field supervisor        Run supervised per-device FieldAgent processes
 
 Migration mining/build:
-  flux mine source PATH        Persist mine facts from PLC or FactoryTalk source
+  flux mine source PATH        Persist mine facts from PLC or FactoryTalk source/ZIP
   flux mine parse-l5x FILE       Parse an L5X file and print recovered PLC summary
   flux mine parse-l5k FILE       Parse an L5K file and print recovered PLC summary
   flux build ignition-tags FILE  Generate Ignition tag provider JSON from an L5X/L5K file
   flux build ignition-tags-run ID Generate Ignition tag provider JSON from a mine run
+  flux build hmi-map SOURCE      Generate symbolic HMI map artifacts from an HMI source
+  flux build hmi-map-run ID      Generate symbolic HMI map artifacts from a mine run
+  flux build seed-hmi-demo          Seed the verified HMI demo SQLite build sample
+  flux cell seed-demo            Seed a sample cell backed by cached runtime/trace data
+  flux cell import DIR           Import a Flux.cell CSV bundle
+  flux cell export KEY           Export Flux.cell Live/Trace CSV views
+  flux deep init-hello-world      Seed the Flux.Deep Logix/OpenPLC hello_world workspace
 
 First local setup:
   1. Run: flux install-service
@@ -85,8 +91,14 @@ Project paths:
 
 
 def script(name: str) -> Path:
-    suffix = ".cmd" if os.name == "nt" else ".sh"
-    return ROOT_DIR / "scripts" / f"{name}{suffix}"
+    return ROOT_DIR / "scripts" / f"{name}.sh"
+
+
+def require_linux() -> int:
+    if sys.platform == "linux":
+        return 0
+    print("Flux is Linux-exclusive. Run Flux on Linux with systemd and bash.", file=sys.stderr)
+    return 2
 
 
 def flux_env() -> dict[str, str]:
@@ -116,12 +128,18 @@ def run_uv_build(args: list[str]) -> int:
     return subprocess.call(["uv", "run", "--project", "build", *args], cwd=ROOT_DIR, env=flux_env())
 
 
+def run_uv_deep(args: list[str]) -> int:
+    return subprocess.call(["uv", "run", "--project", "deep", *args], cwd=ROOT_DIR, env=flux_env())
+
+
 def run_manage(args: list[str]) -> int:
     return subprocess.call(["uv", "run", "python", "manage.py", *args], cwd=WEB_DIR, env=flux_env())
 
 
 def run_docs(args: list[str]) -> int:
-    return subprocess.call(["uv", "run", "--project", str(WEB_DIR), "mkdocs", *args], cwd=ROOT_DIR, env=flux_env())
+    return subprocess.call(
+        ["uv", "run", "--project", str(WEB_DIR), "mkdocs", *args], cwd=ROOT_DIR, env=flux_env()
+    )
 
 
 def capture(command: list[str], *, cwd: Path = ROOT_DIR) -> subprocess.CompletedProcess[str]:
@@ -170,7 +188,9 @@ def doctor() -> int:
 
     service = capture(["systemctl", "--user", "is-active", "flux-stack.service"])
     service_ok = service.returncode == 0 and service.stdout.strip() == "active"
-    print_check(service_ok, "Flux service", service.stdout.strip() or service.stderr.strip() or "not active")
+    print_check(
+        service_ok, "Flux service", service.stdout.strip() or service.stderr.strip() or "not active"
+    )
     if not service_ok:
         print_fix("flux start")
     failures += 0 if service_ok else 1
@@ -208,7 +228,11 @@ def doctor() -> int:
         latest_detail = "no reads yet" if latest_age is None else f"latest read {latest_age}s ago"
         hidden_count = runtime.get("excluded_interface_tag_count", 0)
         hidden_detail = f", {hidden_count} hidden trial/stress" if hidden_count else ""
-        runtime_ok = runtime["tag_count"] > 0 and runtime["stale_count"] == 0 and runtime["bad_quality_count"] == 0
+        runtime_ok = (
+            runtime["tag_count"] > 0
+            and runtime["stale_count"] == 0
+            and runtime["bad_quality_count"] == 0
+        )
         print_check(
             runtime_ok,
             "Runtime reads",
@@ -229,7 +253,10 @@ def doctor() -> int:
         failures += 0 if runtime_ok else 1
 
         bridge_ok = bridge["online"] and bridge["token_set"]
-        bridge_detail = "%s, token %s" % (bridge["base_url"], "set" if bridge["token_set"] else "not set")
+        bridge_detail = "%s, token %s" % (
+            bridge["base_url"],
+            "set" if bridge["token_set"] else "not set",
+        )
         if bridge["message"]:
             bridge_detail = f"{bridge_detail}, {bridge['message']}"
         print_check(bridge_ok, "Live Ignition Bridge", bridge_detail)
@@ -250,9 +277,9 @@ def doctor() -> int:
 
         questdb = state.get("questdb", {})
         questdb_ok = bool(questdb.get("ok"))
-        questdb_detail = "%s, %s trace points" % (
+        questdb_detail = "%s, %s Plane samples" % (
             questdb.get("dsn", "postgresql://admin:quest@localhost:8812/qdb"),
-            questdb.get("trace_points", 0),
+            questdb.get("plane_samples", 0),
         )
         if questdb.get("latest_timestamp"):
             questdb_detail = f"{questdb_detail}, latest {questdb['latest_timestamp']}"
@@ -260,8 +287,10 @@ def doctor() -> int:
             questdb_detail = f"{questdb_detail}, {questdb['error']}"
         print_check(questdb_ok, "QuestDB Trace data plane", questdb_detail)
         if not questdb_ok:
-            print_fix("scripts/questdb-start%s" % (".ps1" if os.name == "nt" else ".sh"))
-            print_fix("cd web/Flux && uv run python manage.py sync_trace_questdb --limit 10 --replace")
+            print_fix("scripts/questdb-start.sh")
+            print_fix(
+                "cd web/Flux && uv run python manage.py sync_trace_questdb --limit 10 --replace"
+            )
         failures += 0 if questdb_ok else 1
 
     ignition = capture(["uv", "run", "--project", "fluxy", "fluxy-check-ignition-dev"])
@@ -378,7 +407,9 @@ def ignition_request_scan(args: argparse.Namespace) -> int:
     env["FLUXY_BASE_URL"] = base_url
     if token:
         env["FLUXY_TOKEN"] = token
-    return subprocess.call(["uv", "run", "--project", "fluxy", "python", "-c", code], cwd=ROOT_DIR, env=env)
+    return subprocess.call(
+        ["uv", "run", "--project", "fluxy", "python", "-c", code], cwd=ROOT_DIR, env=env
+    )
 
 
 def ignition_info() -> int:
@@ -488,6 +519,60 @@ def build_ignition_tags_run(args: argparse.Namespace) -> int:
     return run_manage(["flux_build_ignition_tags", str(args.mine_run_id), "--output", args.output])
 
 
+def build_hmi_map(args: argparse.Namespace) -> int:
+    return run_uv_build(["flux-build", "hmi-map", args.path, "--output-dir", args.output_dir])
+
+
+def build_hmi_map_run(args: argparse.Namespace) -> int:
+    return run_manage(
+        ["flux_build_hmi_map", str(args.mine_run_id), "--output-dir", args.output_dir]
+    )
+
+
+def build_seed_HMI demo(args: argparse.Namespace) -> int:
+    command = [
+        "seed_build_hmi_demo",
+        "--sqlite-path",
+        args.sqlite_path,
+        "--max-display-screens",
+        str(args.max_display_screens),
+        "--output-dir",
+        args.output_dir,
+    ]
+    if args.keep_existing:
+        command.append("--keep-existing")
+    return run_manage(command)
+
+
+def cell_import(args: argparse.Namespace) -> int:
+    command = ["import_cell_csv_bundle", args.path]
+    if args.replace:
+        command.append("--replace")
+    return run_manage(command)
+
+
+def cell_seed_demo(args: argparse.Namespace) -> int:
+    command = ["seed_cell_demo"]
+    if args.skip_runtime:
+        command.append("--skip-runtime")
+    return run_manage(command)
+
+
+def cell_export(args: argparse.Namespace) -> int:
+    return run_manage(["export_cell_csv_bundle", args.bundle_key, "--output", args.output])
+
+
+def deep_init_hello_world(args: argparse.Namespace) -> int:
+    command = ["flux-deep", "init-hello-world", "--output", args.output]
+    if args.force:
+        command.append("--force")
+    return run_uv_deep(command)
+
+
+def deep_inspect(args: argparse.Namespace) -> int:
+    return run_uv_deep(["flux-deep", "inspect", args.path])
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Flux local development helper.")
     subparsers = parser.add_subparsers(dest="command")
@@ -497,15 +582,19 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     start = subparsers.add_parser("start", help="Start the Flux background service")
     start.add_argument(
         "--web-mode",
+        nargs="?",
+        const="gunicorn",
         choices=["gunicorn", "dev", "internal"],
-        help="Web serving mode: gunicorn for prod-like workers, dev/internal for Django runserver.",
+        help="Web serving mode: gunicorn for prod-like workers, dev/internal for Django runserver. Defaults to gunicorn when the flag is present without a value.",
     )
     subparsers.add_parser("stop", help="Stop the Flux background service")
     restart = subparsers.add_parser("restart", help="Restart the Flux background service")
     restart.add_argument(
         "--web-mode",
+        nargs="?",
+        const="gunicorn",
         choices=["gunicorn", "dev", "internal"],
-        help="Web serving mode after restart: gunicorn for prod-like workers, dev/internal for Django runserver.",
+        help="Web serving mode after restart: gunicorn for prod-like workers, dev/internal for Django runserver. Defaults to gunicorn when the flag is present without a value.",
     )
     subparsers.add_parser("status", help="Show Flux service status")
     subparsers.add_parser("logs", help="Follow Flux service logs")
@@ -517,13 +606,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     docs_serve_parser.add_argument("--port", default="8001")
     docs_subparsers.add_parser("build", help="Build the static docs site")
     docs_subparsers.add_parser("open", help="Open the local docs site")
+
     ignition = subparsers.add_parser("ignition", help="Manage the Flux Ignition dev cell")
     ignition_subparsers = ignition.add_subparsers(dest="ignition_command")
 
     ignition_subparsers.add_parser("info", help="Show configured Ignition dev-cell paths and URLs")
     doctor = ignition_subparsers.add_parser("doctor", help="Check Gateway + Fluxy WebDev readiness")
-    doctor.add_argument("--gateway-url", default=flux_env().get("IGNITION_GATEWAY_URL", DEFAULT_GATEWAY_URL))
-    doctor.add_argument("--fluxy-base-url", default=flux_env().get("FLUXY_BASE_URL", DEFAULT_FLUXY_BASE_URL))
+    doctor.add_argument(
+        "--gateway-url", default=flux_env().get("IGNITION_GATEWAY_URL", DEFAULT_GATEWAY_URL)
+    )
+    doctor.add_argument(
+        "--fluxy-base-url", default=flux_env().get("FLUXY_BASE_URL", DEFAULT_FLUXY_BASE_URL)
+    )
     doctor.add_argument("--token", default=None)
     doctor.add_argument("--timeout", type=float, default=5.0)
     doctor.add_argument("--open", action="store_true", help="Open manual-attention URLs")
@@ -533,17 +627,30 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     deploy.add_argument("--namespace", default="fluxy")
     deploy.add_argument("--auth-token", default=None)
     deploy.add_argument("--clean", action="store_true")
-    deploy.add_argument("--no-scan", action="store_true", help="Do not request an Ignition project scan after deploy")
+    deploy.add_argument(
+        "--no-scan",
+        action="store_true",
+        help="Do not request an Ignition project scan after deploy",
+    )
 
     scan = ignition_subparsers.add_parser("request-scan", help="Ask Ignition to rescan the project")
-    scan.add_argument("--fluxy-base-url", default=flux_env().get("FLUXY_BASE_URL", DEFAULT_FLUXY_BASE_URL))
+    scan.add_argument(
+        "--fluxy-base-url", default=flux_env().get("FLUXY_BASE_URL", DEFAULT_FLUXY_BASE_URL)
+    )
     scan.add_argument("--token", default=None)
     ignition_subparsers.add_parser("open", help="Open the Ignition Gateway home page")
 
-    mine = subparsers.add_parser("mine", help="Recover PLC/HMI primitives from legacy SCADA projects")
+    mine = subparsers.add_parser(
+        "mine", help="Recover PLC/HMI primitives from legacy SCADA projects"
+    )
     mine_subparsers = mine.add_subparsers(dest="mine_command", required=True)
-    mine_source_parser = mine_subparsers.add_parser("source", help="Persist mine facts from a PLC or FactoryTalk source")
-    mine_source_parser.add_argument("path", help="Path to an .L5X/.L5K file, FactoryTalk XML/PAR file, or FactoryTalk directory")
+    mine_source_parser = mine_subparsers.add_parser(
+        "source", help="Persist mine facts from a PLC or FactoryTalk source"
+    )
+    mine_source_parser.add_argument(
+        "path",
+        help="Path to an .L5X/.L5K file, FactoryTalk XML/PAR file, FactoryTalk directory, or FactoryTalk ZIP",
+    )
     mine_source_parser.add_argument(
         "--source-type",
         default="auto",
@@ -557,7 +664,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
     build = subparsers.add_parser("build", help="Generate target artifacts from mined primitives")
     build_subparsers = build.add_subparsers(dest="build_command", required=True)
-    build_tags = build_subparsers.add_parser("ignition-tags", help="Generate Ignition tag provider JSON from an L5X/L5K file")
+    build_tags = build_subparsers.add_parser(
+        "ignition-tags", help="Generate Ignition tag provider JSON from an L5X/L5K file"
+    )
     build_tags.add_argument("path", help="Path to an L5X/L5K file")
     build_tags.add_argument("--output", required=True, help="Path to generated provider JSON")
     build_tags_run = build_subparsers.add_parser(
@@ -565,28 +674,109 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     build_tags_run.add_argument("mine_run_id", type=int, help="Mine run id to build from")
     build_tags_run.add_argument("--output", required=True, help="Path to generated provider JSON")
+    build_hmi = build_subparsers.add_parser(
+        "hmi-map", help="Generate symbolic HMI map artifacts from an HMI source"
+    )
+    build_hmi.add_argument("path", help="Path to FactoryTalk XML/PAR directory or ZIP")
+    build_hmi.add_argument(
+        "--output-dir", required=True, help="Directory for generated HMI map artifacts"
+    )
+    build_hmi_run = build_subparsers.add_parser(
+        "hmi-map-run", help="Generate symbolic HMI map artifacts from a persisted HMI mine run"
+    )
+    build_hmi_run.add_argument("mine_run_id", type=int, help="HMI mine run id to build from")
+    build_hmi_run.add_argument(
+        "--output-dir", required=True, help="Directory for generated HMI map artifacts"
+    )
+    build_seed = build_subparsers.add_parser(
+        "seed-hmi-demo", help="Seed the verified HMI demo SQLite build sample"
+    )
+    build_seed.add_argument(
+        "--sqlite-path",
+        default=str(ROOT_DIR / "local_hmi_sqlite_export" / "conversion_data.sqlite3"),
+    )
+    build_seed.add_argument("--max-display-screens", type=int, default=8)
+    build_seed.add_argument("--output-dir", default="/tmp/opencode/flux-build-hmi-demo")
+    build_seed.add_argument("--keep-existing", action="store_true")
+
+    cell = subparsers.add_parser("cell", help="Manage Flux.cell process collection CSV workflows")
+    cell_subparsers = cell.add_subparsers(dest="cell_command", required=True)
+    cell_seed_parser = cell_subparsers.add_parser(
+        "seed-demo", help="Seed a sample Flux.cell bundle"
+    )
+    cell_seed_parser.add_argument(
+        "--skip-runtime", action="store_true", help="Do not seed runtime or trace cache values"
+    )
+    cell_import_parser = cell_subparsers.add_parser("import", help="Import a Flux.cell CSV bundle")
+    cell_import_parser.add_argument("path", help="Directory containing cells.csv and points.csv")
+    cell_import_parser.add_argument(
+        "--replace",
+        action="store_true",
+        help="Replace existing cells/points for bundles in cells.csv",
+    )
+    cell_export_parser = cell_subparsers.add_parser(
+        "export", help="Export Flux.cell Live/Trace CSV views"
+    )
+    cell_export_parser.add_argument("bundle_key", help="Cell bundle key to export")
+    cell_export_parser.add_argument(
+        "--output", required=True, help="Output directory for exported CSV files"
+    )
+
+    deep = subparsers.add_parser("deep", help="Manage Flux.Deep OpenPLC emulation workspaces")
+    deep_subparsers = deep.add_subparsers(dest="deep_command", required=True)
+    deep_hello = deep_subparsers.add_parser(
+        "init-hello-world", help="Create the starter Logix/OpenPLC hello_world workspace"
+    )
+    deep_hello.add_argument(
+        "--output",
+        default=str(ROOT_DIR / ".runtime" / "flux-deep" / "hello_world"),
+        help="Output workspace directory",
+    )
+    deep_hello.add_argument("--force", action="store_true", help="Overwrite generated files")
+    deep_inspect_parser = deep_subparsers.add_parser(
+        "inspect", help="Print a Flux.Deep workspace manifest"
+    )
+    deep_inspect_parser.add_argument("path", help="Workspace directory containing manifest.json")
 
     field = subparsers.add_parser("field", help="Manage Flux FieldAgent simulation workflow")
     field_subparsers = field.add_subparsers(dest="field_command")
 
-    import_tags = field_subparsers.add_parser("import-tag-data", help="Import tag_data inventory and provider JSON")
+    import_tags = field_subparsers.add_parser(
+        "import-tag-data", help="Import tag_data inventory and provider JSON"
+    )
     import_tags.add_argument("provider", help="Provider name to import, for example Tag_02")
     import_tags.add_argument("--devices", required=True, help="Path to device inventory text file")
     import_tags.add_argument("--tags", required=True, help="Path to Ignition provider JSON export")
     import_tags.add_argument("--skip-raw-config", action="store_true")
 
-    import_live = field_subparsers.add_parser("import-live", help="Import live Ignition provider export and device list")
-    import_live.add_argument("source_provider", help="Ignition provider name to export, for example default")
-    import_live.add_argument("--provider", help="Flux catalog provider name. Defaults to source_provider.")
-    import_live.add_argument("--base-url", default=flux_env().get("FLUXY_BASE_URL", DEFAULT_FLUXY_BASE_URL))
+    import_live = field_subparsers.add_parser(
+        "import-live", help="Import live Ignition provider export and device list"
+    )
+    import_live.add_argument(
+        "source_provider", help="Ignition provider name to export, for example default"
+    )
+    import_live.add_argument(
+        "--provider", help="Flux catalog provider name. Defaults to source_provider."
+    )
+    import_live.add_argument(
+        "--base-url", default=flux_env().get("FLUXY_BASE_URL", DEFAULT_FLUXY_BASE_URL)
+    )
     import_live.add_argument("--token", default=None)
     import_live.add_argument("--skip-raw-config", action="store_true")
 
-    materialize = field_subparsers.add_parser("materialize", help="Materialize enabled sim devices into FieldAgent config")
-    materialize.add_argument("--provider", help="Optional provider name to materialize, for example Tag_02")
+    materialize = field_subparsers.add_parser(
+        "materialize", help="Materialize enabled sim devices into FieldAgent config"
+    )
+    materialize.add_argument(
+        "--provider", help="Optional provider name to materialize, for example Tag_02"
+    )
 
-    configure = field_subparsers.add_parser("configure-ignition", help="Configure Ignition for enabled FieldAgent endpoints")
-    configure.add_argument("--base-url", default=flux_env().get("FLUXY_BASE_URL", DEFAULT_FLUXY_BASE_URL))
+    configure = field_subparsers.add_parser(
+        "configure-ignition", help="Configure Ignition for enabled FieldAgent endpoints"
+    )
+    configure.add_argument(
+        "--base-url", default=flux_env().get("FLUXY_BASE_URL", DEFAULT_FLUXY_BASE_URL)
+    )
     configure.add_argument("--token", default=None)
     configure.add_argument("--project-location", default=flux_env().get("FLUXY_PROJECT_LOCATION"))
     configure.add_argument("--tag-provider", default="default")
@@ -594,7 +784,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     configure.add_argument("--collision-policy", default="o", choices=["a", "m", "o", "i"])
     configure.add_argument("--no-cleanup", action="store_true")
 
-    supervisor = field_subparsers.add_parser("supervisor", help="Run supervised per-device FieldAgent processes")
+    supervisor = field_subparsers.add_parser(
+        "supervisor", help="Run supervised per-device FieldAgent processes"
+    )
     supervisor.add_argument("--runtime-dir", default=str(ROOT_DIR / ".runtime" / "field-agent"))
     supervisor.add_argument("--once", action="store_true")
     supervisor.add_argument("--dry-run", action="store_true")
@@ -604,6 +796,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def main(argv: list[str] | None = None) -> int:
+    platform_status = require_linux()
+    if platform_status:
+        return platform_status
     args = parse_args(argv)
     command = args.command or "intro"
     if command == "intro":
@@ -661,6 +856,26 @@ def main(argv: list[str] | None = None) -> int:
             return build_ignition_tags(args)
         if build_command == "ignition-tags-run":
             return build_ignition_tags_run(args)
+        if build_command == "hmi-map":
+            return build_hmi_map(args)
+        if build_command == "hmi-map-run":
+            return build_hmi_map_run(args)
+        if build_command == "seed-hmi-demo":
+            return build_seed_HMI demo(args)
+    if command == "cell":
+        cell_command = args.cell_command or "import"
+        if cell_command == "seed-demo":
+            return cell_seed_demo(args)
+        if cell_command == "import":
+            return cell_import(args)
+        if cell_command == "export":
+            return cell_export(args)
+    if command == "deep":
+        deep_command = args.deep_command or "init-hello-world"
+        if deep_command == "init-hello-world":
+            return deep_init_hello_world(args)
+        if deep_command == "inspect":
+            return deep_inspect(args)
     if command == "field":
         field_command = args.field_command or "materialize"
         if field_command == "import-tag-data":

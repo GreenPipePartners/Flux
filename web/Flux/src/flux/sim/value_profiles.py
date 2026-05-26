@@ -8,8 +8,11 @@ from typing import Any
 from django.utils import timezone
 from flux_sim.value_profile import PRODUCTION_PROFILE_CONFIG_KEY, fit_value_profile
 
-from flux.base.models import FieldTag, SimDevice, SimDeviceTag, SimDriver, TagProvider
+from flux.base.models import Tag
+from flux.sim.models import SimDriver, TagProvider
 from flux.base.runtime import RuntimeTag, TagSample
+from flux.sim.kernel_sync import upsert_device_config, upsert_tag_config
+from flux.sim.models import TagConfig
 
 
 PROFILE_X_UNIT = "minutes_since_first_sample"
@@ -93,13 +96,13 @@ def build_production_profile_map(
 
 
 def persist_field_tag_production_profile(
-    field_tag: FieldTag,
+    field_tag: TagConfig,
     runtime_tag: RuntimeTag,
     *,
     limit: int | None = None,
     min_samples: int = 3,
 ) -> dict[str, Any] | None:
-    """Write a RuntimeTag-derived profile into FieldTag.config."""
+    """Write a RuntimeTag-derived profile into TagConfig.config."""
 
     result = build_runtime_tag_profile(runtime_tag, limit=limit, min_samples=min_samples)
     if result is None:
@@ -114,7 +117,7 @@ def persist_field_tag_production_profile(
 
 
 def persist_field_tag_production_profiles(
-    bindings: Iterable[tuple[FieldTag, RuntimeTag]],
+    bindings: Iterable[tuple[TagConfig, RuntimeTag]],
     *,
     limit: int | None = None,
     min_samples: int = 3,
@@ -159,7 +162,7 @@ def materialize_profile_sim_device(
     source_fixture: str,
     driver_key: str = "profile-derived",
     driver_label: str = "Profile Derived",
-) -> list[SimDeviceTag]:
+) -> list[TagConfig]:
     runtime_tag_list = list(runtime_tags)
     provider, _created = TagProvider.objects.update_or_create(
         name=provider_name,
@@ -175,10 +178,16 @@ def materialize_profile_sim_device(
         key=driver_key,
         defaults={"label": driver_label, "strategy_key": "profile"},
     )
-    device, _created = SimDevice.objects.update_or_create(
-        provider=provider,
+    device = upsert_device_config(
+        namespace=f"provider:{provider.name}",
         name=device_name,
-        defaults={"driver": driver, "config": {"disposable": True}},
+        device_type=driver.label,
+        source_provider=provider,
+        driver=driver,
+        browse_path=provider.name,
+        enabled=True,
+        description="Profile-derived sim device",
+        config={"disposable": True},
     )
 
     tags = []
@@ -186,20 +195,24 @@ def materialize_profile_sim_device(
         profile = profile_map.get(runtime_tag.full_path)
         if profile is None:
             continue
-        tag, _created = SimDeviceTag.objects.update_or_create(
-            provider=provider,
-            source_path=f"{device_name}/{runtime_tag.path.rsplit('/', 1)[-1]}",
-            defaults={
-                "device": device,
-                "tag_name": runtime_tag.display_name,
-                "data_type": "Float4",
-                "value_source": "memory",
-                "mode_config": {
-                    "source_fixture": source_fixture,
-                    "source_runtime_tag_id": runtime_tag.id,
-                    "profile": profile,
-                },
+        source_path = f"{device_name}/{runtime_tag.path.rsplit('/', 1)[-1]}"
+        tag = upsert_tag_config(
+            sim_device=device,
+            provider=provider.name,
+            tagpath=source_path,
+            tag_name=runtime_tag.display_name,
+            data_type=Tag.DataType.FLOAT,
+            simulation_type=TagConfig.SimulationType.RAMP,
+            source_path=source_path,
+            mode_config={
+                "source_fixture": source_fixture,
+                "source_runtime_tag_id": runtime_tag.id,
+                "profile": profile,
             },
+            enabled=True,
+            materialized=False,
+            description=source_path,
+            config={"value_source": "memory"},
         )
         tags.append(tag)
     return tags

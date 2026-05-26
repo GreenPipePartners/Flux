@@ -1,0 +1,19 @@
+<section class="sim-default-modes" aria-label="Default simulation modes by data type">
+  <div>
+    <span class="eyebrow">typed defaults</span>
+    <p class="muted">Folder selection only chooses tag scope. Simulation mode defaults are type-specific; per-tag overrides are atomic-only.</p>
+  </div>
+  <div class="sim-default-mode-grid">
+    {% for group in sim_output_default_mode_groups %}
+      <label class="sim-default-mode-field">
+        <span>{{ group.label }}</span>
+        <small>{{ group.description }}</small>
+        <select name="{{ group.name }}">
+          {% for option in group.options %}
+            <option value="{{ option.value }}" {% if option.selected %}selected{% endif %}>{{ option.symbol }} {{ option.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    {% endfor %}
+  </div>
+</section>

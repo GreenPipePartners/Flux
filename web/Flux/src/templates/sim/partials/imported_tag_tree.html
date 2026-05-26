@@ -2,8 +2,20 @@
   {% for node in nodes %}
     <li class="sim-import-node">
       <div class="sim-import-row-wrap">
-        {% if node.children_list %}
-          <button class="sim-import-toggle" type="button" data-sim-tree-toggle aria-expanded="false" aria-label="Toggle {{ node.name }}">&gt;</button>
+        {% if node.children_list or node.expandable %}
+          <button
+            class="sim-import-toggle"
+            type="button"
+            data-sim-tree-toggle
+            {% if node.expandable and not node.children_list and node.node_id %}
+              hx-get="{% url 'sim:provider_tree_children' %}?provider={{ provider|urlencode }}&parent={{ node.path|urlencode }}"
+              hx-target="#sim-tree-children-{{ node.node_id }}"
+              hx-swap="innerHTML"
+              hx-trigger="click once"
+            {% endif %}
+            aria-expanded="false"
+            aria-label="Toggle {{ node.name }}"
+          >&gt;</button>
         {% else %}
           <span class="sim-import-toggle-placeholder" aria-hidden="true"></span>
         {% endif %}
@@ -13,18 +25,56 @@
             name="paths"
             value="{{ node.path }}"
             data-sim-tree-checkbox
+            data-sim-tree-provider="{{ provider }}"
+            data-sim-tree-path="{{ node.path }}"
+            data-sim-tree-update-url="{% url 'sim:set_imported_enabled' %}"
             data-indeterminate="{% if node.partial %}1{% else %}0{% endif %}"
             {% if node.selected %}checked{% endif %}
           >
           <span class="sim-import-icon" aria-hidden="true">{{ node.icon }}</span>
           <span class="sim-import-name">{{ node.name }}</span>
+          {% if node.source_badge_text %}<span class="sim-source-badge">{{ node.source_badge_text }}</span>{% endif %}
         </label>
-        {% if node.tag_type == "AtomicTag" %}
-          <a class="sim-tag-config" href="{% url 'admin:base_simdevicetag_changelist' %}?q={{ node.path|urlencode }}" title="Configure tag behavior" aria-label="Configure {{ node.name }} behavior">⚙</a>
+        {% if node.simulation_eligible %}
+          <span class="sim-mode-default-label">default</span>
+          <span class="sim-mode-rail" data-sim-mode-rail data-current-mode="{{ node.simulation_mode }}" aria-label="Atomic simulation mode override for {{ node.name }}">
+            {% for option in node.mode_options %}
+              <button
+                class="sim-mode-choice{% if option.active %} is-active{% endif %}"
+                type="button"
+                data-sim-mode-choice
+                data-sim-mode="{{ option.value }}"
+                data-sim-mode-symbol="{{ option.symbol }}"
+                title="Override with {{ option.label }}"
+                aria-label="Override {{ node.name }} with {{ option.label }}"
+              >{% if option.active %}[{{ option.symbol }}]{% else %}{{ option.symbol }}{% endif %}</button>
+            {% endfor %}
+          </span>
+          <span class="sim-mode-config" data-sim-mode-config>
+            {% for option in node.mode_options %}
+              {% if option.fields %}
+                <span class="sim-mode-fields" data-sim-mode-fields="{{ option.value }}" {% if not option.active %}hidden{% endif %}>
+                  {% for field in option.fields %}
+                    <label class="sim-mode-field">
+                      <span>{{ field.label }}</span>
+                      <input
+                        type="{{ field.input_type }}"
+                        value="{{ field.value }}"
+                        data-sim-mode-field
+                        data-sim-mode="{{ option.value }}"
+                        data-sim-field-name="{{ field.name }}"
+                        {% if field.step %}step="{{ field.step }}"{% endif %}
+                      >
+                    </label>
+                  {% endfor %}
+                </span>
+              {% endif %}
+            {% endfor %}
+          </span>
         {% endif %}
       </div>
-      {% if node.children_list %}
-        <div class="sim-import-children" data-sim-tree-children hidden>
+      {% if node.children_list or node.expandable %}
+        <div class="sim-import-children" data-sim-tree-children{% if node.node_id %} id="sim-tree-children-{{ node.node_id }}"{% endif %} hidden>
           {% include "sim/partials/imported_tag_tree.html" with nodes=node.children_list provider=provider %}
         </div>
       {% endif %}

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import IgnitionBridgeConfig
+from flux.bridge.models import IgnitionBridgeConfig
 
 
 @admin.register(IgnitionBridgeConfig)

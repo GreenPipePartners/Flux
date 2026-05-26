@@ -1,0 +1,18 @@
+{% load nav_extras %}
+{% if page_obj.paginator.num_pages > 1 %}
+  <nav class="table-pagination-controls" aria-label="{{ label|default:'Table pagination' }}">
+    <span class="table-pagination-summary">Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ page_obj.paginator.count }} {{ item_label|default:'rows' }}</span>
+    {% if page_obj.has_previous %}
+      {% page_query request page_param page_obj.previous_page_number as previous_query %}
+      <a href="{{ previous_query }}" hx-get="{{ previous_query }}" hx-target="#{{ target_id }}" hx-select="#{{ select_id|default:target_id }}" hx-swap="outerHTML show:none" hx-push-url="true">Previous</a>
+    {% else %}
+      <span class="table-pagination-disabled">Previous</span>
+    {% endif %}
+    {% if page_obj.has_next %}
+      {% page_query request page_param page_obj.next_page_number as next_query %}
+      <a href="{{ next_query }}" hx-get="{{ next_query }}" hx-target="#{{ target_id }}" hx-select="#{{ select_id|default:target_id }}" hx-swap="outerHTML show:none" hx-push-url="true">Next</a>
+    {% else %}
+      <span class="table-pagination-disabled">Next</span>
+    {% endif %}
+  </nav>
+{% endif %}

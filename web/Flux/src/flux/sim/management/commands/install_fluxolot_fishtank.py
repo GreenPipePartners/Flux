@@ -2,8 +2,8 @@ import os
 
 from django.core.management.base import BaseCommand, CommandError
 
-from flux.plane import seed_trace_cache_from_runtime_history
-from flux.serve.field_supervisor import server_endpoint_url
+from flux.plane import seed_plane_samples_from_runtime_history
+from flux.serve.field_supervisor import DEFAULT_FIELD_AGENT_HOST, server_endpoint_url
 from flux.sim.fluxolot_fishtank import (
     FLUXOLOT_TAG_FOLDER,
     configure_fluxolot_fishtank_ignition,
@@ -29,21 +29,21 @@ class Command(BaseCommand):
         parser.add_argument("--history-interval-minutes", type=int, default=60)
         parser.add_argument("--history-batch-size", type=int, default=5000)
         parser.add_argument(
-            "--trace-cache-all",
+            "--plane-samples-all",
             action="store_true",
-            help="Seed TraceCachePoint rows for all generated Fluxolot history instead of the recent sample limit.",
+            help="Seed Plane sample rows for all generated Fluxolot history instead of the recent sample limit.",
         )
-        parser.add_argument("--trace-cache-sample-limit", type=int, default=48)
-        parser.add_argument("--trace-cache-batch-size", type=int, default=5000)
+        parser.add_argument("--plane-sample-limit", type=int, default=48)
+        parser.add_argument("--plane-sample-batch-size", type=int, default=5000)
         parser.add_argument(
             "--export-questdb",
             action="store_true",
-            help="Export Fluxolot TraceCachePoint rows into QuestDB trace_points for Flux.plane proof.",
+            help="Export Fluxolot Plane sample rows into QuestDB plane_samples for Flux.plane proof.",
         )
         parser.add_argument(
             "--replace-questdb",
             action="store_true",
-            help="Replace the QuestDB trace_points table before exporting Fluxolot trace cache rows.",
+            help="Replace the QuestDB plane_samples table before exporting Fluxolot Plane sample rows.",
         )
         parser.add_argument("--live-csv", help="Write a Live scope CSV fixture for Fluxolot Fishtank RuntimeTags.")
         parser.add_argument("--trace-csv", help="Write a trace sample CSV fixture from Fluxolot Fishtank RuntimeTags.")
@@ -69,8 +69,8 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--field-agent-host",
-            default="0.0.0.0",
-            help="Host in the supervised Fluxolot FieldAgent endpoint URL. Defaults to the advertised bind host used by flux_field_supervisor.",
+            default=DEFAULT_FIELD_AGENT_HOST,
+            help="Connectable host advertised in supervised Fluxolot FieldAgent endpoint URLs.",
         )
         parser.add_argument(
             "--collision-policy",
@@ -103,27 +103,27 @@ class Command(BaseCommand):
             result.runtime_tags,
             cache_window_minutes=history_days * 1440 if options["long_history"] or options["history_years"] else 10080,
         )
-        sample_limit = None if options["trace_cache_all"] or options["long_history"] else options["trace_cache_sample_limit"]
-        trace_cache_points = sum(
-            seed_trace_cache_from_runtime_history(
+        sample_limit = None if options["plane_samples_all"] or options["long_history"] else options["plane_sample_limit"]
+        plane_sample_points = sum(
+            seed_plane_samples_from_runtime_history(
                 profile,
                 sample_limit=sample_limit,
-                batch_size=options["trace_cache_batch_size"],
+                batch_size=options["plane_sample_batch_size"],
             )
             for profile in trace_profiles
         )
         questdb_points = 0
         if options["export_questdb"]:
-            from trace.questdb_data_plane import export_trace_cache_to_questdb
+            from flux.chart.questdb_data_plane import export_plane_samples_to_questdb
 
-            questdb_points = export_trace_cache_to_questdb(
+            questdb_points = export_plane_samples_to_questdb(
                 profile_keys=[profile.key for profile in trace_profiles],
                 replace=options["replace_questdb"],
-                batch_size=options["trace_cache_batch_size"],
+                batch_size=options["plane_sample_batch_size"],
             )
         self.stdout.write(
             self.style.SUCCESS(
-                "Installed Fluxolot Fishtank: endpoints=%s devices=%s tags=%s runtime_tags=%s samples=%s live=%s trace=%s trace_cache_points=%s questdb_points=%s"
+                "Installed Fluxolot Fishtank: endpoints=%s devices=%s tags=%s runtime_tags=%s samples=%s live=%s trace=%s plane_sample_points=%s questdb_points=%s"
                 % (
                     len(result.endpoints),
                     len(result.devices),
@@ -132,7 +132,7 @@ class Command(BaseCommand):
                     result.sample_count,
                     live_scope.slug,
                     ",".join(profile.key for profile in trace_profiles),
-                    trace_cache_points,
+                    plane_sample_points,
                     questdb_points,
                 )
             )

@@ -1,14 +1,21 @@
 from __future__ import annotations
 
+import os
 import socket
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
 from typing import Any
+from urllib.parse import urlparse
 
 from django.utils import timezone
 
-from flux.base.models import FieldEndpoint
+from flux.base.field_selectors import enabled_field_endpoint_queryset
+from flux.base.models import Entity
+from flux.sim.models import FieldEndpoint
+from flux.bridge.services import persist_bridge_probe, probe_bridge
+from flux.status.models import LatestStatus
+from flux.status.services import ensure_entity, upsert_latest_status
 
 from .models import ServeHeartbeat, ServeServiceSnapshot
 
@@ -96,9 +103,9 @@ def static_service_definitions(*, options: MonitorOptions, monitor_service_name:
             {"heartbeat_service_name": "flux-field-supervisor"},
         ),
         ServiceDefinition(
-            "Flux.live.fluxolot-sampler",
-            "Fluxolot Live Sampler",
-            "Live proof",
+            "Flux.spot.fluxolot-sampler",
+            "Fluxolot Spot Sampler",
+            "Spot proof",
             ServeServiceSnapshot.DesiredState.EXPECTED,
             ProbeKind.HEARTBEAT,
             {"heartbeat_service_name": "fluxolot-live-sampler"},
@@ -112,12 +119,20 @@ def static_service_definitions(*, options: MonitorOptions, monitor_service_name:
             {"heartbeat_service_name": "flux-sampling-worker"},
         ),
         ServiceDefinition(
-            "Flux.trace.worker",
-            "Flux Trace Worker",
+            "Flux.chart.worker",
+            "Flux Chart Worker",
             "Workers",
             ServeServiceSnapshot.DesiredState.OPTIONAL,
             ProbeKind.HEARTBEAT,
-            {"heartbeat_service_name": "flux-trace-worker"},
+            {"heartbeat_service_name": "flux-charts-worker"},
+        ),
+        ServiceDefinition(
+            "Flux.sim.worker",
+            "Flux Sim Worker",
+            "Workers",
+            ServeServiceSnapshot.DesiredState.EXPECTED,
+            ProbeKind.HEARTBEAT,
+            {"heartbeat_service_name": "flux-sim-worker"},
         ),
     ]
     if options.include_network:
@@ -172,12 +187,7 @@ def skipped_definition(service_key: str, display_name: str, category: str, desir
 
 
 def field_agent_definitions() -> list[ServiceDefinition]:
-    endpoints = (
-        FieldEndpoint.objects.prefetch_related("devices", "heartbeats")
-        .filter(enabled=True, devices__enabled=True)
-        .distinct()
-        .order_by("name")
-    )
+    endpoints = enabled_field_endpoint_queryset().prefetch_related("heartbeats")
     return [
         ServiceDefinition(
             service_key="Flux.serve.field-agent:%s" % endpoint.name,
@@ -194,7 +204,7 @@ def field_agent_definitions() -> list[ServiceDefinition]:
 
 def bridge_definitions() -> list[ServiceDefinition]:
     try:
-        from dashboard.models import IgnitionBridgeConfig
+        from flux.bridge.models import IgnitionBridgeConfig
     except Exception:
         return []
     return [
@@ -217,13 +227,19 @@ def probe_service(definition: ServiceDefinition, *, now, options: MonitorOptions
     if definition.probe_kind == ProbeKind.HEARTBEAT:
         return heartbeat_result(definition, now=now, stale_after_seconds=options.stale_after_seconds)
     if definition.probe_kind == ProbeKind.FIELD_AGENT:
-        return field_agent_result(definition, now=now, stale_after_seconds=options.stale_after_seconds)
+        return field_agent_result(
+            definition,
+            now=now,
+            stale_after_seconds=options.stale_after_seconds,
+            verify_tcp=options.include_network,
+            timeout_seconds=options.timeout_seconds,
+        )
     if definition.probe_kind == ProbeKind.HTTP:
         return http_result(definition=definition, timeout_seconds=options.timeout_seconds)
     if definition.probe_kind == ProbeKind.QUESTDB:
         return questdb_result(definition, options)
     if definition.probe_kind == ProbeKind.BRIDGE:
-        return bridge_result(definition)
+        return bridge_result(definition, include_network=options.include_network)
     return skipped_result(definition)
 
 
@@ -261,6 +277,9 @@ def heartbeat_result(definition: ServiceDefinition, *, now, stale_after_seconds:
         {
             "heartbeat_id": heartbeat.id,
             "instance_id": heartbeat.instance_id,
+            "pid": heartbeat.pid,
+            "port": heartbeat.metadata.get("port"),
+            "ports": heartbeat.metadata.get("ports"),
             "status": heartbeat.status,
             "age_seconds": age_seconds,
         }
@@ -315,10 +334,26 @@ def heartbeat_result(definition: ServiceDefinition, *, now, stale_after_seconds:
     )
 
 
-def field_agent_result(definition: ServiceDefinition, *, now, stale_after_seconds: int) -> ServiceProbeResult:
+def field_agent_result(
+    definition: ServiceDefinition,
+    *,
+    now,
+    stale_after_seconds: int,
+    verify_tcp: bool = True,
+    timeout_seconds: float = 1.0,
+) -> ServiceProbeResult:
     endpoint = definition.probe_config["endpoint"]
     heartbeat = endpoint.heartbeats.order_by("-last_seen_at").first()
-    metadata = {"endpoint_id": endpoint.id, "endpoint_name": endpoint.name, "endpoint_status": endpoint.status}
+    endpoint_parts = endpoint_url_parts(endpoint.endpoint_url)
+    metadata = {
+        "endpoint_id": endpoint.id,
+        "endpoint_name": endpoint.name,
+        "endpoint_status": endpoint.status,
+        "endpoint_url": endpoint.endpoint_url,
+        "host": endpoint_parts["host"],
+        "port": endpoint_parts["port"],
+        "probe": "field_agent_runtime",
+    }
     if heartbeat is None:
         return ServiceProbeResult(
             service_key=definition.service_key,
@@ -331,7 +366,14 @@ def field_agent_result(definition: ServiceDefinition, *, now, stale_after_second
             metadata=metadata,
         )
     age_seconds = int((now - heartbeat.last_seen_at).total_seconds()) if heartbeat.last_seen_at else None
-    metadata.update({"heartbeat_id": heartbeat.id, "instance_id": heartbeat.instance_id, "age_seconds": age_seconds})
+    metadata.update(
+        {
+            "heartbeat_id": heartbeat.id,
+            "instance_id": heartbeat.instance_id,
+            "process_id": heartbeat.process_id,
+            "age_seconds": age_seconds,
+        }
+    )
     if endpoint.status == FieldEndpoint.Status.ERROR or heartbeat.last_error:
         return ServiceProbeResult(
             service_key=definition.service_key,
@@ -356,6 +398,76 @@ def field_agent_result(definition: ServiceDefinition, *, now, stale_after_second
             detail="Last seen age is %ss; stale threshold is %ss." % (age_seconds, stale_after_seconds),
             metadata=metadata,
         )
+    process_alive, process_error = process_id_is_alive(heartbeat.process_id)
+    metadata.update(
+        {
+            "process_alive": process_alive,
+            "process_probe": "os.kill",
+        }
+    )
+    if not process_alive:
+        return ServiceProbeResult(
+            service_key=definition.service_key,
+            display_name=definition.display_name,
+            category=definition.category,
+            desired_state=definition.desired_state,
+            observed_state=ServeServiceSnapshot.ObservedState.ERROR,
+            severity=ServeServiceSnapshot.Severity.ERROR,
+            summary="FieldAgent process is not alive.",
+            last_error=process_error,
+            metadata=metadata,
+        )
+    port = endpoint_parts["port"]
+    if port is None:
+        return ServiceProbeResult(
+            service_key=definition.service_key,
+            display_name=definition.display_name,
+            category=definition.category,
+            desired_state=definition.desired_state,
+            observed_state=ServeServiceSnapshot.ObservedState.ERROR,
+            severity=ServeServiceSnapshot.Severity.ERROR,
+            summary="FieldAgent endpoint URL has no TCP port.",
+            last_error="Endpoint URL %s has no parseable TCP port." % endpoint.endpoint_url,
+            metadata=metadata,
+        )
+    tcp_host = tcp_probe_host(str(endpoint_parts["host"]))
+    metadata.update({"tcp_host": tcp_host, "tcp_probe": "socket_connect" if verify_tcp else "skipped"})
+    if not verify_tcp:
+        return ServiceProbeResult(
+            service_key=definition.service_key,
+            display_name=definition.display_name,
+            category=definition.category,
+            desired_state=definition.desired_state,
+            observed_state=ServeServiceSnapshot.ObservedState.DEGRADED,
+            severity=ServeServiceSnapshot.Severity.WARNING,
+            summary="FieldAgent process is alive; TCP probe skipped.",
+            metadata=metadata,
+        )
+    tcp_ok, tcp_error = tcp_available(tcp_host, int(port), timeout_seconds=timeout_seconds)
+    metadata.update({"tcp_ok": tcp_ok})
+    if not tcp_ok:
+        return ServiceProbeResult(
+            service_key=definition.service_key,
+            display_name=definition.display_name,
+            category=definition.category,
+            desired_state=definition.desired_state,
+            observed_state=ServeServiceSnapshot.ObservedState.ERROR,
+            severity=ServeServiceSnapshot.Severity.ERROR,
+            summary="FieldAgent TCP port is not reachable.",
+            last_error=tcp_error,
+            metadata=metadata,
+        )
+    if endpoint.status != FieldEndpoint.Status.RUNNING:
+        return ServiceProbeResult(
+            service_key=definition.service_key,
+            display_name=definition.display_name,
+            category=definition.category,
+            desired_state=definition.desired_state,
+            observed_state=ServeServiceSnapshot.ObservedState.DEGRADED,
+            severity=ServeServiceSnapshot.Severity.WARNING,
+            summary="FieldAgent process and TCP port are reachable, but stored endpoint state is %s." % endpoint.status,
+            metadata=metadata,
+        )
     return ServiceProbeResult(
         service_key=definition.service_key,
         display_name=definition.display_name,
@@ -363,7 +475,7 @@ def field_agent_result(definition: ServiceDefinition, *, now, stale_after_second
         desired_state=definition.desired_state,
         observed_state=ServeServiceSnapshot.ObservedState.HEALTHY,
         severity=ServeServiceSnapshot.Severity.OK,
-        summary="FieldAgent heartbeat is fresh.",
+        summary="FieldAgent process and TCP port are reachable.",
         metadata=metadata,
     )
 
@@ -381,7 +493,7 @@ def skipped_result(definition: ServiceDefinition) -> ServiceProbeResult:
     )
 
 
-def bridge_result(definition: ServiceDefinition) -> ServiceProbeResult:
+def bridge_result(definition: ServiceDefinition, *, include_network: bool = True) -> ServiceProbeResult:
     config = definition.probe_config["config"]
     metadata = {
         "bridge_id": config.id,
@@ -390,8 +502,14 @@ def bridge_result(definition: ServiceDefinition) -> ServiceProbeResult:
         "base_url": config.base_url,
         "last_test_at": config.last_test_at.isoformat() if config.last_test_at else None,
         "token_set": bool(config.token),
-        "probe": "stored_bridge_test",
+        "probe": "fluxy_version" if include_network else "stored_bridge_test",
     }
+    if include_network:
+        result = probe_bridge(config)
+        config = persist_bridge_probe(config, result)
+        metadata["last_test_at"] = config.last_test_at.isoformat() if config.last_test_at else None
+        if result.version:
+            metadata["version"] = result.version
     if config.last_test_ok:
         return ServiceProbeResult(
             service_key=definition.service_key,
@@ -411,12 +529,14 @@ def bridge_result(definition: ServiceDefinition) -> ServiceProbeResult:
         observed_state=ServeServiceSnapshot.ObservedState.DEGRADED if config.last_test_at else ServeServiceSnapshot.ObservedState.UNKNOWN,
         severity=ServeServiceSnapshot.Severity.WARNING,
         summary=config.last_test_message or "Bridge has not been tested.",
+        last_error=config.last_test_message if config.last_test_at else "",
         metadata=metadata,
     )
 
 
 def http_result(*, definition: ServiceDefinition, timeout_seconds: float) -> ServiceProbeResult:
     url = definition.probe_config["url"]
+    url_parts = endpoint_url_parts(url)
     try:
         with urllib.request.urlopen(url, timeout=timeout_seconds) as response:
             status_code = response.status
@@ -430,7 +550,7 @@ def http_result(*, definition: ServiceDefinition, timeout_seconds: float) -> Ser
             severity=missing_severity(definition.desired_state),
             summary="HTTP probe failed.",
             last_error=str(exc),
-            metadata={"url": url, "probe": "http"},
+            metadata={"url": url, "host": url_parts["host"], "port": url_parts["port"], "probe": "http"},
         )
     observed = ServeServiceSnapshot.ObservedState.HEALTHY if 200 <= status_code < 400 else ServeServiceSnapshot.ObservedState.DEGRADED
     severity = ServeServiceSnapshot.Severity.OK if observed == ServeServiceSnapshot.ObservedState.HEALTHY else ServeServiceSnapshot.Severity.WARNING
@@ -442,8 +562,37 @@ def http_result(*, definition: ServiceDefinition, timeout_seconds: float) -> Ser
         observed_state=observed,
         severity=severity,
         summary="HTTP %s" % status_code,
-        metadata={"url": url, "probe": "http", "status_code": status_code},
+        metadata={"url": url, "host": url_parts["host"], "port": url_parts["port"], "probe": "http", "status_code": status_code},
     )
+
+
+def endpoint_url_parts(endpoint_url: str) -> dict[str, object]:
+    try:
+        parsed = urlparse(endpoint_url)
+        port = parsed.port
+    except ValueError:
+        return {"host": "", "port": None}
+    return {"host": parsed.hostname or "", "port": port}
+
+
+def process_id_is_alive(process_id: int | None) -> tuple[bool, str]:
+    if process_id is None:
+        return False, "No process id was recorded for the FieldAgent heartbeat."
+    try:
+        os.kill(int(process_id), 0)
+    except ProcessLookupError:
+        return False, "Process %s does not exist." % process_id
+    except PermissionError:
+        return True, ""
+    except OSError as exc:
+        return False, str(exc)
+    return True, ""
+
+
+def tcp_probe_host(host: str) -> str:
+    if host in {"", "0.0.0.0", "::"}:
+        return "localhost"
+    return host
 
 
 def questdb_result(definition: ServiceDefinition, options: MonitorOptions) -> ServiceProbeResult:
@@ -529,7 +678,71 @@ def upsert_snapshot(result: ServiceProbeResult, *, now) -> ServeServiceSnapshot:
             "metadata": result.metadata,
         },
     )
+    record_snapshot_latest_status(result, now=now)
     return snapshot
+
+
+def record_snapshot_latest_status(result: ServiceProbeResult, *, now) -> None:
+    entity = status_entity_for_probe_result(result)
+    upsert_latest_status(
+        entity=entity,
+        status_kind=status_kind_for_probe_result(result),
+        observed_state=latest_observed_state(result.observed_state),
+        severity=latest_severity(result.severity),
+        summary=result.summary,
+        detail=result.detail or result.last_error,
+        last_seen_at=now,
+        source="flux.serve.monitor",
+        source_instance=result.service_key,
+        evidence={
+            "service_key": result.service_key,
+            "display_name": result.display_name,
+            "category": result.category,
+            "desired_state": result.desired_state,
+            "serve_observed_state": result.observed_state,
+            "metadata": result.metadata,
+        },
+    )
+
+
+def status_entity_for_probe_result(result: ServiceProbeResult) -> Entity:
+    if result.service_key.startswith("Flux.bridge:"):
+        natural_key = str(result.metadata.get("bridge_name") or result.service_key.removeprefix("Flux.bridge:"))
+        return ensure_entity(kind=Entity.Kind.BRIDGE_CONNECTION, natural_key=natural_key, display_name=result.display_name)
+    if result.service_key.startswith("Flux.serve.field-agent:"):
+        natural_key = str(result.metadata.get("endpoint_name") or result.service_key.removeprefix("Flux.serve.field-agent:"))
+        return ensure_entity(kind=Entity.Kind.FIELD_ENDPOINT, natural_key=natural_key, display_name=result.display_name)
+    return ensure_entity(kind=Entity.Kind.SERVE_WORKER, natural_key=result.service_key, display_name=result.display_name)
+
+
+def status_kind_for_probe_result(result: ServiceProbeResult) -> str:
+    probe = result.metadata.get("probe")
+    if probe in {"fluxy_version", "stored_bridge_test", "http", "tcp", "socket_connect", "field_agent_runtime"}:
+        return LatestStatus.StatusKind.CONNECTIVITY
+    if result.service_key.startswith("Flux.plane"):
+        return LatestStatus.StatusKind.STORAGE
+    return LatestStatus.StatusKind.WORKER
+
+
+def latest_observed_state(observed_state: str) -> str:
+    return {
+        ServeServiceSnapshot.ObservedState.HEALTHY: LatestStatus.ObservedState.OK,
+        ServeServiceSnapshot.ObservedState.DEGRADED: LatestStatus.ObservedState.WARNING,
+        ServeServiceSnapshot.ObservedState.MISSING: LatestStatus.ObservedState.MISSING,
+        ServeServiceSnapshot.ObservedState.STALE: LatestStatus.ObservedState.STALE,
+        ServeServiceSnapshot.ObservedState.ERROR: LatestStatus.ObservedState.ERROR,
+        ServeServiceSnapshot.ObservedState.UNKNOWN: LatestStatus.ObservedState.UNKNOWN,
+        ServeServiceSnapshot.ObservedState.STOPPED: LatestStatus.ObservedState.DISABLED,
+    }.get(observed_state, LatestStatus.ObservedState.UNKNOWN)
+
+
+def latest_severity(severity: str) -> str:
+    return {
+        ServeServiceSnapshot.Severity.OK: LatestStatus.Severity.OK,
+        ServeServiceSnapshot.Severity.WARNING: LatestStatus.Severity.WARNING,
+        ServeServiceSnapshot.Severity.ERROR: LatestStatus.Severity.ERROR,
+        ServeServiceSnapshot.Severity.UNKNOWN: LatestStatus.Severity.UNKNOWN,
+    }.get(severity, LatestStatus.Severity.UNKNOWN)
 
 
 def retire_absent_dynamic_snapshots(current_keys: set[str], *, now) -> list[ServeServiceSnapshot]:

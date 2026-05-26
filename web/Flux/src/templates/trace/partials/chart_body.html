@@ -1,0 +1,84 @@
+{% load static %}
+<div class="panel-header">
+  <div>
+    <p class="eyebrow">{{ trace_badge|default:"trace.uplot" }}</p>
+    <h2>Sample Tag Trend</h2>
+    {% if trace_title %}<p class="muted">{{ trace_title }}</p>{% endif %}
+  </div>
+  <span class="status-pill">latest {{ trace_chart.windowLabel|default:"4 days" }}</span>
+</div>
+{% if trace_subtitle %}<p class="form-help">{{ trace_subtitle }}</p>{% endif %}
+{% if trace_chart_mode == "detail" or trace_chart_mode == "configure" %}
+<div class="trace-actions">
+  {% if not trace_embed %}<a class="button button-secondary" href="{% url 'chart:stream' %}">Streaming Charts</a>{% endif %}
+  {% if trace_source_options %}
+    <label class="trace-control-label">Source
+      <select data-trace-source-select aria-label="Chart source">
+        {% for option in trace_source_options %}
+          <option value="{{ option.value }}" data-set-index="{{ option.set_index }}"{% if option.value == trace_chart.wellId %} selected{% endif %}>{{ option.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  {% endif %}
+  {% if trace_cycle_url %}
+    <button class="button button-secondary" type="button" data-trace-prev-set>Previous {{ trace_cycle_label|default:"Set" }}</button>
+    <button class="button button-secondary" type="button" data-trace-next-set>Next {{ trace_cycle_label|default:"Set" }}</button>
+  {% endif %}
+  <button class="button button-secondary" type="button" data-reset-trace-range>Reset Range</button>
+  <button class="button button-secondary" type="button" data-clear-pinned-traces>Clear Pinned Traces</button>
+  {% if trace_cycle_url %}
+    <details class="trace-compression" data-trace-compression>
+      <summary>Compression</summary>
+      <form method="get" action="." class="trace-compression-form">
+        {% if trace_chart.wellId %}<input type="hidden" name="source" value="{{ trace_chart.wellId }}">{% endif %}
+        {% if trace_embed %}<input type="hidden" name="embed" value="1">{% endif %}
+        <label>Window minutes
+          <input name="window_minutes" type="number" min="60" max="{{ trace_window_max_minutes|default:10080 }}" step="60" value="{{ trace_window_minutes|default:1440 }}">
+        </label>
+        <label>Step minutes
+          <input name="step_minutes" type="number" min="1" max="1440" step="1" value="{{ trace_step_minutes|default:1 }}">
+        </label>
+        <button class="button button-secondary" type="submit">Apply</button>
+      </form>
+      <p class="form-help">Higher step minutes compress the trace by sampling fewer points from the same window.</p>
+    </details>
+  {% endif %}
+  <p class="form-help">{{ trace_help|default:"Click inside the chart to pin a vertical trace cursor. Drag selects an x-range to zoom. Shift-drag pans. Wheel zooms; side-scroll pans. Use Previous/Next Set or left/right arrow keys to cycle sets." }}</p>
+  <p class="form-help" data-trace-status>Ready to pin trace markers.</p>
+</div>
+{% endif %}
+{% if trace_chart.series %}
+  <link rel="stylesheet" href="{% static 'flux/vendor/uplot/uPlot.min.css' %}?v=trace-shared-x-2">
+  <div
+    class="trace-chart"
+    data-trace-chart
+    data-trace-annotation-url="{% url 'chart:annotations' %}"
+    data-trace-annotation-query-url="{% url 'chart:query-annotations' %}"
+    data-trace-demand-url="{% url 'chart:demand' %}"
+    data-trace-csrf-token="{{ csrf_token }}"
+    {% if trace_cycle_url %}data-trace-cycle-url="{{ trace_cycle_url }}"{% endif %}
+    {% if trace_set_count %}data-trace-set-count="{{ trace_set_count }}"{% endif %}
+    {% if trace_live_refresh_seconds %}data-trace-live-refresh-seconds="{{ trace_live_refresh_seconds }}"{% endif %}
+    role="img"
+    aria-label="uPlot sample tag trend chart"
+  ></div>
+  <section class="trace-marker-panel" aria-label="Pinned trace marker values">
+    <div class="trace-marker-heading">
+      <h3>Pinned Chart Values</h3>
+      <button class="trace-copy-button" type="button" data-send-trace-annotations aria-label="Send pending trace annotations to Ignition">Send Annotations</button>
+      <button class="trace-copy-button" type="button" data-copy-pinned-traces aria-label="Copy pinned trace values as markdown">Copy</button>
+    </div>
+    <div data-pinned-trace-table>
+      <p class="muted">No pinned traces yet.</p>
+    </div>
+  </section>
+  {{ trace_chart|json_script:"trace-data" }}
+  <script src="{% static 'flux/vendor/uplot/uPlot.iife.min.js' %}?v=trace-shared-x-2"></script>
+  <script type="module" src="{% static 'flux/chart/historical-page.js' %}?v=trace-shared-x-2"></script>
+{% else %}
+  {% if trace_error %}
+    <p class="form-help">Chart query failed: {{ trace_error }}</p>
+  {% else %}
+    <p>No numeric tag samples available for uPlot yet.</p>
+  {% endif %}
+{% endif %}

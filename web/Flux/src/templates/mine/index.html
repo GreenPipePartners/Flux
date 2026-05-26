@@ -6,6 +6,7 @@
 <section class="feature-hero">
   <div class="feature-hero-title">
     <h1>Flux.mine</h1>
+    {% include "flux/partials/display_pulse_bar.html" %}
   </div>
   <div class="service-summary service-summary-{{ platform_status.state }}">
     <span class="eyebrow">Platform</span>
@@ -23,5 +24,31 @@
     <span class="status-pill">planned</span>
   </div>
   <p class="muted">Flux.mine will recover useful tag, PLC, and HMI primitives from existing SCADA projects for downstream simulation and build workflows.</p>
+</section>
+
+<section class="panel comp-card" data-comp-card data-comp-card-mode="configure">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">Flux.mine.import</p>
+      <h2>Import Migration Source</h2>
+    </div>
+    <span class="status-pill">L5K · L5X · FactoryTalk ZIP</span>
+  </div>
+  <form method="post" action="{% url 'mine:import_source' %}" enctype="multipart/form-data" class="form-stack">
+    {% csrf_token %}
+    <label for="mine-source-label">Label</label>
+    <input id="mine-source-label" name="label" type="text" placeholder="IDH 905 PLC or FactoryTalk displays">
+    <label for="mine-source-type">Source type</label>
+    <select id="mine-source-type" name="source_type">
+      <option value="auto">Auto detect</option>
+      <option value="plc_l5x">PLC L5X</option>
+      <option value="plc_l5k">PLC L5K</option>
+      <option value="factorytalk">FactoryTalk ZIP</option>
+    </select>
+    <label for="mine-source-file">Source file</label>
+    <input id="mine-source-file" name="source" type="file" accept=".l5x,.l5k,.zip" required>
+    <p class="muted">FactoryTalk imports should be a ZIP containing exported display/global object XML and parameter PAR files. Raw uploads are parsed and discarded; persisted facts and hashes remain in Flux.mine.</p>
+    <div class="actions"><button class="button" type="submit">Import Source</button></div>
+  </form>
 </section>
 {% endblock %}

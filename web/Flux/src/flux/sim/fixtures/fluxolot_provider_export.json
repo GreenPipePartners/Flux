@@ -1,0 +1,60 @@
+{
+  "name": "FluxolotImported",
+  "tagType": "Provider",
+  "tags": [
+    {
+      "name": "Sir Fluxolot",
+      "tagType": "Folder",
+      "tags": [
+        {
+          "name": "Sir-Fluxolot-Fishtank",
+          "tagType": "UdtInstance",
+          "typeId": "[FluxolotImported]_types_/Fluxolot/Fishtank",
+          "parameters": {"OPC_Server": "FluxolotOPC", "OPC_Device": "Sir-Fluxolot-Fishtank"},
+          "tags": [
+            {"name": "PUMP_START_STOP_COMMAND", "tagType": "AtomicTag", "valueSource": "opc", "dataType": "Boolean", "opcServer": "FluxolotOPC", "opcItemPath": "ns=2;s=Sir-Fluxolot-Fishtank.PUMP_START_STOP_COMMAND", "value": false},
+            {"name": "PUMP_START_STOP_FEEDBACK", "tagType": "AtomicTag", "valueSource": "opc", "dataType": "Boolean", "opcServer": "FluxolotOPC", "opcItemPath": "ns=2;s=Sir-Fluxolot-Fishtank.PUMP_START_STOP_FEEDBACK", "value": true},
+            {"name": "PUMP_MOTOR_SETPOINT", "tagType": "AtomicTag", "valueSource": "opc", "dataType": "Float8", "opcServer": "FluxolotOPC", "opcItemPath": "ns=2;s=Sir-Fluxolot-Fishtank.PUMP_MOTOR_SETPOINT", "value": 72},
+            {"name": "PUMP_MOTOR_FEEDBACK", "tagType": "AtomicTag", "valueSource": "opc", "dataType": "Float8", "opcServer": "FluxolotOPC", "opcItemPath": "ns=2;s=Sir-Fluxolot-Fishtank.PUMP_MOTOR_FEEDBACK", "value": 70},
+            {"name": "PUMP_HEAD_PRESSURE", "tagType": "AtomicTag", "valueSource": "opc", "dataType": "Float8", "opcServer": "FluxolotOPC", "opcItemPath": "ns=2;s=Sir-Fluxolot-Fishtank.PUMP_HEAD_PRESSURE", "value": 12},
+            {"name": "TANK_LEVEL", "tagType": "AtomicTag", "valueSource": "opc", "dataType": "Float8", "opcServer": "FluxolotOPC", "opcItemPath": "ns=2;s=Sir-Fluxolot-Fishtank.TANK_LEVEL", "value": 78},
+            {"name": "TANK_TEMPERATURE", "tagType": "AtomicTag", "valueSource": "opc", "dataType": "Float8", "opcServer": "FluxolotOPC", "opcItemPath": "ns=2;s=Sir-Fluxolot-Fishtank.TANK_TEMPERATURE", "value": 74},
+            {"name": "TANK_O2_PERCENT", "tagType": "AtomicTag", "valueSource": "opc", "dataType": "Float8", "opcServer": "FluxolotOPC", "opcItemPath": "ns=2;s=Sir-Fluxolot-Fishtank.TANK_O2_PERCENT", "value": 88},
+            {"name": "TANK_LOW_LEVEL_ALARM", "tagType": "AtomicTag", "valueSource": "opc", "dataType": "Boolean", "opcServer": "FluxolotOPC", "opcItemPath": "ns=2;s=Sir-Fluxolot-Fishtank.TANK_LOW_LEVEL_ALARM", "value": false},
+            {"name": "UV_LIGHT_STATUS", "tagType": "AtomicTag", "valueSource": "opc", "dataType": "Boolean", "opcServer": "FluxolotOPC", "opcItemPath": "ns=2;s=Sir-Fluxolot-Fishtank.UV_LIGHT_STATUS", "value": true},
+            {"name": "UV_LIGHT_RUNTIME_REMAINING", "tagType": "AtomicTag", "valueSource": "opc", "dataType": "Int4", "opcServer": "FluxolotOPC", "opcItemPath": "ns=2;s=Sir-Fluxolot-Fishtank.UV_LIGHT_RUNTIME_REMAINING", "value": 480},
+            {"name": "TREAT_FEEDER_RUN_STATUS", "tagType": "AtomicTag", "valueSource": "opc", "dataType": "Boolean", "opcServer": "FluxolotOPC", "opcItemPath": "ns=2;s=Sir-Fluxolot-Fishtank.TREAT_FEEDER_RUN_STATUS", "value": false},
+            {"name": "TREAT_FEEDER_LEVEL", "tagType": "AtomicTag", "valueSource": "opc", "dataType": "Float8", "opcServer": "FluxolotOPC", "opcItemPath": "ns=2;s=Sir-Fluxolot-Fishtank.TREAT_FEEDER_LEVEL", "value": 64}
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Missus Fluxolot",
+      "tagType": "Folder",
+      "tags": [
+        {
+          "name": "Missus-Fluxolot-Fishtank",
+          "tagType": "UdtInstance",
+          "typeId": "[FluxolotImported]_types_/Fluxolot/Fishtank",
+          "parameters": {"OPC_Server": "FluxolotOPC", "OPC_Device": "Missus-Fluxolot-Fishtank"},
+          "tags": [
+            {"name": "PUMP_START_STOP_COMMAND", "tagType": "AtomicTag", "valueSource": "opc", "dataType": "Boolean", "opcServer": "FluxolotOPC", "opcItemPath": "ns=2;s=Missus-Fluxolot-Fishtank.PUMP_START_STOP_COMMAND", "value": false},
+            {"name": "PUMP_START_STOP_FEEDBACK", "tagType": "AtomicTag", "valueSource": "opc", "dataType": "Boolean", "opcServer": "FluxolotOPC", "opcItemPath": "ns=2;s=Missus-Fluxolot-Fishtank.PUMP_START_STOP_FEEDBACK", "value": true},
+            {"name": "PUMP_MOTOR_SETPOINT", "tagType": "AtomicTag", "valueSource": "opc", "dataType": "Float8", "opcServer": "FluxolotOPC", "opcItemPath": "ns=2;s=Missus-Fluxolot-Fishtank.PUMP_MOTOR_SETPOINT", "value": 72},
+            {"name": "PUMP_MOTOR_FEEDBACK", "tagType": "AtomicTag", "valueSource": "opc", "dataType": "Float8", "opcServer": "FluxolotOPC", "opcItemPath": "ns=2;s=Missus-Fluxolot-Fishtank.PUMP_MOTOR_FEEDBACK", "value": 70},
+            {"name": "PUMP_HEAD_PRESSURE", "tagType": "AtomicTag", "valueSource": "opc", "dataType": "Float8", "opcServer": "FluxolotOPC", "opcItemPath": "ns=2;s=Missus-Fluxolot-Fishtank.PUMP_HEAD_PRESSURE", "value": 12},
+            {"name": "TANK_LEVEL", "tagType": "AtomicTag", "valueSource": "opc", "dataType": "Float8", "opcServer": "FluxolotOPC", "opcItemPath": "ns=2;s=Missus-Fluxolot-Fishtank.TANK_LEVEL", "value": 78},
+            {"name": "TANK_TEMPERATURE", "tagType": "AtomicTag", "valueSource": "opc", "dataType": "Float8", "opcServer": "FluxolotOPC", "opcItemPath": "ns=2;s=Missus-Fluxolot-Fishtank.TANK_TEMPERATURE", "value": 74},
+            {"name": "TANK_O2_PERCENT", "tagType": "AtomicTag", "valueSource": "opc", "dataType": "Float8", "opcServer": "FluxolotOPC", "opcItemPath": "ns=2;s=Missus-Fluxolot-Fishtank.TANK_O2_PERCENT", "value": 88},
+            {"name": "TANK_LOW_LEVEL_ALARM", "tagType": "AtomicTag", "valueSource": "opc", "dataType": "Boolean", "opcServer": "FluxolotOPC", "opcItemPath": "ns=2;s=Missus-Fluxolot-Fishtank.TANK_LOW_LEVEL_ALARM", "value": false},
+            {"name": "UV_LIGHT_STATUS", "tagType": "AtomicTag", "valueSource": "opc", "dataType": "Boolean", "opcServer": "FluxolotOPC", "opcItemPath": "ns=2;s=Missus-Fluxolot-Fishtank.UV_LIGHT_STATUS", "value": true},
+            {"name": "UV_LIGHT_RUNTIME_REMAINING", "tagType": "AtomicTag", "valueSource": "opc", "dataType": "Int4", "opcServer": "FluxolotOPC", "opcItemPath": "ns=2;s=Missus-Fluxolot-Fishtank.UV_LIGHT_RUNTIME_REMAINING", "value": 480},
+            {"name": "TREAT_FEEDER_RUN_STATUS", "tagType": "AtomicTag", "valueSource": "opc", "dataType": "Boolean", "opcServer": "FluxolotOPC", "opcItemPath": "ns=2;s=Missus-Fluxolot-Fishtank.TREAT_FEEDER_RUN_STATUS", "value": false},
+            {"name": "TREAT_FEEDER_LEVEL", "tagType": "AtomicTag", "valueSource": "opc", "dataType": "Float8", "opcServer": "FluxolotOPC", "opcItemPath": "ns=2;s=Missus-Fluxolot-Fishtank.TREAT_FEEDER_LEVEL", "value": 64}
+          ]
+        }
+      ]
+    }
+  ]
+}

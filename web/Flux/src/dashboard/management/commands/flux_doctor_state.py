@@ -9,8 +9,10 @@ from django.utils import timezone
 from flux.sim.live_extract import datasource_info
 from flux.trace.models import TraceProfile
 
-from dashboard.services import bridge_config, dashboard_runtime_state, excluded_interface_runtime_tag_count, fluxy_client, interface_runtime_tags
-from trace.questdb_data_plane import questdb_connect
+from flux.bridge.services import bridge_config, fluxy_client
+
+from dashboard.services import dashboard_runtime_state, excluded_interface_runtime_tag_count, interface_runtime_tags
+from flux.chart.questdb_data_plane import QUESTDB_PLANE_SAMPLE_TABLE, questdb_connect
 
 
 class Command(BaseCommand):
@@ -61,7 +63,7 @@ class Command(BaseCommand):
         questdb = {
             "ok": False,
             "dsn": os.getenv("QUESTDB_DSN", "postgresql://admin:quest@localhost:8812/qdb"),
-            "trace_points": 0,
+            "plane_samples": 0,
             "latest_timestamp": None,
             "nav_well_profiles": TraceProfile.objects.filter(key__startswith="nav-well-").count(),
             "error": "",
@@ -69,15 +71,15 @@ class Command(BaseCommand):
         try:
             with questdb_connect() as connection:
                 with connection.cursor() as cursor:
-                    cursor.execute("SELECT count(), max(ts) FROM trace_points")
-                    trace_points, latest_timestamp = cursor.fetchone()
+                    cursor.execute(f"SELECT count(), max(ts) FROM {QUESTDB_PLANE_SAMPLE_TABLE}")
+                    plane_samples, latest_timestamp = cursor.fetchone()
         except Exception as exc:
             questdb["error"] = str(exc)
         else:
             questdb.update(
                 {
-                    "ok": bool(trace_points and latest_timestamp),
-                    "trace_points": int(trace_points or 0),
+                    "ok": bool(plane_samples and latest_timestamp),
+                    "plane_samples": int(plane_samples or 0),
                     "latest_timestamp": latest_timestamp.isoformat() if latest_timestamp else None,
                 }
             )

@@ -62,7 +62,6 @@ def normalize_db_type(value: Any) -> str:
     normalized = str(value or "").strip().upper().replace(" ", "_")
     aliases = {
         "POSTGRESQL": "POSTGRES",
-        "POSTGRESQL": "POSTGRES",
         "PSQL": "POSTGRES",
         "MICROSOFT_SQL_SERVER": "MSSQL",
         "SQL_SERVER": "MSSQL",

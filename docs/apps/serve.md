@@ -11,7 +11,7 @@ Flux.serve is the local service platform: it keeps a catalog of expected Flux se
 - Heartbeats describe supervisor/worker health, not necessarily individual endpoint state.
 - `flux_serve_monitor` writes `ServeServiceSnapshot` rows as the UI source of truth for observed service health.
 
-The target FieldAgent path is supervised mode: one FieldAgent adapter process per enabled `FieldEndpoint` / OPC UA server.
+The target FieldAgent path is supervised mode: one FieldAgent adapter process per enabled `sim.Endpoint` / OPC UA server.
 
 ## Service Visibility
 
@@ -23,9 +23,9 @@ The target FieldAgent path is supervised mode: one FieldAgent adapter process pe
 - `Flux.serve.monitor`
 - `Flux.serve.field-supervisor`
 - `Flux.serve.field-agent:<endpoint>`
-- `Flux.live.fluxolot-sampler`
+- `Flux.spot.fluxolot-sampler`
 - `Flux.opt.sampler`
-- `Flux.trace.worker`
+- `Flux.chart.worker`
 
 Snapshots are durable observations. Page rendering should read stored snapshots instead of probing sockets or processes during the request.
 
@@ -35,3 +35,33 @@ Snapshots are durable observations. Page rendering should read stored snapshots 
 - Observed service health is the consolidated platform view produced by `flux_serve_monitor`.
 - A service can have no heartbeat and still be monitored through HTTP, TCP, stored bridge tests, or dynamic model discovery.
 - Snapshots older than the stale threshold are treated as stale by UI selectors even if the stored row was last healthy.
+
+## FieldAgent Runtime Truth
+
+Do not treat `sim.Endpoint.status == running` as complete runtime truth by itself.
+
+Current reality:
+
+- `flux_field_supervisor` starts one FieldAgent process per enabled runtime endpoint in supervised mode.
+- The supervisor writes `SimAgentHeartbeat.process_id` and updates `sim.Endpoint.status` when it starts a process.
+- FieldAgent endpoint URLs are deterministic: the supervisor uses the base port plus `sim.Endpoint.id`.
+- `flux_serve_monitor` can mark FieldAgent snapshots healthy, missing, stale, or error based on heartbeat freshness.
+- Some dashboard rows may still display `running` from stored endpoint status without requiring fresh heartbeat evidence.
+
+Target contract for a user-facing `running` label:
+
+```text
+  + sim.Endpoint.status
+  + fresh serve.SimAgentHeartbeat
+  + process_id
+  + endpoint URL / port
+  + fresh ServeServiceSnapshot
+  + optional OS/TCP probe when available
+  = runtime truth
+```
+
+If the heartbeat or snapshot is stale, display `stale` or `last reported running`, not plain `running`. The dashboard should expose PID, port, endpoint URL, heartbeat age, and observed state when claiming an OPC endpoint is online.
+
+## Interface Sampler Responsibility
+
+Interface runtime health is also a Flux.serve responsibility. A required sampler should be supervised when interface runtime tags exist. The sampler performs block reads through Flux.opt and writes `LatestTagValue`/`TagSample`; dashboard and Live pages only render cached results.

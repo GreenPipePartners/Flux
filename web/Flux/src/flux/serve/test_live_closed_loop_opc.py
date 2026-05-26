@@ -7,9 +7,12 @@ from uuid import uuid4
 
 import pytest
 
-from flux.base.models import FieldDevice, FieldEndpoint, FieldTag
+from flux.base.models import Tag
+from flux.sim.models import FieldEndpoint
 from flux.field.ignition import configure_field_device_ignition, safe_name
 from flux.serve.field_supervisor import process_spec, start_process
+from flux.sim.models import TagConfig
+from flux.sim.testing import create_device_config, create_tag_config
 
 
 @pytest.mark.django_db(transaction=True)
@@ -37,7 +40,7 @@ def test_live_one_device_closed_loop_opc_read_changes_and_cleans_up(tmp_path):
     base_port = int(os.getenv("FLUX_LIVE_CLOSED_LOOP_BASE_PORT", "4960"))
     tag_provider = os.getenv("FLUX_LIVE_CLOSED_LOOP_TAG_PROVIDER", "default")
     tag_folder = os.getenv("FLUX_LIVE_CLOSED_LOOP_TAG_FOLDER", "FluxLiveClosedLoop_%s" % unique)
-    connection_name = os.getenv("FLUX_LIVE_CLOSED_LOOP_CONNECTION", "Flux Live Closed Loop %s" % unique)
+    connection_name = os.getenv("FLUX_LIVE_CLOSED_LOOP_CONNECTION", "Flux Spot Closed Loop %s" % unique)
     fx = fluxy.Fluxy(
         base_url=os.getenv("FLUXY_BASE_URL", "http://localhost:8088/system/webdev/flux"),
         token=os.getenv("FLUXY_TOKEN"),
@@ -189,20 +192,21 @@ def run_one_device_closed_loop(
 
 def create_unique_closed_loop_device(unique):
     endpoint = FieldEndpoint.objects.create(name="endpoint-%s" % unique, security_policy="None")
-    device = FieldDevice.objects.create(
+    device = create_device_config(
         endpoint=endpoint,
         name="device-%s" % unique,
         device_type="ControlLogix",
     )
-    tag = FieldTag.objects.create(
+    tag = create_tag_config(
         device=device,
         name="Value",
-        data_type=FieldTag.DataType.INT,
+        data_type=Tag.DataType.INT,
         update_rate_ms=250,
-        simulation_type=FieldTag.SimulationType.RAMP,
+        simulation_type=TagConfig.SimulationType.RAMP,
         min_value=0,
         max_value=100000,
         initial_value="1",
+        materialized=True,
     )
     return endpoint, device, tag
 

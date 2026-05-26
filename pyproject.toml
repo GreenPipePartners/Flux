@@ -1,0 +1,54 @@
+[project]
+name = "flux"
+version = "0.1.0"
+description = "Performance-first Ignition companion stack"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "dj-database-url>=2.2",
+    "django>=5.2.14,<6.0",
+    "django-environ>=0.11",
+    "django-htmx>=1.18",
+    "flux-build",
+    "flux-mine",
+    "flux-sim",
+    "fluxy-ign",
+    "gunicorn>=26.0.0",
+    "idna>=3.15",
+    "orjson>=3.11.9",
+    "psycopg[binary]>=3.2",
+    "whitenoise>=6.7",
+]
+
+[dependency-groups]
+dev = [
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.7.6",
+    "playwright>=1.50",
+    "pytest>=8.0",
+    "pytest-django>=4.8",
+    "ruff>=0.15.14",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+flux-build = { path = "build", editable = true }
+flux-mine = { path = "mine", editable = true }
+fluxy-ign = { path = "fluxy", editable = true }
+flux-sim = { path = "sim", editable = true }
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "flux.settings"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+pythonpath = ["web/Flux/src"]
+markers = [
+    "acceptance: env-gated acceptance tests that may import real project data files",
+    "e2e: browser end-to-end tests",
+    "integration: tests that require live Ignition/OPC services",
+]

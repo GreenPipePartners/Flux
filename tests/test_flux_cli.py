@@ -37,6 +37,22 @@ def test_print_check_formats_status(capsys):
     assert "fix: flux start" in output
 
 
+def test_script_resolves_linux_shell_script():
+    flux = load_flux_cli()
+
+    assert flux.script("flux-service-start") == flux.ROOT_DIR / "scripts" / "flux-service-start.sh"
+
+
+def test_main_rejects_non_linux(monkeypatch, capsys):
+    flux = load_flux_cli()
+    monkeypatch.setattr(flux.sys, "platform", "win32")
+
+    status = flux.main(["intro"])
+
+    assert status == 2
+    assert "Flux is Linux-exclusive" in capsys.readouterr().err
+
+
 def test_field_import_tag_data_wraps_manage_command(monkeypatch):
     flux = load_flux_cli()
     calls = []
@@ -186,7 +202,9 @@ def test_mine_source_wraps_django_command(monkeypatch):
 
     monkeypatch.setattr(flux.subprocess, "call", fake_call)
 
-    status = flux.main(["mine", "source", "Screens", "--source-type", "factorytalk", "--label", "FTV"])
+    status = flux.main(
+        ["mine", "source", "Screens", "--source-type", "factorytalk", "--label", "FTV"]
+    )
 
     assert status == 0
     assert calls[0][0] == [
@@ -257,6 +275,221 @@ def test_build_ignition_tags_run_wraps_django_command(monkeypatch):
     assert calls[0][1] == flux.WEB_DIR
 
 
+def test_build_hmi_map_wraps_core_package(monkeypatch):
+    flux = load_flux_cli()
+    calls = []
+
+    def fake_call(command, cwd=None, env=None):
+        calls.append((command, cwd, env))
+        return 0
+
+    monkeypatch.setattr(flux.subprocess, "call", fake_call)
+
+    status = flux.main(["build", "hmi-map", "factorytalk.zip", "--output-dir", "out"])
+
+    assert status == 0
+    assert calls[0][0] == [
+        "uv",
+        "run",
+        "--project",
+        "build",
+        "flux-build",
+        "hmi-map",
+        "factorytalk.zip",
+        "--output-dir",
+        "out",
+    ]
+    assert calls[0][1] == flux.ROOT_DIR
+
+
+def test_build_hmi_map_run_wraps_django_command(monkeypatch):
+    flux = load_flux_cli()
+    calls = []
+
+    def fake_call(command, cwd=None, env=None):
+        calls.append((command, cwd, env))
+        return 0
+
+    monkeypatch.setattr(flux.subprocess, "call", fake_call)
+
+    status = flux.main(["build", "hmi-map-run", "42", "--output-dir", "out"])
+
+    assert status == 0
+    assert calls[0][0] == [
+        "uv",
+        "run",
+        "python",
+        "manage.py",
+        "flux_build_hmi_map",
+        "42",
+        "--output-dir",
+        "out",
+    ]
+    assert calls[0][1] == flux.WEB_DIR
+
+
+def test_build_seed_HMI demo_wraps_django_command(monkeypatch):
+    flux = load_flux_cli()
+    calls = []
+
+    def fake_call(command, cwd=None, env=None):
+        calls.append((command, cwd, env))
+        return 0
+
+    monkeypatch.setattr(flux.subprocess, "call", fake_call)
+
+    status = flux.main(
+        [
+            "build",
+            "seed-hmi-demo",
+            "--sqlite-path",
+            "sample.sqlite3",
+            "--max-display-screens",
+            "3",
+            "--output-dir",
+            "out",
+            "--keep-existing",
+        ]
+    )
+
+    assert status == 0
+    assert calls[0][0] == [
+        "uv",
+        "run",
+        "python",
+        "manage.py",
+        "seed_build_hmi_demo",
+        "--sqlite-path",
+        "sample.sqlite3",
+        "--max-display-screens",
+        "3",
+        "--output-dir",
+        "out",
+        "--keep-existing",
+    ]
+    assert calls[0][1] == flux.WEB_DIR
+
+
+def test_cell_import_wraps_django_command(monkeypatch):
+    flux = load_flux_cli()
+    calls = []
+
+    def fake_call(command, cwd=None, env=None):
+        calls.append((command, cwd, env))
+        return 0
+
+    monkeypatch.setattr(flux.subprocess, "call", fake_call)
+
+    status = flux.main(["cell", "import", "cells", "--replace"])
+
+    assert status == 0
+    assert calls[0][0] == [
+        "uv",
+        "run",
+        "python",
+        "manage.py",
+        "import_cell_csv_bundle",
+        "cells",
+        "--replace",
+    ]
+    assert calls[0][1] == flux.WEB_DIR
+
+
+def test_cell_seed_demo_wraps_django_command(monkeypatch):
+    flux = load_flux_cli()
+    calls = []
+
+    def fake_call(command, cwd=None, env=None):
+        calls.append((command, cwd, env))
+        return 0
+
+    monkeypatch.setattr(flux.subprocess, "call", fake_call)
+
+    status = flux.main(["cell", "seed-demo", "--skip-runtime"])
+
+    assert status == 0
+    assert calls[0][0] == ["uv", "run", "python", "manage.py", "seed_cell_demo", "--skip-runtime"]
+    assert calls[0][1] == flux.WEB_DIR
+
+
+def test_cell_export_wraps_django_command(monkeypatch):
+    flux = load_flux_cli()
+    calls = []
+
+    def fake_call(command, cwd=None, env=None):
+        calls.append((command, cwd, env))
+        return 0
+
+    monkeypatch.setattr(flux.subprocess, "call", fake_call)
+
+    status = flux.main(["cell", "export", "test-pad", "--output", "out"])
+
+    assert status == 0
+    assert calls[0][0] == [
+        "uv",
+        "run",
+        "python",
+        "manage.py",
+        "export_cell_csv_bundle",
+        "test-pad",
+        "--output",
+        "out",
+    ]
+    assert calls[0][1] == flux.WEB_DIR
+
+
+def test_deep_init_hello_world_wraps_core_package(monkeypatch):
+    flux = load_flux_cli()
+    calls = []
+
+    def fake_call(command, cwd=None, env=None):
+        calls.append((command, cwd, env))
+        return 0
+
+    monkeypatch.setattr(flux.subprocess, "call", fake_call)
+
+    status = flux.main(["deep", "init-hello-world", "--output", "out", "--force"])
+
+    assert status == 0
+    assert calls[0][0] == [
+        "uv",
+        "run",
+        "--project",
+        "deep",
+        "flux-deep",
+        "init-hello-world",
+        "--output",
+        "out",
+        "--force",
+    ]
+    assert calls[0][1] == flux.ROOT_DIR
+
+
+def test_deep_inspect_wraps_core_package(monkeypatch):
+    flux = load_flux_cli()
+    calls = []
+
+    def fake_call(command, cwd=None, env=None):
+        calls.append((command, cwd, env))
+        return 0
+
+    monkeypatch.setattr(flux.subprocess, "call", fake_call)
+
+    status = flux.main(["deep", "inspect", "deep/examples/hello_world"])
+
+    assert status == 0
+    assert calls[0][0] == [
+        "uv",
+        "run",
+        "--project",
+        "deep",
+        "flux-deep",
+        "inspect",
+        "deep/examples/hello_world",
+    ]
+    assert calls[0][1] == flux.ROOT_DIR
+
+
 def test_restart_stops_then_starts_service(monkeypatch):
     flux = load_flux_cli()
     calls = []
@@ -304,7 +537,7 @@ def test_doctor_checks_docs_server(monkeypatch, capsys):
                 (),
                 {
                     "returncode": 0,
-                    "stdout": '{"runtime":{"latest_read_age_seconds":0,"excluded_interface_tag_count":0,"tag_count":1,"stale_count":0,"bad_quality_count":0,"online_count":1},"bridge":{"online":true,"token_set":true,"base_url":"http://bridge","message":"","last_test_at":null},"historian":{"ok":true,"status":"Valid","db_type":"POSTGRES","database":"FluxyPostgres","error":""},"questdb":{"ok":true,"dsn":"qdb","trace_points":1}}',
+                    "stdout": '{"runtime":{"latest_read_age_seconds":0,"excluded_interface_tag_count":0,"tag_count":1,"stale_count":0,"bad_quality_count":0,"online_count":1},"bridge":{"online":true,"token_set":true,"base_url":"http://bridge","message":"","last_test_at":null},"historian":{"ok":true,"status":"Valid","db_type":"POSTGRES","database":"FluxyPostgres","error":""},"questdb":{"ok":true,"dsn":"qdb","plane_samples":1}}',
                     "stderr": "",
                 },
             )()

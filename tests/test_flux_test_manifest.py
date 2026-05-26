@@ -131,6 +131,8 @@ def test_repo_manifest_loads_required_first_pass_suites():
 
     names = set(manifest.suite_names())
     assert {
+        "django-check",
+        "activate-ignition",
         "fluxolot-fishtank",
         "live-csv",
         "trace-csv",
@@ -140,11 +142,105 @@ def test_repo_manifest_loads_required_first_pass_suites():
         "unit-root",
         "unit-fluxy",
         "integration-fluxy",
+        "integration-fluxy-postgres",
         "unit-sim",
         "integration-sim",
         "unit-web",
         "integration-web",
     } <= names
+
+
+def test_main_lists_named_profiles(capsys):
+    flux_test = load_flux_test()
+
+    status = flux_test.main(["--list-profiles"])
+
+    output = capsys.readouterr().out
+    assert status == 0
+    assert "fast: django-check" in output
+    assert "web: django-check" in output
+    assert "live: integration-fluxy" in output
+    assert "audit: django-check" in output
+
+
+def test_main_profile_selects_suite_bundle_without_running(capsys):
+    flux_test = load_flux_test()
+
+    status = flux_test.main(["--profile", "fast"])
+
+    output = capsys.readouterr().out
+    assert status == 0
+    assert "Profiles: fast" in output
+    assert "[DEFINED] django-check" in output
+    assert "[DEFINED] unit-root" in output
+    assert "[DEFINED] unit-fluxy" in output
+    assert "integration-fluxy" not in output
+
+
+def test_main_profile_json_reports_selected_suites(capsys):
+    flux_test = load_flux_test()
+
+    status = flux_test.main(["--profile", "web", "--json"])
+
+    report = json.loads(capsys.readouterr().out)
+    suite_names = [suite["name"] for suite in report["suites"]]
+    assert status == 0
+    assert report["profiles"] == ["web"]
+    assert suite_names == [
+        "django-check",
+        "unit-web",
+        "fluxolot-fishtank",
+        "live-csv",
+        "trace-csv",
+        "sampling",
+        "unit-cell",
+    ]
+
+
+def test_live_audit_env_loads_dotenv_and_sets_gates(tmp_path):
+    flux_test = load_flux_test()
+    (tmp_path / "web" / "Flux").mkdir(parents=True)
+    (tmp_path / "web" / "Flux" / ".env").write_text(
+        "FLUXY_TOKEN=secret#token\nFLUXY_BASE_URL=http://example.test/system/webdev/flux\n",
+        encoding="utf-8",
+    )
+    environ = {}
+
+    flux_test.apply_live_audit_env(tmp_path, environ=environ)
+
+    assert environ["FLUXY_TOKEN"] == "secret#token"
+    assert environ["FLUXY_BASE_URL"] == "http://example.test/system/webdev/flux"
+    assert environ["FLUX_PLAYWRIGHT"] == "1"
+    assert environ["FLUX_FULL_INTEGRATION"] == "1"
+    assert environ["FLUX_SIM_IGNITION_INTEGRATION"] == "1"
+    assert environ["FLUX_FIELD_INTEGRATION"] == "1"
+    assert environ["FLUX_FIELD_SUPERVISOR_INTEGRATION"] == "1"
+    assert environ["FLUX_LIVE_EXTRACTION_INTEGRATION"] == "1"
+    assert environ["FLUX_LIVE_CLOSED_LOOP_OPC"] == "1"
+
+
+def test_main_live_audit_env_unblocks_e2e_gate(tmp_path, capsys, monkeypatch):
+    flux_test = load_flux_test()
+    manifest_path = write_manifest(tmp_path, [sys.executable, "-c", "print('ok')"], required_env=["FLUX_PLAYWRIGHT"])
+    monkeypatch.delenv("FLUX_PLAYWRIGHT", raising=False)
+
+    status = flux_test.main(["--manifest", str(manifest_path), "--live-audit-env", "--json", "temp-suite"])
+
+    report = json.loads(capsys.readouterr().out)
+    assert status == 0
+    assert report["suites"][0]["status"] == "defined"
+    assert report["suites"][0]["missing_env"] == []
+
+
+def test_profile_suite_names_deduplicates_multiple_profiles():
+    flux_test = load_flux_test()
+
+    names = flux_test.suite_names_for_profiles(["fast", "web"])
+
+    assert names.count("django-check") == 1
+    assert names.index("django-check") == 0
+    assert "unit-root" in names
+    assert "unit-web" in names
 
 
 def test_main_reports_selected_suite_without_running_command(capsys):
@@ -230,3 +326,34 @@ def test_main_execute_failing_command_returns_nonzero(tmp_path, capsys):
     assert suite["status"] == "failed"
     assert suite["execution"]["status"] == "failed"
     assert suite["execution"]["returncode"] == 7
+
+
+def test_main_execute_zero_tests_success_is_failed(tmp_path, capsys):
+    flux_test = load_flux_test()
+    manifest_path = write_manifest(tmp_path, [sys.executable, "-c", "print('NO TESTS RAN')"])
+
+    status = flux_test.main(["--manifest", str(manifest_path), "--execute", "--json", "temp-suite"])
+
+    report = json.loads(capsys.readouterr().out)
+    suite = report["suites"][0]
+    assert status == 1
+    assert suite["status"] == "failed"
+    assert suite["execution"]["returncode"] == 1
+    assert "zero executed tests" in suite["execution"]["output"]
+
+
+def test_main_execute_all_skipped_success_is_failed(tmp_path, capsys):
+    flux_test = load_flux_test()
+    manifest_path = write_manifest(
+        tmp_path,
+        [sys.executable, "-c", "print('====================== 2 skipped, 36 deselected in 0.02s ======================')"],
+    )
+
+    status = flux_test.main(["--manifest", str(manifest_path), "--execute", "--json", "temp-suite"])
+
+    report = json.loads(capsys.readouterr().out)
+    suite = report["suites"][0]
+    assert status == 1
+    assert suite["status"] == "failed"
+    assert suite["execution"]["returncode"] == 1
+    assert "skipped every selected test" in suite["execution"]["output"]

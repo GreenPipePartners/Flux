@@ -8,8 +8,9 @@ Start here:
 - `docs/operator-guide.md`: local `flux` CLI, background service, dashboard, and health workflow.
 - `docs/flux-architecture.md`: high-level system boundaries and ownership.
 - `docs/ignition-dev-cell.md`: managed local Ignition dev-cell commands.
+- `docs/deep-openplc.md`: isolated Flux.Deep OpenPLC emulation workspace.
 - `docs/live-extraction.md`: live-to-sim tag/history extraction trial and cleanup limits.
-- `docs/trace-architecture.md`: uPlot trace JavaScript architecture and performance rules.
+- `docs/charts-architecture.md`: uPlot chart JavaScript architecture and performance rules.
 
 Project-specific app docs:
 
@@ -43,13 +44,20 @@ flux field configure-ignition --tag-provider default --tag-folder FieldAgent
 flux doctor
 ```
 
+Current Flux.Deep starter loop:
+
+```bash
+flux deep init-hello-world --output deep/examples/hello_world --force
+uv run --project deep pytest deep/tests
+```
+
 Main local URLs:
 
 ```text
 Flux web UI:      http://localhost:8000/
 Docs server:      http://localhost:8001/
-Live view:        http://localhost:8000/live/
-Trace:            http://localhost:8000/trace/
+Spot view:        http://localhost:8000/spot/
+Chart view:       http://localhost:8000/chart/
 Ignition Gateway: http://localhost:8088/web/home
 Fluxy bridge:     http://localhost:8088/system/webdev/flux
 ```

@@ -3,8 +3,10 @@ import os
 from django.core.management.base import BaseCommand
 
 import fluxy
-from flux.base.field_config import enabled_endpoint_configs
+from flux.base.field_config import endpoint_config
+from flux.base.field_selectors import enabled_field_endpoint_queryset
 from flux.field.ignition import configure_field_agent_ignition
+from flux.serve.field_supervisor import DEFAULT_FIELD_AGENT_HOST, server_endpoint_url
 
 
 class Command(BaseCommand):
@@ -21,6 +23,13 @@ class Command(BaseCommand):
         parser.add_argument("--tag-provider", default="default")
         parser.add_argument("--tag-folder", default="FieldAgent")
         parser.add_argument(
+            "--field-agent-host",
+            default=DEFAULT_FIELD_AGENT_HOST,
+            help="Connectable host advertised by supervised FieldAgent OPC UA servers.",
+        )
+        parser.add_argument("--supervised-base-port", type=int, default=4850)
+        parser.add_argument("--use-db-endpoint-url", action="store_true")
+        parser.add_argument(
             "--collision-policy",
             default="o",
             choices=["a", "m", "o", "i"],
@@ -33,7 +42,22 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        config = {"endpoints": enabled_endpoint_configs()}
+        endpoints = enabled_field_endpoint_queryset()
+        config = {
+            "endpoints": [
+                endpoint_config(
+                    endpoint,
+                    endpoint_url=endpoint.endpoint_url
+                    if options["use_db_endpoint_url"]
+                    else server_endpoint_url(
+                        endpoint,
+                        base_port=options["supervised_base_port"],
+                        host=options["field_agent_host"],
+                    ),
+                )
+                for endpoint in endpoints
+            ]
+        }
         client = fluxy.Fluxy(
             base_url=options["base_url"],
             token=options["token"],

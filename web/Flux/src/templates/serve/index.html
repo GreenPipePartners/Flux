@@ -12,6 +12,7 @@
       <p class="eyebrow">flux.serve</p>
       <h1>Service Platform</h1>
     </div>
+    {% include "flux/partials/display_pulse_bar.html" %}
     {% if snapshot_status.total_count %}
       <span class="status-pill {% if snapshot_status.error_count %}status-failed{% endif %}">{{ snapshot_status.ok_count }}/{{ snapshot_status.total_count }} services healthy</span>
     {% else %}
@@ -39,6 +40,7 @@
           {% endfor %}
         </tbody>
       </table>
+      {% include "flux/partials/pagination_controls.html" with page_obj=snapshot_page page_param="snapshots_page" target_id="serve-platform-comp-card" select_id="serve-platform-comp-card" label="Observed service pages" item_label="services" %}
     {% else %}
       <p>No service snapshots recorded yet. Run <code>uv run python manage.py flux_serve_monitor --once</code> to seed the observed service map.</p>
     {% endif %}
@@ -75,6 +77,7 @@
           {% endfor %}
         </tbody>
       </table>
+      {% include "flux/partials/pagination_controls.html" with page_obj=heartbeat_page page_param="heartbeats_page" target_id="serve-platform-comp-card" select_id="serve-platform-comp-card" label="Heartbeat pages" item_label="heartbeats" %}
     {% else %}
       <p>No worker heartbeats recorded yet.</p>
     {% endif %}
@@ -85,7 +88,7 @@
 {% if request.GET.card == "serve-commands" %}{% firstof request.GET.mode "summary" as serve_commands_mode %}{% else %}{% firstof "summary" as serve_commands_mode %}{% endif %}
 <section id="serve-commands-comp-card" class="panel comp-card" data-comp-card data-comp-card-mode="{{ serve_commands_mode }}">
   {% include "flux/partials/link_copy.html" with link=commands_link label="Serve Logs" %}
-  <div class="panel-header"><div><p class="eyebrow">Flux.serve</p><h1>Recent Logs</h1></div><span class="status-pill">{{ commands|length }} recent</span></div>
+  <div class="panel-header"><div><p class="eyebrow">Flux.serve</p><h1>Recent Logs</h1></div><span class="status-pill">{{ commands_total_count }} recent</span></div>
   {% if serve_commands_mode == "detail" %}
   {% if commands %}
     <table>
@@ -101,6 +104,7 @@
         {% endfor %}
       </tbody>
     </table>
+    {% include "flux/partials/pagination_controls.html" with page_obj=commands_page page_param="commands_page" target_id="serve-commands-comp-card" select_id="serve-commands-comp-card" label="Serve log pages" item_label="logs" %}
   {% else %}
     <p>No service logs recorded yet.</p>
   {% endif %}

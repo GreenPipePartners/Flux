@@ -1,6 +1,7 @@
 from django.test import TestCase
 
 from flux.base.runtime import RuntimeTag
+from flux.sim.models import DeviceConfig
 from flux.sim.field_demo import ensure_demo_field_config
 from flux.sim.demo import ensure_demo_runtime_config
 
@@ -10,10 +11,10 @@ class SimDemoConfigTests(TestCase):
         endpoint, tags = ensure_demo_field_config()
 
         self.assertEqual(endpoint.name, "local-sim")
-        self.assertEqual(endpoint.devices.count(), 6)
+        self.assertEqual(endpoint.sim_device_configs.count(), 6)
         self.assertEqual(len(tags), 20)
         self.assertEqual(
-            sorted(endpoint.devices.values_list("device_type", flat=True)),
+            sorted(DeviceConfig.objects.filter(endpoint=endpoint).values_list("base_device__device_type", flat=True)),
             ["Meter", "Meter", "Tank", "Tank", "Well", "Well"],
         )
 

@@ -1,11 +1,11 @@
 from django.core.management.base import BaseCommand, CommandError
 
-from trace.providers.nav_wells import seeded_well_profiles
-from trace.questdb_data_plane import export_trace_cache_to_questdb
+from flux.chart.providers.nav_wells import seeded_well_profiles
+from flux.chart.questdb_data_plane import export_plane_samples_to_questdb
 
 
 class Command(BaseCommand):
-    help = "Export local TraceCachePoint rows into QuestDB for data-plane comparison."
+    help = "Export local Plane sample rows into QuestDB plane_samples for data-plane comparison."
 
     def add_arguments(self, parser):
         parser.add_argument("--limit", type=int, default=None)
@@ -18,9 +18,9 @@ class Command(BaseCommand):
             profiles = profiles[: options["limit"]]
         if not profiles:
             raise CommandError("No seeded nav well Trace profiles found")
-        total = export_trace_cache_to_questdb(
+        total = export_plane_samples_to_questdb(
             profile_keys=[profile.key for profile in profiles],
             replace=options["replace"],
             batch_size=options["batch_size"],
         )
-        self.stdout.write("Exported %s Trace cache points into QuestDB" % total)
+        self.stdout.write("Exported %s Plane sample points into QuestDB" % total)

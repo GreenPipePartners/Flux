@@ -8,7 +8,10 @@ from pathlib import Path
 import pytest
 
 from flux.base.field_config import endpoint_config, ignition_tag_config
-from flux.base.models import FieldDevice, FieldEndpoint, FieldTag
+from flux.base.models import Tag
+from flux.sim.models import FieldEndpoint
+from flux.sim.models import TagConfig
+from flux.sim.testing import create_device_config, create_tag_config
 
 
 pytestmark = pytest.mark.integration
@@ -17,9 +20,9 @@ pytestmark = pytest.mark.integration
 @pytest.mark.parametrize(
     ("tag_name", "data_type", "update_rate_ms", "sample_count"),
     [
-        ("BoolTag", FieldTag.DataType.BOOL, 1000, 6),
-        ("IntegerTag", FieldTag.DataType.INT, 5000, 8),
-        ("FloatTag", FieldTag.DataType.FLOAT, 10000, 12),
+        ("BoolTag", Tag.DataType.BOOL, 1000, 6),
+        ("IntegerTag", Tag.DataType.INT, 5000, 8),
+        ("FloatTag", Tag.DataType.FLOAT, 10000, 12),
     ],
 )
 @pytest.mark.django_db(transaction=True)
@@ -387,23 +390,24 @@ def create_three_device_config(endpoint_url):
     )
     tags = []
     for device_name in device_names():
-        device = FieldDevice.objects.create(
+        device = create_device_config(
             endpoint=endpoint,
             name=device_name,
             device_type="ControlLogix",
             browse_path="Devices",
         )
         tags.append(
-            FieldTag.objects.create(
+            create_tag_config(
                 device=device,
                 name="Value",
-                data_type=FieldTag.DataType.INT,
+                data_type=Tag.DataType.INT,
                 update_rate_ms=500,
-                simulation_type=FieldTag.SimulationType.RAMP,
+                simulation_type=TagConfig.SimulationType.RAMP,
                 min_value=0,
                 max_value=1000,
                 variance=0,
                 initial_value="0",
+                materialized=True,
             )
         )
     return endpoint, tags
@@ -418,19 +422,20 @@ def create_single_string_config(endpoint_url):
         namespace_uri="urn:flux:field:string",
         security_policy="None",
     )
-    device = FieldDevice.objects.create(
+    device = create_device_config(
         endpoint=endpoint,
         name="FluxLogixString",
         device_type="ControlLogix",
         browse_path="Devices",
     )
-    tag = FieldTag.objects.create(
+    tag = create_tag_config(
         device=device,
         name="StringTag",
-        data_type=FieldTag.DataType.STRING,
+        data_type=Tag.DataType.STRING,
         update_rate_ms=500,
-        simulation_type=FieldTag.SimulationType.RAMP,
+        simulation_type=TagConfig.SimulationType.RAMP,
         initial_value="message",
+        materialized=True,
     )
     return endpoint, tag
 
@@ -446,28 +451,28 @@ def create_stress_config(endpoint_url, device_count, tags_per_device):
     )
     field_tags = []
     for device_index in range(device_count):
-        device = FieldDevice.objects.create(
+        device = create_device_config(
             endpoint=endpoint,
             name="FluxStress%03d" % (device_index + 1),
             device_type="ControlLogix",
             browse_path="Devices",
         )
         tags = [
-            FieldTag(
+            create_tag_config(
                 device=device,
                 name="Tag%04d" % tag_index,
-                data_type=FieldTag.DataType.INT,
+                data_type=Tag.DataType.INT,
                 update_rate_ms=1000,
-                simulation_type=FieldTag.SimulationType.RAMP,
+                simulation_type=TagConfig.SimulationType.RAMP,
                 min_value=0,
                 max_value=100000,
                 variance=0,
                 initial_value="0",
+                materialized=True,
             )
             for tag_index in range(tags_per_device)
         ]
-        FieldTag.objects.bulk_create(tags)
-        field_tags.extend(FieldTag.objects.filter(device=device).order_by("name"))
+        field_tags.extend(sorted(tags, key=lambda tag: tag.name))
     return endpoint, field_tags
 
 
@@ -515,10 +520,10 @@ def wait_for_port(host, port):
 
 def ignition_data_type(data_type):
     return {
-        FieldTag.DataType.BOOL: "Boolean",
-        FieldTag.DataType.INT: "Int4",
-        FieldTag.DataType.FLOAT: "Float8",
-        FieldTag.DataType.STRING: "String",
+        Tag.DataType.BOOL: "Boolean",
+        Tag.DataType.INT: "Int4",
+        Tag.DataType.FLOAT: "Float8",
+        Tag.DataType.STRING: "String",
     }[data_type]
 
 

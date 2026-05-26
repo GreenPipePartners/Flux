@@ -5,7 +5,11 @@ from hashlib import sha1
 
 from django.db import transaction
 
-from flux.base.models import FieldDevice, FieldEndpoint, FieldTag, SimDevice, SimDeviceTag, SimServer
+from flux.base.models import Tag
+from flux.sim.models import FieldEndpoint
+from flux.sim.models import SimServer
+from flux.sim.kernel_sync import disable_materialized_configs, upsert_device_config, upsert_tag_config
+from flux.sim.models import DeviceConfig, TagConfig
 
 
 DEFAULT_ENDPOINT_URL = "opc.tcp://0.0.0.0:4840/flux/sim"
@@ -23,10 +27,14 @@ class FieldBridgeResult:
 
 
 def materialize_enabled_sim_devices(*, provider_name: str | None = None) -> FieldBridgeResult:
-    devices = SimDevice.objects.filter(enabled=True).select_related("provider", "driver")
+    devices = DeviceConfig.objects.filter(enabled=True, source_provider_id__isnull=False).select_related(
+        "base_device", "source_provider", "source_provider__sim_server", "sim_server", "driver"
+    )
     if provider_name:
-        devices = devices.filter(provider__name=provider_name)
-    devices = devices.prefetch_related("tags").order_by("provider__name", "name")
+        devices = devices.filter(source_provider__name=provider_name)
+    devices = devices.prefetch_related("tags__base_tag", "tags__source_tag_node").order_by(
+        "source_provider__name", "base_device__name"
+    )
 
     device_count = 0
     tag_count = 0
@@ -42,9 +50,9 @@ def materialize_enabled_sim_devices(*, provider_name: str | None = None) -> Fiel
             if endpoint is None:
                 endpoint = materialize_sim_server_endpoint(sim_server=sim_server)
                 endpoints_by_server[sim_server.id] = endpoint
-            _endpoint, field_device = materialize_sim_device(sim_device, enabled_tags, endpoint=endpoint)
+            _endpoint, device_config = materialize_sim_device(sim_device, enabled_tags, endpoint=endpoint)
             device_count += 1
-            tag_count += field_device.tags.filter(enabled=True).count()
+            tag_count += device_config.tags.filter(materialized=True, enabled=True).count()
 
     return FieldBridgeResult(
         endpoint_count=len(endpoints_by_server), device_count=device_count, tag_count=tag_count
@@ -52,50 +60,67 @@ def materialize_enabled_sim_devices(*, provider_name: str | None = None) -> Fiel
 
 
 def materialize_sim_device(
-    sim_device: SimDevice, enabled_tags: list[SimDeviceTag] | None = None, *, endpoint: FieldEndpoint | None = None
-) -> tuple[FieldEndpoint, FieldDevice]:
+    sim_device: DeviceConfig, enabled_tags: list[TagConfig] | None = None, *, endpoint: FieldEndpoint | None = None
+) -> tuple[FieldEndpoint, DeviceConfig]:
     tags = (
         enabled_tags
         if enabled_tags is not None
-        else list(sim_device.tags.filter(enabled=True).order_by("source_path"))
+        else list(sim_device.tags.filter(enabled=True).select_related("base_tag", "source_tag_node").order_by("source_path"))
     )
     endpoint = endpoint or materialize_sim_server_endpoint(sim_device=sim_device)
-    field_device, _created = FieldDevice.objects.update_or_create(
+    base_device = sim_device.base_device
+    device_config = upsert_device_config(
+        namespace=base_device.namespace,
+        name=base_device.name,
+        device_type=base_device.device_type,
         endpoint=endpoint,
-        name=sim_device.name,
-        defaults={
-            "device_type": sim_device.driver.label,
-            "browse_path": sim_device.provider.name,
-            "enabled": True,
-            "description": "Materialized from SimDevice catalog %s" % sim_device.id,
-            "config": sim_device_runtime_config(sim_device),
-        },
+        source_provider=sim_device.source_provider,
+        sim_server=sim_device.sim_server or (sim_device.source_provider.sim_server if sim_device.source_provider_id else None),
+        driver=sim_device.driver,
+        browse_path=sim_device.browse_path,
+        mode=sim_device.mode,
+        response_delay_ms=sim_device.response_delay_ms if sim_device.mode == DeviceConfig.Mode.SLOW_NETWORK else 0,
+        source_status=sim_device.source_status,
+        source_detail=sim_device.source_detail,
+        enabled=True,
+        description="Materialized from sim.device catalog %s" % sim_device.id,
+        config=sim_device_runtime_config(sim_device),
     )
 
     tag_names = field_tag_names(tags)
     active_names = set(tag_names.values())
     for sim_tag in tags:
-        FieldTag.objects.update_or_create(
-            device=field_device,
-            name=tag_names[sim_tag.id],
-            defaults={
-                "data_type": field_data_type(sim_tag.data_type),
-                "update_rate_ms": sim_device.config.get("update_rate_ms", 1000),
-                "simulation_type": FieldTag.SimulationType.STATIC,
-                "min_value": None,
-                "max_value": None,
-                "variance": 0.0,
-                "initial_value": "",
-                "enabled": True,
-                "description": sim_tag.source_path,
-                "config": sim_tag_runtime_config(sim_tag),
-            },
+        simulation_defaults = field_tag_simulation_defaults(sim_tag)
+        upsert_tag_config(
+            sim_device=device_config,
+            provider=sim_tag.base_tag.provider,
+            tagpath=sim_tag.base_tag.tagpath,
+            tag_name=tag_names[sim_tag.id],
+            data_type=field_data_type(sim_tag.base_tag.data_type),
+            update_rate_ms=sim_tag.base_tag.update_rate_ms,
+            simulation_type=simulation_defaults["simulation_type"],
+            min_value=simulation_defaults["min_value"],
+            max_value=simulation_defaults["max_value"],
+            variance=simulation_defaults["variance"],
+            initial_value=simulation_defaults["initial_value"],
+            source_tag_node=sim_tag.source_tag_node,
+            source_path=sim_tag.source_path,
+            behavior=sim_tag.behavior,
+            address_strategy=sim_tag.address_strategy,
+            address=sim_tag.address,
+            mode_config=sim_tag.mode_config,
+            enabled=True,
+            materialized=True,
+            description=sim_tag.source_path,
+            config=sim_tag_runtime_config(sim_tag),
         )
-    field_device.tags.exclude(name__in=active_names).update(enabled=False)
-    return endpoint, field_device
+    disable_materialized_configs(device_config, active_names)
+    return endpoint, device_config
 
 
-def materialize_sim_server_endpoint(*, sim_server: SimServer | None = None) -> FieldEndpoint:
+def materialize_sim_server_endpoint(*, sim_server: SimServer | None = None, sim_device: DeviceConfig | None = None) -> FieldEndpoint:
+    if sim_server is None and sim_device is not None:
+        sim_server = sim_server_for_device(sim_device)
     sim_server = sim_server or default_sim_server()
     return FieldEndpoint.objects.update_or_create(
         name=sim_server.name,
@@ -110,8 +135,8 @@ def materialize_sim_server_endpoint(*, sim_server: SimServer | None = None) -> F
     )[0]
 
 
-def sim_server_for_device(sim_device: SimDevice) -> SimServer:
-    return sim_device.provider.sim_server or default_sim_server()
+def sim_server_for_device(sim_device: DeviceConfig) -> SimServer:
+    return sim_device.sim_server or (sim_device.source_provider.sim_server if sim_device.source_provider_id else None) or default_sim_server()
 
 
 def default_sim_server() -> SimServer:
@@ -128,31 +153,23 @@ def default_sim_server() -> SimServer:
     )[0]
 
 
-def field_endpoint_name(sim_device: SimDevice) -> str:
-    value = "sim-%s-%s" % (safe_name(sim_device.provider.name), safe_name(sim_device.name))
-    if len(value) <= 120:
-        return value
-    digest = sha1(value.encode("utf-8")).hexdigest()[:10]
-    return "%s-%s" % (value[:109], digest)
-
-
-def sim_device_runtime_config(sim_device: SimDevice) -> dict[str, object]:
+def sim_device_runtime_config(sim_device: DeviceConfig) -> dict[str, object]:
     # Device mode is server/request-level behavior. Per-tag write behavior belongs
-    # on SimDeviceTag/tag-mode configuration, not on this FieldDevice boundary.
+    # on TagConfig/tag-mode configuration, not on this device boundary.
     config: dict[str, object] = {
-        "source": "sim_device",
-        "sim_device_id": sim_device.id,
+        "source": "sim_device_config",
+        "sim_device_config_id": sim_device.id,
         "mode": sim_device.mode,
     }
-    if sim_device.mode == SimDevice.Mode.SLOW_NETWORK:
+    if sim_device.mode == DeviceConfig.Mode.SLOW_NETWORK:
         config["response_delay_ms"] = sim_device.response_delay_ms
     return config
 
 
-def sim_tag_runtime_config(sim_tag: SimDeviceTag) -> dict[str, object]:
+def sim_tag_runtime_config(sim_tag: TagConfig) -> dict[str, object]:
     config: dict[str, object] = {
-        "source": "sim_device_tag",
-        "sim_device_tag_id": sim_tag.id,
+        "source": "sim_tag_config",
+        "sim_tag_config_id": sim_tag.id,
         "source_path": sim_tag.source_path,
         "behavior": sim_tag.behavior,
     }
@@ -161,32 +178,50 @@ def sim_tag_runtime_config(sim_tag: SimDeviceTag) -> dict[str, object]:
     return config
 
 
-def field_tag_names(tags: list[SimDeviceTag]) -> dict[int, str]:
+def field_tag_simulation_defaults(sim_tag: TagConfig) -> dict[str, object]:
+    mode_config = sim_tag.mode_config or {}
+    return {
+        "simulation_type": mode_config.get("simulation_type") or TagConfig.SimulationType.STATIC,
+        "min_value": mode_config.get("min_value"),
+        "max_value": mode_config.get("max_value"),
+        "variance": mode_config.get("variance", 0.0),
+        "initial_value": bounded_field_value(mode_config.get("initial_value") or "", max_length=255),
+    }
+
+
+def field_tag_names(tags: list[TagConfig]) -> dict[int, str]:
     totals: dict[str, int] = {}
     for tag in tags:
-        totals[tag.tag_name] = totals.get(tag.tag_name, 0) + 1
+        totals[tag.name] = totals.get(tag.name, 0) + 1
 
     names: dict[int, str] = {}
     for tag in tags:
-        if totals[tag.tag_name] == 1:
-            names[tag.id] = tag.tag_name
+        if totals[tag.name] == 1:
+            names[tag.id] = bounded_field_value(tag.name, max_length=255)
         else:
-            names[tag.id] = "%s__%s" % (
-                tag.tag_name,
+            names[tag.id] = bounded_field_value("%s__%s" % (
+                tag.name,
                 sha1(tag.source_path.encode("utf-8")).hexdigest()[:8],
-            )
+            ), max_length=255)
     return names
+
+
+def bounded_field_value(value: object, *, max_length: int) -> str:
+    text = str(value or "")
+    if len(text) <= max_length:
+        return text
+    return text[:max_length]
 
 
 def field_data_type(data_type: str) -> str:
     normalized = data_type.lower()
     if "bool" in normalized:
-        return FieldTag.DataType.BOOL
+        return Tag.DataType.BOOL
     if "float" in normalized or "double" in normalized:
-        return FieldTag.DataType.FLOAT
+        return Tag.DataType.FLOAT
     if "int" in normalized:
-        return FieldTag.DataType.INT
-    return FieldTag.DataType.STRING
+        return Tag.DataType.INT
+    return Tag.DataType.STRING
 
 
 def safe_name(value: str) -> str:

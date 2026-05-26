@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from pathlib import Path
+
+from flux_mine.plc.l5k import parse_l5k_file
 from flux_mine.plc.l5k import parse_l5k_text
 from flux_mine.plc.parsers import parse_plc_file
 
@@ -94,3 +97,44 @@ def test_parse_plc_file_dispatches_l5k_by_extension(tmp_path) -> None:
     assert controller is not None
     assert controller.global_tag_named("PT001") is not None
     assert project.source_sha256
+
+
+def test_l5k_parser_preserves_hello_world_task_routine_and_rungs() -> None:
+    project = parse_l5k_file(repo_root() / "logix_samples" / "hello_world.L5K")
+
+    controller = project.controller_named("hello_world")
+    assert controller is not None
+    assert len(controller.tags) == 0
+    assert len(controller.programs) == 1
+    assert len(controller.tasks) == 1
+
+    program = controller.program_named("MainProgram")
+    assert program is not None
+    assert program.main_routine_name == "MainRoutine"
+    assert len(program.tags) == 6
+    assert len(program.routines) == 1
+
+    routine = program.routines[0]
+    assert routine.name == "MainRoutine"
+    assert routine.routine_type == "RLL"
+    assert [rung.number for rung in routine.rungs] == [0, 1, 2, 3, 4]
+    assert routine.rungs[4].text == "[XIO(world_latch) COP(hello,hello_world,1) ,XIC(world_latch) COP(world,hello_world,1) ]"
+
+    instructions = [instruction for rung in routine.rungs for instruction in rung.instructions]
+    references = [reference for instruction in instructions for reference in instruction.tag_references]
+    assert len(instructions) == 12
+    assert len(references) == 14
+    assert instructions[-1].mnemonic == "COP"
+    assert [reference.role for reference in instructions[-1].tag_references] == ["source", "destination"]
+
+    task = controller.task_named("MainTask")
+    assert task is not None
+    assert task.task_type == "CONTINUOUS"
+    assert task.rate == 10
+    assert task.priority == 10
+    assert task.watchdog == 500
+    assert task.scheduled_programs == ("MainProgram",)
+
+
+def repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]

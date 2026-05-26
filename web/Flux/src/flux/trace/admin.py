@@ -1,7 +1,7 @@
-"""Flux Trace admin registrations will be added as trace-specific models are introduced."""
+"""Flux Chart admin registrations will be added as chart-specific models are introduced."""
 from django.contrib import admin
 
-from .models import TraceAnnotation, TraceAnnotationTarget, TraceCacheCursor, TraceCachePoint, TraceProfile, TraceSignal
+from .models import TraceAnnotation, TraceAnnotationTarget, TraceCacheCursor, TraceProfile, TraceSignal
 
 
 class TraceSignalInline(admin.TabularInline):
@@ -22,13 +22,6 @@ class TraceSignalAdmin(admin.ModelAdmin):
     list_display = ("profile", "display_label", "tag", "axis_key", "sort_order", "cache_enabled")
     list_filter = ("profile", "axis_key", "cache_enabled", "default_visible")
     search_fields = ("label", "tag__display_name", "tag__path")
-
-
-@admin.register(TraceCachePoint)
-class TraceCachePointAdmin(admin.ModelAdmin):
-    list_display = ("signal", "timestamp", "value_float", "quality_code")
-    list_filter = ("quality_code", "signal__profile")
-    search_fields = ("signal__label", "signal__tag__path")
 
 
 @admin.register(TraceCacheCursor)

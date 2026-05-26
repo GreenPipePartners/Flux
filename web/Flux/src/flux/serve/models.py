@@ -12,7 +12,6 @@ class ServeHeartbeat(models.Model):
         ERROR = "error", "Error"
 
     class Platform(models.TextChoices):
-        WINDOWS = "windows", "Windows"
         LINUX = "linux", "Linux"
         UNKNOWN = "unknown", "Unknown"
 
@@ -113,3 +112,27 @@ class ServeCommand(models.Model):
 
     def __str__(self) -> str:
         return f"{self.command} ({self.status})"
+
+
+class SimAgentHeartbeat(models.Model):
+    endpoint = models.ForeignKey("sim.Endpoint", on_delete=models.CASCADE, related_name="heartbeats")
+    instance_id = models.CharField(max_length=120)
+    process_id = models.PositiveIntegerField(blank=True, null=True)
+    version = models.CharField(max_length=80, blank=True)
+    started_at = models.DateTimeField(blank=True, null=True)
+    last_seen_at = models.DateTimeField(default=timezone.now, db_index=True)
+    current_node_count = models.PositiveIntegerField(default=0)
+    last_error = models.TextField(blank=True)
+
+    class Meta:
+        db_table = '"serve"."sim_agent_heartbeat"'
+        constraints = [
+            models.UniqueConstraint(fields=["endpoint", "instance_id"], name="unique_serve_sim_agent_instance")
+        ]
+        ordering = ["endpoint", "instance_id"]
+
+    def __str__(self) -> str:
+        return f"{self.endpoint} ({self.instance_id})"
+
+
+FieldAgentHeartbeat = SimAgentHeartbeat

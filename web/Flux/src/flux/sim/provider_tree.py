@@ -12,9 +12,8 @@ from flux_sim.reconstruction import (
     load_imported_provider_tree,
 )
 
-from .models import SimProviderSelection
 from flux.base import services as base_services
-from flux.base.models import TagProvider
+from flux.sim.models import ProviderSelection, TagProvider
 
 
 @dataclass
@@ -35,7 +34,7 @@ class ImportedTreeNode:
         if self.tag_type == "UdtInstance":
             return "◆"
         if self.tag_type == "AtomicTag":
-            return "●"
+            return "??"
         return "📁"
 
 
@@ -77,9 +76,7 @@ def build_imported_provider_tree(
     database = database_path or default_sim_database_path()
     if not provider or not database.exists():
         return None
-    selected_paths = set(
-        SimProviderSelection.objects.filter(provider=provider, enabled=True).values_list("path", flat=True)
-    )
+    selected_paths = set(selected_paths_for_provider_name(provider))
     nodes_by_path: dict[str, ImportedTreeNode] = {}
     roots: dict[str, ImportedTreeNode] = {}
     with sqlite3.connect(database) as connection:
@@ -132,17 +129,21 @@ def has_udt_instance_ancestor(path: str, nodes_by_path: dict[str, ImportedTreeNo
     return False
 
 
-def set_imported_selection(provider: str, path: str, *, enabled: bool) -> int:
+def set_imported_selection(provider: str, path: str, *, enabled: bool, config: dict | None = None) -> int:
     if TagProvider.objects.filter(name=provider).exists():
-        return base_services.set_selection(provider, path, enabled=enabled)
+        return base_services.set_selection(provider, path, enabled=enabled, config=config)
+    provider_row = ensure_selection_provider(provider)
+    cleaned_path = path.strip("/")
     if enabled:
-        SimProviderSelection.objects.update_or_create(
-            provider=provider,
-            path=path.strip("/"),
-            defaults={"enabled": True},
+        ProviderSelection.objects.update_or_create(
+            provider=provider_row,
+            path=cleaned_path,
+            purpose=ProviderSelection.Purpose.SIM,
+            defaults={"enabled": True, "config": config or {}},
         )
     else:
-        SimProviderSelection.objects.filter(provider=provider, path=path.strip("/")).delete()
+        ProviderSelection.objects.filter(provider=provider_row, purpose=ProviderSelection.Purpose.SIM).filter(path=cleaned_path).delete()
+        ProviderSelection.objects.filter(provider=provider_row, purpose=ProviderSelection.Purpose.SIM, path__startswith=f"{cleaned_path}/").delete()
     return 1
 
 
@@ -150,9 +151,10 @@ def replace_imported_selection(provider: str, paths: list[str]) -> int:
     if TagProvider.objects.filter(name=provider).exists():
         return base_services.replace_selection(provider, paths)
     cleaned_paths = sorted({path.strip("/") for path in paths if path.strip("/")})
-    SimProviderSelection.objects.filter(provider=provider).delete()
-    SimProviderSelection.objects.bulk_create(
-        [SimProviderSelection(provider=provider, path=path, enabled=True) for path in cleaned_paths],
+    provider_row = ensure_selection_provider(provider)
+    ProviderSelection.objects.filter(provider=provider_row, purpose=ProviderSelection.Purpose.SIM).delete()
+    ProviderSelection.objects.bulk_create(
+        [ProviderSelection(provider=provider_row, path=path, purpose=ProviderSelection.Purpose.SIM, enabled=True) for path in cleaned_paths],
         ignore_conflicts=True,
     )
     return len(cleaned_paths)
@@ -162,9 +164,7 @@ def selected_source_paths(provider: str, *, database_path: Path | None = None) -
     if database_path is None and TagProvider.objects.filter(name=provider).exists():
         return base_services.selected_source_paths(provider)
     database = database_path or default_sim_database_path()
-    selected_prefixes = list(
-        SimProviderSelection.objects.filter(provider=provider, enabled=True).values_list("path", flat=True)
-    )
+    selected_prefixes = selected_paths_for_provider_name(provider)
     if not selected_prefixes or not database.exists():
         return []
     tree = load_imported_provider_tree(database, provider)
@@ -177,3 +177,28 @@ def selected_source_paths(provider: str, *, database_path: Path | None = None) -
         if any(tag_path == prefix or tag_path.startswith(prefix.rstrip("/") + "/") for prefix in selected_prefixes):
             paths.append(tag_path)
     return sorted(set(paths))
+
+
+def selected_paths_for_provider_name(provider: str) -> list[str]:
+    provider_row = TagProvider.objects.filter(name=provider).first()
+    if provider_row is None:
+        return []
+    return list(
+        ProviderSelection.objects.filter(
+            provider=provider_row,
+            purpose=ProviderSelection.Purpose.SIM,
+            enabled=True,
+        ).values_list("path", flat=True)
+    )
+
+
+def ensure_selection_provider(provider: str) -> TagProvider:
+    provider_row, _created = TagProvider.objects.get_or_create(
+        name=provider,
+        defaults={
+            "source": TagProvider.Source.JSON_UPLOAD,
+            "source_name": "ui-selection",
+            "source_sha256": "",
+        },
+    )
+    return provider_row

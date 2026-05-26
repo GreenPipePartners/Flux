@@ -8,9 +8,10 @@ from django.db.models import Q
 from django.utils import timezone
 
 from flux.base.runtime import LatestTagValue, RuntimeSchedulerConfig, RuntimeTag, TagSample
+from flux.plane.services import RuntimePlaneSample, mirror_runtime_samples_to_plane
 from flux.sim.demo import parse_fluxy_timestamp
 
-from .models import OptimizationLease, RefreshLane
+from .models import OptimizationLease, RefreshLane, RuntimeDemand
 
 
 HISTORY_CONFIGURATION_FIELDS = (
@@ -126,6 +127,7 @@ def sample_runtime_tags(tags: Iterable[RuntimeTag], *, fx: Any | None = None, no
     values = fx.tag.read_blocking([tag.full_path for tag in runtime_tags])
     read_at = now or timezone.now()
     samples = []
+    plane_samples = []
     for tag, value in zip(runtime_tags, values, strict=True):
         value_timestamp = parse_fluxy_timestamp(value.timestamp) or read_at
         LatestTagValue.objects.update_or_create(
@@ -146,7 +148,17 @@ def sample_runtime_tags(tags: Iterable[RuntimeTag], *, fx: Any | None = None, no
                 read_at=read_at,
             )
         )
+        plane_samples.append(
+            RuntimePlaneSample(
+                tag=tag,
+                value=value.value,
+                quality_code=value.quality,
+                value_timestamp=value_timestamp,
+                read_at=read_at,
+            )
+        )
     TagSample.objects.bulk_create(samples)
+    mirror_runtime_samples_to_plane(plane_samples, now=read_at)
     return len(runtime_tags)
 
 
@@ -223,15 +235,67 @@ def lease_runtime_demand(
     return lease_runtime_tags_hot(unique_tags, seconds=seconds, claimed_by=claimed_by, now=now)
 
 
+def touch_runtime_demand(
+    *,
+    source_key: str,
+    tags: Iterable[RuntimeTag] | None = None,
+    full_paths: Iterable[str] | None = None,
+    seconds: int | None = None,
+    claimed_by: str = "flux-demand-ui",
+    metadata: dict[str, Any] | None = None,
+    now=None,
+) -> int:
+    runtime_tags = list(tags or [])
+    if full_paths is not None:
+        runtime_tags.extend(runtime_tags_for_full_paths(full_paths))
+    unique_paths = tuple(dict.fromkeys(tag.full_path for tag in runtime_tags))
+    if not unique_paths:
+        return 0
+    now = now or timezone.now()
+    seconds = seconds if seconds is not None else RuntimeSchedulerConfig.default().demand_lease_seconds
+    expires_at = now + timezone.timedelta(seconds=max(seconds, 1))
+    demand_metadata = metadata or {}
+    existing_paths = set(
+        RuntimeDemand.objects.filter(source_key=source_key, target_path__in=unique_paths).values_list(
+            "target_path", flat=True
+        )
+    )
+    RuntimeDemand.objects.filter(source_key=source_key, target_path__in=existing_paths).update(
+        claimed_by=claimed_by,
+        touched_at=now,
+        expires_at=expires_at,
+        metadata=demand_metadata,
+    )
+    RuntimeDemand.objects.bulk_create(
+        [
+            RuntimeDemand(
+                source_key=source_key,
+                target_path=full_path,
+                claimed_by=claimed_by,
+                touched_at=now,
+                expires_at=expires_at,
+                metadata=demand_metadata,
+            )
+            for full_path in unique_paths
+            if full_path not in existing_paths
+        ]
+    )
+    return len(unique_paths)
+
+
 def active_demand_full_paths(*, now=None) -> set[str]:
     now = now or timezone.now()
-    return set(
+    lease_paths = set(
         OptimizationLease.objects.filter(
             work_type="runtime_tag_demand",
             completed_at__isnull=True,
             expires_at__gt=now,
         ).values_list("target_path", flat=True)
     )
+    demand_paths = set(
+        RuntimeDemand.objects.filter(expires_at__gt=now).values_list("target_path", flat=True)
+    )
+    return lease_paths | demand_paths
 
 
 def runtime_tags_for_full_paths(full_paths: Iterable[str]) -> list[RuntimeTag]:

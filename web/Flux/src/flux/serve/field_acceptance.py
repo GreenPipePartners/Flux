@@ -6,11 +6,11 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Iterable
 
-from flux.base.models import FieldDevice
 from flux.base.runtime import RuntimeTag
 from flux.field.ignition import cleanup_field_agent_ignition, configure_field_device_ignition
 from flux.plane import sample_runtime_bad_quality
 from flux.serve.field_supervisor import FieldServerProcessSpec, start_process
+from flux.sim.models import DeviceConfig
 
 
 @dataclass(frozen=True)
@@ -31,7 +31,7 @@ class FieldAcceptanceSource:
 
 def start_field_acceptance_source(
     fx: Any,
-    device: FieldDevice,
+    device: DeviceConfig,
     spec: FieldServerProcessSpec,
     *,
     public_host: str,

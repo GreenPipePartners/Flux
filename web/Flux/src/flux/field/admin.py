@@ -1,5 +1,5 @@
-"""Legacy migration app.
+"""FieldAgent helper app.
 
-FieldAgent configuration is administered from `flux.base` now. This app stays installed only
-while its historical migrations seed/copy existing databases into base-owned tables.
+FieldAgent configuration is administered from `flux.base` now. This app stays installed for
+helper commands/modules and historical migrations, but owns no active models.
 """

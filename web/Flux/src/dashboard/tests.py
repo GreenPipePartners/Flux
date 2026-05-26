@@ -1,22 +1,26 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 from django.utils import timezone
 from io import StringIO
 from unittest.mock import ANY, patch
 
 from .copy_context import render_bridge_llm_markdown, render_bridge_table_markdown
-from .models import IgnitionBridgeConfig
+from flux.bridge.models import IgnitionBridgeConfig
 from .services import dashboard_readiness, dashboard_runtime_state, excluded_interface_runtime_tag_count, field_device_status, interface_runtime_tags, serve_status, start_sim_server, stop_sim_server
 
-from flux.base.models import FieldAgentHeartbeat, FieldDevice, FieldEndpoint, FieldTag
+from flux.base.models import Tag
+from flux.serve.models import FieldAgentHeartbeat
+from flux.sim.models import FieldEndpoint
 from flux.base.runtime import LatestTagValue, RuntimeTag, TagSchedule
-from flux.live.models import LiveScope
+from flux.spot.models import LiveScope
 from flux.opt.models import RefreshLane
 from flux.serve.models import ServeCommand, ServeHeartbeat, ServeServiceSnapshot
 from flux.trace.models import TraceProfile
+from flux.sim.testing import create_device_config, create_tag_config
 
 
 class InitialSetupTests(TestCase):
@@ -36,7 +40,7 @@ class InitialSetupTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, reverse("admin:index"))
+        self.assertRedirects(response, reverse("dashboard:home"))
         user = get_user_model().objects.get(username="admin")
         self.assertTrue(user.is_staff)
         self.assertTrue(user.is_superuser)
@@ -47,6 +51,80 @@ class InitialSetupTests(TestCase):
         response = self.client.get(reverse("dashboard:setup"))
 
         self.assertRedirects(response, reverse("dashboard:home"))
+
+
+class DashboardStaticAssetTests(SimpleTestCase):
+    def test_site_js_guards_flux_web_display_pulse(self):
+        site_js = (settings.BASE_DIR / "src" / "static" / "flux" / "site.js").read_text()
+
+        self.assertIn("function fluxDisplayPulseCanRun", site_js)
+        self.assertIn("window.fluxDisplayPulseCanRun = fluxDisplayPulseCanRun", site_js)
+        self.assertIn('data-comp-mode="configure"', site_js)
+        self.assertIn('form[data-flux-pulse-dirty="1"]', site_js)
+        self.assertIn("htmx:configRequest", site_js)
+        self.assertIn("mergeCurrentQueryPath", site_js)
+        self.assertIn(".comp-card-mode-control", site_js)
+        self.assertIn("remainingExact", site_js)
+        self.assertIn("Math.floor(remainingExact)", site_js)
+
+    def test_local_htmx_supports_filtered_every_triggers(self):
+        htmx_js = (settings.BASE_DIR / "src" / "static" / "flux" / "vendor" / "htmx" / "htmx.min.js").read_text()
+
+        self.assertIn("splitEveryTriggerSpec", htmx_js)
+        self.assertIn("triggerConditionPasses", htmx_js)
+        self.assertIn("fluxDisplayPulseCanRun()", htmx_js)
+
+    def test_local_htmx_configures_polling_requests_from_current_url(self):
+        htmx_js = (settings.BASE_DIR / "src" / "static" / "flux" / "vendor" / "htmx" / "htmx.min.js").read_text()
+
+        self.assertIn("htmx:configRequest", htmx_js)
+        self.assertIn("config.path", htmx_js)
+        self.assertIn("push === 'false'", htmx_js)
+
+    def test_site_js_keeps_table_copy_without_client_side_pagination(self):
+        site_js = (settings.BASE_DIR / "src" / "static" / "flux" / "site.js").read_text()
+
+        self.assertIn("Copy table contents", site_js)
+        self.assertIn("function initializeCopyableTables", site_js)
+        self.assertNotIn("function initializeTablePagination", site_js)
+        self.assertNotIn("data-table-pagination-action", site_js)
+        self.assertNotIn("tablePaginationHidden", site_js)
+
+    def test_site_js_treats_fluxolot_scope_as_preview_placeholder(self):
+        site_js = (settings.BASE_DIR / "src" / "static" / "flux" / "site.js").read_text()
+
+        self.assertIn("function initializePreviewDefaultInputs", site_js)
+        self.assertIn('input[name="live_scope"]', site_js)
+        self.assertIn('input.value === "Fluxolot"', site_js)
+        self.assertIn('input.value = ""', site_js)
+
+    def test_site_css_styles_table_pagination_controls(self):
+        site_css = (settings.BASE_DIR / "src" / "static" / "flux" / "site.css").read_text()
+
+        self.assertIn(".stale-list { border: 1px", site_css)
+        self.assertIn(".stale-row:first-child { border-top: 0; }", site_css)
+        self.assertIn(".table-pagination-controls", site_css)
+        self.assertIn(".table-pagination-summary", site_css)
+        self.assertIn(".table-pagination-disabled", site_css)
+        self.assertIn(".flux-web-pulse-timer", site_css)
+        self.assertIn(".flux-web-pulse-track", site_css)
+        self.assertIn("--pulse-countdown-percent", site_css)
+
+
+class FluxWebPulseContextTests(SimpleTestCase):
+    def test_display_pulse_context_marks_old_cached_state_stale(self):
+        from flux.web_pulse import display_pulse_context
+
+        context = display_pulse_context(
+            source_label="Flux.storage",
+            last_backend_at=timezone.now() - timezone.timedelta(seconds=settings.STALE_AFTER_SECONDS + 5),
+            state="ok",
+            detail="cached state",
+        )
+
+        self.assertEqual(context["refresh_seconds"], 5)
+        self.assertEqual(context["state"], "stale")
+        self.assertEqual(context["state_label"], "Stale")
 
 
 class DashboardBridgeTests(TestCase):
@@ -97,6 +175,60 @@ class DashboardBridgeTests(TestCase):
         self.assertContains(response, "http://localhost:8001/apps/dashboard/#ignition-bridges")
         self.assertNotContains(response, "/admin/dashboard/ignitionbridgeconfig/")
         self.assertNotContains(response, "secret-token")
+        self.assertContains(response, 'class="feature-hero"')
+        self.assertContains(response, 'class="feature-hero-title"')
+        self.assertContains(response, 'id="flux-page-content"')
+        self.assertContains(response, "data-flux-web-pulse")
+        self.assertContains(response, 'hx-trigger="every 5s [fluxDisplayPulseCanRun()]"')
+        self.assertContains(response, "Next display refresh")
+        self.assertContains(response, "flux-web-pulse-track")
+        self.assertContains(response, "flux-web-pulse-timer")
+        self.assertContains(response, "data-flux-web-pulse-timer")
+        self.assertNotContains(response, "Flux.web pulse")
+        self.assertNotContains(response, "cached display only")
+
+    def test_home_links_feature_card_titles(self):
+        response = self.client.get(reverse("dashboard:home"))
+
+        self.assertContains(
+            response,
+            '<h2><a class="card-title-link" href="/mine/">Flux.mine</a></h2>',
+            html=True,
+        )
+        self.assertContains(response, 'id="fluxmine-comp-card"')
+        self.assertContains(
+            response,
+            '<h2><a class="card-title-link" href="/build/">Flux.build</a></h2>',
+            html=True,
+        )
+        self.assertContains(response, 'id="fluxbuild-comp-card"')
+
+        self.assertContains(
+            response,
+            '<h2><a class="card-title-link" href="/sim/">Flux.sim</a></h2>',
+            html=True,
+        )
+        self.assertContains(
+            response,
+            '<h2><a class="card-title-link" href="/spot/">Flux.spot</a></h2>',
+            html=True,
+        )
+        self.assertContains(
+            response,
+            '<h2><a class="card-title-link" href="/chart/">Flux.chart</a></h2>',
+            html=True,
+        )
+
+    def test_mine_and_build_pages_load_with_feature_hero(self):
+        mine = self.client.get(reverse("mine:index"))
+        build = self.client.get(reverse("build:index"))
+
+        self.assertContains(mine, "Flux.mine")
+        self.assertContains(mine, "Platform")
+        self.assertContains(mine, 'class="feature-hero"')
+        self.assertContains(build, "Flux.build")
+        self.assertContains(build, "Platform")
+        self.assertContains(build, 'class="feature-hero"')
 
     def test_removed_utility_pages_are_not_public_routes(self):
         for path in ("/nav/", "/opt/", "/time/"):
@@ -105,7 +237,7 @@ class DashboardBridgeTests(TestCase):
 
     def test_home_bridge_comp_card_modes_render_status_and_config_link(self):
         IgnitionBridgeConfig.objects.create(
-            name="sim",
+            name="default",
             role=IgnitionBridgeConfig.Role.SIMULATOR,
             base_url="http://sim.example.test/system/webdev/flux",
             token="secret-token",
@@ -118,12 +250,19 @@ class DashboardBridgeTests(TestCase):
         self.assertContains(detail, 'id="bridges-comp-focus"')
         self.assertContains(detail, 'data-comp-card-mode="detail"')
         self.assertContains(detail, "[↘]")
-        self.assertContains(detail, "sim / Simulator")
+        self.assertContains(detail, "default / Simulator")
         self.assertContains(detail, "http://sim.example.test/system/webdev/flux")
+        self.assertContains(detail, "Stored token saved")
         self.assertContains(detail, "comp-card-anchor")
         self.assertContains(configure, 'id="bridges-comp-focus"')
         self.assertContains(configure, 'data-comp-card-mode="configure"')
         self.assertContains(configure, "[⚙]")
+        self.assertContains(configure, 'value="http://sim.example.test/system/webdev/flux"')
+        self.assertContains(configure, 'autocomplete="off"')
+        self.assertContains(configure, "Remove stored token")
+        self.assertContains(configure, "Use only when rotating credentials")
+        self.assertContains(configure, "Do not use the Ignition gateway admin URL")
+        self.assertContains(configure, "Bridge configuration docs")
         self.assertContains(configure, "Save bridge")
         self.assertContains(configure, "Test")
         self.assertContains(configure, "Delete")
@@ -152,8 +291,8 @@ class DashboardBridgeTests(TestCase):
 
     def test_home_sim_config_comp_card_renders_runtime_connection_breakout(self):
         endpoint = FieldEndpoint.objects.create(name="local-sim", enabled=True)
-        device = FieldDevice.objects.create(endpoint=endpoint, name="DeviceA", device_type="Simulator")
-        FieldTag.objects.create(device=device, name="Pressure", data_type=FieldTag.DataType.FLOAT)
+        device = create_device_config(endpoint=endpoint, name="DeviceA", device_type="Simulator")
+        create_tag_config(device=device, name="Pressure", data_type=Tag.DataType.FLOAT, materialized=True)
 
         summary = self.client.get(reverse("dashboard:home"))
 
@@ -232,6 +371,21 @@ class DashboardBridgeTests(TestCase):
         self.assertContains(response, "1/1 services running")
         self.assertContains(response, "Serve Logs")
 
+    def test_home_renders_flux_serve_heartbeat_pid_and_port_evidence(self):
+        ServeHeartbeat.objects.create(
+            service_name="flux-worker",
+            instance_id="default",
+            status=ServeHeartbeat.Status.RUNNING,
+            pid=1234,
+            metadata={"port": 9901},
+            last_seen_at=timezone.now(),
+        )
+
+        response = self.client.get(reverse("dashboard:home"), {"card": "serve", "mode": "detail"})
+
+        self.assertContains(response, "PID 1234")
+        self.assertContains(response, "port 9901")
+
     def test_home_renders_flux_serve_observed_health_when_snapshots_exist(self):
         ServeServiceSnapshot.objects.create(
             service_key="Flux.web.server",
@@ -241,13 +395,44 @@ class DashboardBridgeTests(TestCase):
             observed_state=ServeServiceSnapshot.ObservedState.HEALTHY,
             severity=ServeServiceSnapshot.Severity.OK,
             summary="HTTP 200",
+            metadata={"pid": 4321, "port": 8000},
         )
 
         response = self.client.get(reverse("dashboard:home"), {"card": "serve", "mode": "detail"})
 
         self.assertContains(response, "Observed service health")
         self.assertContains(response, "Flux.web.server")
+        self.assertContains(response, "PID 4321")
+        self.assertContains(response, "port 8000")
         self.assertContains(response, "1/1 services healthy")
+
+    def test_home_flux_serve_observed_health_uses_ten_row_htmx_pagination(self):
+        for index in range(12):
+            ServeServiceSnapshot.objects.create(
+                service_key=f"Flux.test.service-{index:02d}",
+                display_name=f"Service {index:02d}",
+                category="Test",
+                desired_state=ServeServiceSnapshot.DesiredState.REQUIRED,
+                observed_state=ServeServiceSnapshot.ObservedState.HEALTHY,
+                severity=ServeServiceSnapshot.Severity.OK,
+                summary="HTTP 200",
+            )
+
+        first_page = self.client.get(reverse("dashboard:home"), {"card": "serve", "mode": "detail"})
+        second_page = self.client.get(
+            reverse("dashboard:home"),
+            {"card": "serve", "mode": "detail", "dashboard_serve_page": "2"},
+        )
+
+        self.assertContains(first_page, "Showing 1-10 of 12 services")
+        self.assertContains(first_page, 'hx-target="#dashboard-comp-surface"')
+        self.assertContains(first_page, "dashboard_serve_page=2")
+        self.assertContains(first_page, "Flux.test.service-09")
+        self.assertNotContains(first_page, "Flux.test.service-10")
+        self.assertContains(second_page, "Showing 11-12 of 12 services")
+        self.assertContains(second_page, "dashboard_serve_page=1")
+        self.assertContains(second_page, "Flux.test.service-10")
+        self.assertNotContains(second_page, "Flux.test.service-09")
 
     def test_home_labels_field_endpoints_as_runtime_endpoints(self):
         FieldEndpoint.objects.all().delete()
@@ -256,8 +441,8 @@ class DashboardBridgeTests(TestCase):
             status=FieldEndpoint.Status.DISABLED,
             enabled=True,
         )
-        device = FieldDevice.objects.create(endpoint=endpoint, name="DeviceA", device_type="Simulator")
-        FieldTag.objects.create(device=device, name="Pressure", data_type=FieldTag.DataType.FLOAT)
+        device = create_device_config(endpoint=endpoint, name="DeviceA", device_type="Simulator")
+        create_tag_config(device=device, name="Pressure", data_type=Tag.DataType.FLOAT, materialized=True)
 
         response = self.client.get(reverse("dashboard:home"), {"card": "sim-config", "mode": "configure"})
 
@@ -265,15 +450,16 @@ class DashboardBridgeTests(TestCase):
         self.assertContains(response, "Runtime Connection")
         self.assertContains(response, "SimServer endpoints are the running OPC side of Flux.sim")
         self.assertContains(response, "1 configured device namespaces, 1 field tags")
-        self.assertContains(response, "disabled · 1 device namespaces · 1 tags")
+        self.assertContains(response, "last reported disabled · no heartbeat")
+        self.assertContains(response, "1 device namespaces · 1 tags")
         self.assertContains(response, "Start")
         self.assertContains(response, 'hx-target="#dashboard-comp-surface"')
         self.assertNotContains(response, "FieldAgent Devices")
 
     def test_start_sim_server_requests_flux_serve_command(self):
         endpoint = FieldEndpoint.objects.create(name="Flux sim OPC-UA Server", status=FieldEndpoint.Status.DISABLED)
-        device = FieldDevice.objects.create(endpoint=endpoint, name="DeviceA", device_type="Simulator")
-        FieldTag.objects.create(device=device, name="Pressure", data_type=FieldTag.DataType.FLOAT)
+        device = create_device_config(endpoint=endpoint, name="DeviceA", device_type="Simulator")
+        create_tag_config(device=device, name="Pressure", data_type=Tag.DataType.FLOAT, materialized=True)
 
         started = start_sim_server(endpoint.id)
 
@@ -402,9 +588,9 @@ class DashboardBridgeTests(TestCase):
     def test_home_uses_flux_live_configure_for_stale_recovery(self):
         tag = RuntimeTag.objects.create(provider="default", path="Demo/Stale", display_name="Stale Pressure", schedule=TagSchedule.objects.create(name="slow", interval_seconds=30))
 
-        response = self.client.get(reverse("dashboard:home"), {"card": "live", "mode": "configure"})
+        response = self.client.get(reverse("dashboard:home"), {"card": "spot", "mode": "configure"})
 
-        self.assertContains(response, 'id="live-comp-focus"')
+        self.assertContains(response, 'id="spot-comp-focus"')
         self.assertContains(response, "Stale tag recovery")
         self.assertContains(response, "Refresh stale reads now")
         self.assertContains(response, "Save refresh intervals")
@@ -412,11 +598,101 @@ class DashboardBridgeTests(TestCase):
         self.assertContains(response, "Warm")
         self.assertContains(response, "Cold")
         self.assertContains(response, tag.display_name)
+        self.assertContains(response, tag.full_path)
         self.assertNotContains(response, 'id="stale-recovery-comp-card"')
+
+    def test_home_live_detail_isolates_legacy_missing_flux_field_rows(self):
+        schedule = TagSchedule.objects.create(name="slow", interval_seconds=30)
+        tag = RuntimeTag.objects.create(
+            provider="default",
+            path="Legacy/Meter/Level",
+            display_name="Level",
+            asset_name="Legacy Meter",
+            schedule=schedule,
+        )
+        read_at = timezone.now()
+        LatestTagValue.objects.create(
+            tag=tag,
+            value=0,
+            quality_code='Error_Configuration("Server \\"Flux Field\\" does not exist.")',
+            value_timestamp=read_at,
+            read_at=read_at,
+        )
+
+        response = self.client.get(reverse("dashboard:home"), {"card": "spot", "mode": "detail"})
+
+        self.assertContains(response, "0 active")
+        self.assertContains(response, "No active stale runtime tags need refresh")
+        self.assertNotContains(response, "legacy Flux Field rows hidden")
+        self.assertNotContains(response, "[default]Legacy/Meter/Level")
+        self.assertNotContains(response, "Legacy Meter / Level")
+        self.assertNotContains(response, "legacy source missing")
+        self.assertNotContains(response, "Legacy cleanup candidate")
+
+    def test_home_live_detail_keeps_active_stale_rows_separate_from_legacy_rows(self):
+        schedule = TagSchedule.objects.create(name="slow", interval_seconds=30)
+        RuntimeTag.objects.create(
+            provider="default",
+            path="Demo/Pump/Pressure",
+            display_name="Pressure",
+            asset_name="Demo Pump",
+            schedule=schedule,
+        )
+        legacy_tag = RuntimeTag.objects.create(
+            provider="default",
+            path="FluxLiveDemo/DemoMeter_01_FLOW_RATE",
+            display_name="Flow Rate",
+            asset_name="Meter: DemoMeter_01",
+            schedule=schedule,
+        )
+        read_at = timezone.now()
+        LatestTagValue.objects.create(
+            tag=legacy_tag,
+            value=0,
+            quality_code='Error_Configuration("Server \\"Flux Field\\" does not exist.")',
+            value_timestamp=read_at,
+            read_at=read_at,
+        )
+
+        response = self.client.get(reverse("dashboard:home"), {"card": "spot", "mode": "detail"})
+
+        self.assertContains(response, "1 active")
+        self.assertContains(response, "Demo Pump / Pressure")
+        self.assertNotContains(response, "legacy Flux Field rows hidden")
+        self.assertNotContains(response, "FluxLiveDemo/DemoMeter_01_FLOW_RATE")
+        self.assertNotContains(response, "Meter: DemoMeter_01 / Flow Rate")
+        self.assertNotContains(response, "legacy source missing")
+
+    def test_home_live_stale_recovery_uses_ten_row_htmx_pagination(self):
+        schedule = TagSchedule.objects.create(name="slow", interval_seconds=30)
+        for index in range(12):
+            RuntimeTag.objects.create(
+                provider="default",
+                path=f"Demo/Stale_{index:02d}",
+                display_name=f"Stale Tag {index:02d}",
+                asset_name="Demo Area",
+                schedule=schedule,
+            )
+
+        first_page = self.client.get(reverse("dashboard:home"), {"card": "spot", "mode": "detail"})
+        second_page = self.client.get(
+            reverse("dashboard:home"),
+            {"card": "spot", "mode": "detail", "live_stale_page": "2"},
+        )
+
+        self.assertContains(first_page, "Showing 1-10 of 12 stale tags")
+        self.assertContains(first_page, 'hx-target="#dashboard-comp-surface"')
+        self.assertContains(first_page, "live_stale_page=2")
+        self.assertContains(first_page, "Stale Tag 09")
+        self.assertNotContains(first_page, "Stale Tag 10")
+        self.assertContains(second_page, "Showing 11-12 of 12 stale tags")
+        self.assertContains(second_page, "live_stale_page=1")
+        self.assertContains(second_page, "Stale Tag 10")
+        self.assertNotContains(second_page, "Stale Tag 09")
 
     def test_home_live_configure_updates_refresh_lane_intervals(self):
         response = self.client.post(
-            reverse("dashboard:home") + "?card=live&mode=configure",
+            reverse("dashboard:home") + "?card=spot&mode=configure",
             {
                 "action": "save_live_refresh_lanes",
                 "hot_interval_seconds": "5",
@@ -427,8 +703,8 @@ class DashboardBridgeTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'id="live-comp-focus"')
-        self.assertContains(response, "Saved Flux.live refresh intervals.")
+        self.assertContains(response, 'id="spot-comp-focus"')
+        self.assertContains(response, "Saved Flux.spot refresh intervals.")
         self.assertEqual(RefreshLane.objects.get(name="hot").interval_seconds, 5)
         self.assertEqual(RefreshLane.objects.get(name="warm").interval_seconds, 20)
         self.assertEqual(RefreshLane.objects.get(name="cold").interval_seconds, 120)
@@ -441,29 +717,48 @@ class DashboardBridgeTests(TestCase):
         )
 
         response = self.client.post(
-            reverse("dashboard:home") + "?card=live&mode=configure",
+            reverse("dashboard:home") + "?card=spot&mode=configure",
             {"action": "import_live_scope_csv", "live_scope_csv": csv_upload},
             HTTP_HX_REQUEST="true",
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'id="live-comp-focus"')
-        self.assertContains(response, "Imported 1 live scopes, 1 cards, and 1 points.")
+        self.assertContains(response, 'id="spot-comp-focus"')
+        self.assertContains(response, "Imported 1 spot scopes, 1 cards, and 1 points.")
         self.assertTrue(LiveScope.objects.filter(slug="pad").exists())
 
+    def test_home_live_configure_defaults_blank_scope_to_fluxolot(self):
+        csv_upload = SimpleUploadedFile(
+            "live.csv",
+            b"card,kind,point,full_path\nWell 1,well,Pressure,[default]Demo/Pressure\n",
+            content_type="text/csv",
+        )
+
+        response = self.client.post(
+            reverse("dashboard:home") + "?card=spot&mode=configure",
+            {"action": "import_live_scope_csv", "live_scope_csv": csv_upload},
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Imported 1 spot scopes, 1 cards, and 1 points.")
+        self.assertTrue(LiveScope.objects.filter(slug="Fluxolot").exists())
+
     def test_home_renders_flux_trace_card_detail_and_csv_import(self):
-        profile = TraceProfile.objects.create(key="wells", label="Well traces")
+        profile = TraceProfile.objects.create(key="custom-chart", label="Custom chart")
 
         summary = self.client.get(reverse("dashboard:home"))
-        detail = self.client.get(reverse("dashboard:home"), {"card": "trace", "mode": "detail"})
+        detail = self.client.get(reverse("dashboard:home"), {"card": "chart", "mode": "detail"})
 
-        self.assertContains(summary, 'id="trace-comp-card"')
-        self.assertContains(summary, "Flux.trace")
+        self.assertContains(summary, 'id="chart-comp-card"')
+        self.assertContains(summary, "Flux.chart")
         self.assertContains(summary, "1 Charts")
-        self.assertContains(detail, 'id="trace-comp-focus"')
-        self.assertContains(detail, "Trace charts")
-        self.assertContains(detail, reverse("trace:nav-well-trace"))
-        self.assertContains(detail, reverse("trace:scope-profile", args=[profile.key]))
+        self.assertContains(detail, 'id="chart-comp-focus"')
+        self.assertContains(detail, "Charts")
+        self.assertContains(detail, reverse("chart:nav-well-trace"))
+        self.assertContains(detail, reverse("chart:index"))
+        self.assertContains(detail, "Dashboard detail intentionally avoids rendering every chart link")
+        self.assertNotContains(detail, reverse("chart:scope-profile", args=[profile.key]))
 
     def test_home_trace_configure_imports_trace_scope_csv(self):
         csv_upload = SimpleUploadedFile(
@@ -473,20 +768,22 @@ class DashboardBridgeTests(TestCase):
         )
 
         response = self.client.post(
-            reverse("dashboard:home") + "?card=trace&mode=configure",
+            reverse("dashboard:home") + "?card=chart&mode=configure",
             {"action": "import_trace_scope_csv", "trace_scope_csv": csv_upload},
             HTTP_HX_REQUEST="true",
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'id="trace-comp-focus"')
-        self.assertContains(response, "Imported 1 trace charts, 1 tags, and 1 signals.")
+        self.assertContains(response, 'id="chart-comp-focus"')
+        self.assertContains(response, "What is this?")
+        self.assertContains(response, "| Chart Scope | Name | Tag 1 | Tag 2 |")
+        self.assertContains(response, "Imported 1 charts, 1 tags, and 1 signals.")
         self.assertTrue(TraceProfile.objects.filter(key="wells").exists())
 
     def test_home_hides_stale_recovery_standalone_card_when_no_stale_tags(self):
         response = self.client.get(reverse("dashboard:home"))
 
-        self.assertContains(response, "Flux.live")
+        self.assertContains(response, "Flux.spot")
         self.assertNotContains(response, 'id="stale-recovery-comp-card"')
         self.assertNotContains(response, "Latest Tag Snapshots")
 
@@ -591,7 +888,7 @@ class DashboardReadinessTests(TestCase):
         self.assertEqual(state["stale_count"], 1)
         self.assertEqual(state["bad_quality_count"], 1)
         self.assertEqual(state["stale_tag_items"][0]["reason"], "Bad quality: Bad_NotFound")
-        latest = [item for item in readiness if item.label == "Flux.live"][0]
+        latest = [item for item in readiness if item.label == "Flux.spot"][0]
         self.assertEqual(latest.state, "error")
         self.assertEqual(latest.detail, "0 online, 1 stale, 1 bad")
 
@@ -624,8 +921,9 @@ class DashboardReadinessTests(TestCase):
             status=FieldEndpoint.Status.RUNNING,
             last_seen_at=timezone.now(),
         )
-        device = FieldDevice.objects.create(endpoint=endpoint, name="DeviceA", device_type="Simulator")
-        FieldTag.objects.create(device=device, name="Pressure", data_type=FieldTag.DataType.FLOAT)
+        FieldAgentHeartbeat.objects.create(endpoint=endpoint, instance_id="field-agent:1")
+        device = create_device_config(endpoint=endpoint, name="DeviceA", device_type="Simulator")
+        create_tag_config(device=device, name="Pressure", data_type=Tag.DataType.FLOAT, materialized=True)
 
         status = field_device_status()
 
@@ -635,8 +933,28 @@ class DashboardReadinessTests(TestCase):
         self.assertEqual(status["enabled_tag_count"], 1)
         self.assertEqual(status["endpoint_items"][0]["endpoint"], endpoint)
 
-    @patch("dashboard.services.process_is_alive", return_value=True)
-    def test_field_device_status_refreshes_live_fieldagent_heartbeat(self, process_is_alive):
+    def test_field_device_status_includes_latest_heartbeat_evidence(self):
+        FieldEndpoint.objects.all().delete()
+        endpoint = FieldEndpoint.objects.create(
+            name="FieldAgent",
+            status=FieldEndpoint.Status.RUNNING,
+            endpoint_url="opc.tcp://localhost:5061/flux/field",
+            last_seen_at=timezone.now(),
+        )
+        create_device_config(endpoint=endpoint, name="DeviceA", device_type="Simulator")
+        heartbeat = FieldAgentHeartbeat.objects.create(
+            endpoint=endpoint,
+            instance_id="field-agent:1",
+            process_id=12345,
+        )
+
+        status = field_device_status()
+
+        self.assertEqual(status["endpoint_items"][0]["latest_heartbeat"], heartbeat)
+        self.assertEqual(status["endpoint_items"][0]["endpoint_port"], 5061)
+        self.assertEqual(status["endpoint_items"][0]["observed_state"], "reported running · fresh heartbeat")
+
+    def test_field_device_status_does_not_probe_or_refresh_live_fieldagent_heartbeat(self):
         FieldEndpoint.objects.all().delete()
         old_seen_at = timezone.now() - timezone.timedelta(seconds=300)
         endpoint = FieldEndpoint.objects.create(
@@ -644,7 +962,7 @@ class DashboardReadinessTests(TestCase):
             status=FieldEndpoint.Status.STARTING,
             last_seen_at=old_seen_at,
         )
-        FieldDevice.objects.create(endpoint=endpoint, name="DeviceA", device_type="Simulator")
+        create_device_config(endpoint=endpoint, name="DeviceA", device_type="Simulator")
         heartbeat = FieldAgentHeartbeat.objects.create(
             endpoint=endpoint,
             instance_id="field-agent:1",
@@ -657,22 +975,20 @@ class DashboardReadinessTests(TestCase):
         endpoint.refresh_from_db()
         heartbeat.refresh_from_db()
 
-        process_is_alive.assert_called_once_with(12345)
-        self.assertEqual(endpoint.status, FieldEndpoint.Status.RUNNING)
-        self.assertGreater(endpoint.last_seen_at, old_seen_at)
-        self.assertGreater(heartbeat.last_seen_at, old_seen_at)
-        self.assertEqual(heartbeat.last_error, "")
-        self.assertEqual(status["running_endpoint_count"], 1)
+        self.assertEqual(endpoint.status, FieldEndpoint.Status.STARTING)
+        self.assertEqual(endpoint.last_seen_at, old_seen_at)
+        self.assertEqual(heartbeat.last_seen_at, old_seen_at)
+        self.assertEqual(heartbeat.last_error, "old error")
+        self.assertEqual(status["running_endpoint_count"], 0)
 
-    @patch("dashboard.services.process_is_alive")
-    def test_field_device_status_does_not_restart_disabled_endpoint_from_live_heartbeat(self, process_is_alive):
+    def test_field_device_status_does_not_restart_disabled_endpoint_from_live_heartbeat(self):
         FieldEndpoint.objects.all().delete()
         endpoint = FieldEndpoint.objects.create(
             name="Flux sim OPC-UA Server",
             status=FieldEndpoint.Status.DISABLED,
             enabled=False,
         )
-        FieldDevice.objects.create(endpoint=endpoint, name="DeviceA", device_type="Simulator")
+        create_device_config(endpoint=endpoint, name="DeviceA", device_type="Simulator")
         FieldAgentHeartbeat.objects.create(
             endpoint=endpoint,
             instance_id="field-agent:1",
@@ -682,19 +998,17 @@ class DashboardReadinessTests(TestCase):
         status = field_device_status()
         endpoint.refresh_from_db()
 
-        process_is_alive.assert_not_called()
         self.assertEqual(endpoint.status, FieldEndpoint.Status.DISABLED)
         self.assertFalse(endpoint.enabled)
         self.assertEqual(status["running_endpoint_count"], 0)
 
-    @patch("dashboard.services.process_is_alive", return_value=False)
-    def test_field_device_status_marks_dead_fieldagent_process_error(self, process_is_alive):
+    def test_field_device_status_does_not_mark_dead_fieldagent_process_error(self):
         FieldEndpoint.objects.all().delete()
         endpoint = FieldEndpoint.objects.create(
             name="Flux sim OPC-UA Server",
             status=FieldEndpoint.Status.RUNNING,
         )
-        FieldDevice.objects.create(endpoint=endpoint, name="DeviceA", device_type="Simulator")
+        create_device_config(endpoint=endpoint, name="DeviceA", device_type="Simulator")
         heartbeat = FieldAgentHeartbeat.objects.create(
             endpoint=endpoint,
             instance_id="field-agent:1",
@@ -705,11 +1019,32 @@ class DashboardReadinessTests(TestCase):
         endpoint.refresh_from_db()
         heartbeat.refresh_from_db()
 
-        process_is_alive.assert_called_once_with(12345)
-        self.assertEqual(endpoint.status, FieldEndpoint.Status.ERROR)
-        self.assertEqual(endpoint.last_error, "FieldAgent process 12345 is no longer running")
-        self.assertIsNone(heartbeat.process_id)
-        self.assertEqual(status["running_endpoint_count"], 0)
+        self.assertEqual(endpoint.status, FieldEndpoint.Status.RUNNING)
+        self.assertEqual(endpoint.last_error, "")
+        self.assertEqual(heartbeat.process_id, 12345)
+        self.assertEqual(status["running_endpoint_count"], 1)
+
+    def test_home_sim_config_shows_stored_runtime_pid_and_port_evidence(self):
+        get_user_model().objects.create_user(username="existing", password="test-pass")
+        FieldEndpoint.objects.all().delete()
+        endpoint = FieldEndpoint.objects.create(
+            name="Flux sim OPC-UA Server",
+            status=FieldEndpoint.Status.RUNNING,
+            endpoint_url="opc.tcp://0.0.0.0:5061/flux/field",
+        )
+        create_device_config(endpoint=endpoint, name="DeviceA", device_type="Simulator")
+        FieldAgentHeartbeat.objects.create(
+            endpoint=endpoint,
+            instance_id="field-agent:1",
+            process_id=12345,
+            last_seen_at=timezone.now(),
+        )
+
+        response = self.client.get(reverse("dashboard:home"), {"card": "sim-config", "mode": "configure"})
+
+        self.assertContains(response, "reported running · fresh heartbeat")
+        self.assertContains(response, "PID 12345")
+        self.assertContains(response, "port 5061")
 
     def test_serve_status_summarizes_running_stale_and_error_heartbeats(self):
         now = timezone.now()
@@ -803,7 +1138,7 @@ class DashboardReadinessTests(TestCase):
 
         readiness = dashboard_readiness(state)
 
-        latest = [item for item in readiness if item.label == "Flux.live"][0]
+        latest = [item for item in readiness if item.label == "Flux.spot"][0]
         self.assertEqual(latest.state, "ok")
 
     @patch("dashboard.services.port_is_open", return_value=True)
@@ -815,7 +1150,7 @@ class DashboardReadinessTests(TestCase):
 
         readiness = dashboard_readiness(state)
 
-        latest = [item for item in readiness if item.label == "Flux.live"][0]
+        latest = [item for item in readiness if item.label == "Flux.spot"][0]
         self.assertEqual(latest.state, "warning")
 
 

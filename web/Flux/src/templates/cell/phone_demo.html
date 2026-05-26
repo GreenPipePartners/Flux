@@ -1,0 +1,13 @@
+{% extends "flux/base.html" %}
+
+{% block title %}Flux Cell Phone Demo{% endblock %}
+
+{% block content %}
+{% if cell_cards %}
+  {% include "cell/partials/phone_swipe_simulator.html" %}
+{% else %}
+  <section class="empty-state">
+    <p>No Flux.cell cards available for the phone demo. Run <code>./scripts/flux cell seed-demo</code> first.</p>
+  </section>
+{% endif %}
+{% endblock %}

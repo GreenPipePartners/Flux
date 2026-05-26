@@ -27,7 +27,7 @@ It currently has a minimal boundary:
 -
 runtime bad-quality writes
 -
-trace-cache seeding
+Plane sample seeding
 -
 Next step is deciding whether Flux.plane becomes a real Django app/module with documented ownership of runtime/history writes.
 4.

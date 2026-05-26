@@ -98,7 +98,7 @@ Until those adapters exist, `--cleanup` is only fully closed-loop for tag state.
 Run the Fluxy-level closed-loop trial:
 
 ```bash
-uv run python manage.py trial_live_extraction --cleanup
+uv run python web/Flux/manage.py trial_live_extraction --cleanup
 ```
 
 This verifies tag cleanup and reports remaining historian rows as a known Fluxy-level limitation.
@@ -106,13 +106,13 @@ This verifies tag cleanup and reports remaining historian rows as a known Fluxy-
 Run the gated integration test against the local gateway:
 
 ```bash
-FLUX_LIVE_EXTRACTION_INTEGRATION=1 uv run pytest src/flux/sim/test_integration_live_extract.py -q
+FLUX_LIVE_EXTRACTION_INTEGRATION=1 uv run pytest web/Flux/src/flux/sim/test_integration_live_extract.py -q
 ```
 
 To prove that public Fluxy APIs cannot fully clean raw history on the current gateway, run:
 
 ```bash
-uv run python manage.py trial_live_extraction --cleanup --require-history-cleanup
+uv run python web/Flux/manage.py trial_live_extraction --cleanup --require-history-cleanup
 ```
 
 That command is expected to fail if historian rows remain queryable.

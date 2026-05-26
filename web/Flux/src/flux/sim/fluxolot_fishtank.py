@@ -9,9 +9,12 @@ from typing import Any
 from django.db import transaction
 from django.utils import timezone
 
-from flux.base.models import FieldDevice, FieldEndpoint, FieldTag
+from flux.base.models import Tag
+from flux.sim.models import FieldEndpoint
 from flux.base.runtime import LatestTagValue, RuntimeTag, TagSample, TagSchedule, assign_balancer_codes, scheduler_config
 from flux.field.ignition import FieldIgnitionConfiguration, configure_field_agent_ignition, cleanup_field_agent_ignition
+from flux.sim.kernel_sync import disable_materialized_configs, upsert_device_config, upsert_tag_config
+from flux.sim.models import DeviceConfig, TagConfig
 
 
 FLUXOLOT_TAG_FOLDER = "FluxolotFishtank"
@@ -58,8 +61,8 @@ class FluxolotTagSpec:
 @dataclass(frozen=True)
 class FluxolotFishtankResult:
     endpoints: list[FieldEndpoint]
-    devices: list[FieldDevice]
-    field_tags: list[FieldTag]
+    devices: list[DeviceConfig]
+    field_tags: list[TagConfig]
     runtime_tags: list[RuntimeTag]
     sample_count: int
 
@@ -96,12 +99,12 @@ FLUXOLOT_TAGS = (
         "start/stop command",
         "Pump",
         "Recirculation Pump",
-        FieldTag.DataType.BOOL,
+        Tag.DataType.BOOL,
         "",
         "false",
         None,
         None,
-        FieldTag.SimulationType.TOGGLE,
+        TagConfig.SimulationType.TOGGLE,
         update_rate_ms=2000,
         phase=0.0,
         trace=False,
@@ -113,12 +116,12 @@ FLUXOLOT_TAGS = (
         "start/stop feedback",
         "Pump",
         "Recirculation Pump",
-        FieldTag.DataType.BOOL,
+        Tag.DataType.BOOL,
         "",
         "true",
         None,
         None,
-        FieldTag.SimulationType.TOGGLE,
+        TagConfig.SimulationType.TOGGLE,
         update_rate_ms=2000,
         phase=0.3,
         trace=False,
@@ -130,12 +133,12 @@ FLUXOLOT_TAGS = (
         "motor control setpoint",
         "Pump",
         "Recirculation Pump",
-        FieldTag.DataType.FLOAT,
+        Tag.DataType.FLOAT,
         "%",
         "72",
         40,
         95,
-        FieldTag.SimulationType.WAVE,
+        TagConfig.SimulationType.WAVE,
         update_rate_ms=5000,
         phase=0.6,
     ),
@@ -146,12 +149,12 @@ FLUXOLOT_TAGS = (
         "motor control feedback",
         "Pump",
         "Recirculation Pump",
-        FieldTag.DataType.FLOAT,
+        Tag.DataType.FLOAT,
         "%",
         "70",
         38,
         96,
-        FieldTag.SimulationType.WAVE,
+        TagConfig.SimulationType.WAVE,
         update_rate_ms=1000,
         phase=0.8,
     ),
@@ -162,12 +165,12 @@ FLUXOLOT_TAGS = (
         "head pressure",
         "Pump",
         "Recirculation Pump",
-        FieldTag.DataType.FLOAT,
+        Tag.DataType.FLOAT,
         "psi",
         "12",
         4,
         24,
-        FieldTag.SimulationType.WAVE,
+        TagConfig.SimulationType.WAVE,
         phase=1.1,
     ),
     FluxolotTagSpec(
@@ -177,12 +180,12 @@ FLUXOLOT_TAGS = (
         "level",
         "Tank",
         "Fish Tank",
-        FieldTag.DataType.FLOAT,
+        Tag.DataType.FLOAT,
         "%",
         "78",
         55,
         95,
-        FieldTag.SimulationType.WAVE,
+        TagConfig.SimulationType.WAVE,
         phase=1.4,
     ),
     FluxolotTagSpec(
@@ -192,12 +195,12 @@ FLUXOLOT_TAGS = (
         "temperature",
         "Tank",
         "Fish Tank",
-        FieldTag.DataType.FLOAT,
+        Tag.DataType.FLOAT,
         "degF",
         "74",
         68,
         82,
-        FieldTag.SimulationType.WAVE,
+        TagConfig.SimulationType.WAVE,
         phase=1.7,
     ),
     FluxolotTagSpec(
@@ -207,12 +210,12 @@ FLUXOLOT_TAGS = (
         "O2%",
         "Tank",
         "Fish Tank",
-        FieldTag.DataType.FLOAT,
+        Tag.DataType.FLOAT,
         "%",
         "88",
         65,
         100,
-        FieldTag.SimulationType.WAVE,
+        TagConfig.SimulationType.WAVE,
         phase=2.0,
     ),
     FluxolotTagSpec(
@@ -222,12 +225,12 @@ FLUXOLOT_TAGS = (
         "low level alarm",
         "Tank",
         "Fish Tank",
-        FieldTag.DataType.BOOL,
+        Tag.DataType.BOOL,
         "",
         "false",
         None,
         None,
-        FieldTag.SimulationType.STATIC,
+        TagConfig.SimulationType.STATIC,
         update_rate_ms=5000,
         phase=2.3,
         trace=False,
@@ -239,12 +242,12 @@ FLUXOLOT_TAGS = (
         "on/off status",
         "Light",
         "UV Light",
-        FieldTag.DataType.BOOL,
+        Tag.DataType.BOOL,
         "",
         "true",
         None,
         None,
-        FieldTag.SimulationType.TOGGLE,
+        TagConfig.SimulationType.TOGGLE,
         update_rate_ms=3000,
         phase=2.6,
         trace=False,
@@ -256,12 +259,12 @@ FLUXOLOT_TAGS = (
         "timer",
         "Light",
         "UV Light",
-        FieldTag.DataType.INT,
+        Tag.DataType.INT,
         "min",
         "480",
         0,
         720,
-        FieldTag.SimulationType.RAMP,
+        TagConfig.SimulationType.RAMP,
         update_rate_ms=5000,
         phase=2.9,
     ),
@@ -272,12 +275,12 @@ FLUXOLOT_TAGS = (
         "run status",
         "Feeder",
         "Treat Feeder",
-        FieldTag.DataType.BOOL,
+        Tag.DataType.BOOL,
         "",
         "false",
         None,
         None,
-        FieldTag.SimulationType.TOGGLE,
+        TagConfig.SimulationType.TOGGLE,
         update_rate_ms=3000,
         phase=3.2,
         trace=False,
@@ -289,12 +292,12 @@ FLUXOLOT_TAGS = (
         "level",
         "Feeder",
         "Treat Feeder",
-        FieldTag.DataType.FLOAT,
+        Tag.DataType.FLOAT,
         "%",
         "64",
         20,
         100,
-        FieldTag.SimulationType.WAVE,
+        TagConfig.SimulationType.WAVE,
         update_rate_ms=5000,
         phase=3.5,
     ),
@@ -444,7 +447,8 @@ def write_fluxolot_trace_scope_csv(
 
 
 def ensure_fluxolot_live_scope(runtime_tags: list[RuntimeTag] | None = None):
-    from flux.live.models import LiveCardDefinition, LiveCardPointDefinition, LiveScope
+    from flux.plane.services import ensure_series_for_full_path
+    from flux.spot.models import LiveCardDefinition, LiveCardPointDefinition, LiveScope
 
     runtime_tags = runtime_tags or ensure_fluxolot_runtime_config()
     with transaction.atomic():
@@ -469,6 +473,7 @@ def ensure_fluxolot_live_scope(runtime_tags: list[RuntimeTag] | None = None):
             for point_order, tag in enumerate(tags, start=1):
                 LiveCardPointDefinition.objects.create(
                     card=card,
+                    series=ensure_series_for_full_path(tag.full_path),
                     label=point_label_for_card(tag),
                     full_path=tag.full_path,
                     sort_order=point_order,
@@ -478,6 +483,7 @@ def ensure_fluxolot_live_scope(runtime_tags: list[RuntimeTag] | None = None):
 
 
 def ensure_fluxolot_trace_profiles(runtime_tags: list[RuntimeTag] | None = None, *, cache_window_minutes: int = 10080):
+    from flux.plane.services import ensure_series_for_full_path
     from flux.trace.models import TraceProfile, TraceSignal
 
     runtime_tags = runtime_tags or ensure_fluxolot_runtime_config()
@@ -511,6 +517,7 @@ def ensure_fluxolot_trace_profiles(runtime_tags: list[RuntimeTag] | None = None,
                     tag=tag,
                     defaults={
                         "label": tag.display_name,
+                        "series": ensure_series_for_full_path(tag.full_path),
                         "unit": spec.units,
                         "axis_key": trace_axis_key(spec),
                         "axis_label": spec.kind,
@@ -595,7 +602,7 @@ def fluxolot_trace_csv_row(sample: TagSample) -> dict[str, Any]:
     }
 
 
-def ensure_fluxolot_field_config() -> tuple[list[FieldEndpoint], list[FieldDevice], list[FieldTag]]:
+def ensure_fluxolot_field_config() -> tuple[list[FieldEndpoint], list[DeviceConfig], list[TagConfig]]:
     endpoints = []
     devices = []
     tags = []
@@ -613,59 +620,60 @@ def ensure_fluxolot_field_config() -> tuple[list[FieldEndpoint], list[FieldDevic
             },
         )
         endpoints.append(endpoint)
-        device, _created = FieldDevice.objects.update_or_create(
-            endpoint=endpoint,
+        device = upsert_device_config(
+            namespace=f"endpoint:{endpoint.name}",
             name=tank.device_name,
-            defaults={
-                "device_type": "Fluxolot Fishtank Controller",
-                "browse_path": tank.owner,
-                "enabled": True,
-                "description": f"{tank.display_name} persistent verification fixture",
-                "config": {
-                    "fixture": FLUXOLOT_FIXTURE,
-                    "persistent": True,
-                    "tank_key": tank.key,
-                    "owner": tank.owner,
-                    "cell": {"group": "Tank", "kind": "Fish Tank"},
-                },
+            device_type="Fluxolot Fishtank Controller",
+            endpoint=endpoint,
+            browse_path=tank.owner,
+            enabled=True,
+            description=f"{tank.display_name} persistent verification fixture",
+            config={
+                "fixture": FLUXOLOT_FIXTURE,
+                "persistent": True,
+                "tank_key": tank.key,
+                "owner": tank.owner,
+                "cell": {"group": "Tank", "kind": "Fish Tank"},
             },
         )
         devices.append(device)
+        active_names = {spec.name for spec in FLUXOLOT_TAGS}
         for spec in FLUXOLOT_TAGS:
-            tag, _created = FieldTag.objects.update_or_create(
-                device=device,
-                name=spec.name,
-                defaults={
-                    "data_type": spec.data_type,
-                    "update_rate_ms": spec.update_rate_ms,
-                    "simulation_type": spec.simulation_type,
-                    "min_value": spec.min_value,
-                    "max_value": spec.max_value,
-                    "variance": 0.0,
-                    "initial_value": spec.initial_value,
-                    "enabled": True,
-                    "description": spec.label,
-                    "config": {
-                        "fixture": FLUXOLOT_FIXTURE,
-                        "tank_key": tank.key,
-                        "owner": tank.owner,
-                        "label": spec.label,
-                        "units": spec.units,
-                        "type": spec.cell_type,
-                        "instrument": spec.instrument,
-                        "group": spec.group,
-                        "kind": spec.kind,
-                        "trace": spec.trace,
-                        "cell": {"group": spec.group, "kind": spec.kind},
-                    },
+            tag = upsert_tag_config(
+                sim_device=device,
+                provider=endpoint.name,
+                tagpath=f"{tank.device_name}/{spec.name}",
+                tag_name=spec.name,
+                data_type=spec.data_type,
+                update_rate_ms=spec.update_rate_ms,
+                simulation_type=spec.simulation_type,
+                min_value=spec.min_value,
+                max_value=spec.max_value,
+                variance=0.0,
+                initial_value=spec.initial_value,
+                enabled=True,
+                materialized=True,
+                description=spec.label,
+                config={
+                    "fixture": FLUXOLOT_FIXTURE,
+                    "tank_key": tank.key,
+                    "owner": tank.owner,
+                    "label": spec.label,
+                    "units": spec.units,
+                    "type": spec.cell_type,
+                    "instrument": spec.instrument,
+                    "group": spec.group,
+                    "kind": spec.kind,
+                    "trace": spec.trace,
+                    "cell": {"group": spec.group, "kind": spec.kind},
                 },
             )
             tags.append(tag)
-        device.tags.exclude(name__in=[spec.name for spec in FLUXOLOT_TAGS]).update(enabled=False)
+        disable_materialized_configs(device, active_names)
     return endpoints, devices, tags
 
 
-def ensure_fluxolot_runtime_config(field_tags: list[FieldTag] | None = None) -> list[RuntimeTag]:
+def ensure_fluxolot_runtime_config(field_tags: list[TagConfig] | None = None) -> list[RuntimeTag]:
     if field_tags is None:
         _endpoints, _devices, field_tags = ensure_fluxolot_field_config()
     config = scheduler_config()
@@ -674,8 +682,8 @@ def ensure_fluxolot_runtime_config(field_tags: list[FieldTag] | None = None) -> 
         defaults={"interval_seconds": config.hot_interval_seconds, "enabled": True},
     )
     runtime_tags = []
-    for field_tag in sorted(field_tags, key=lambda tag: (tag.device.name, tag.name)):
-        tank = tank_for_device(field_tag.device)
+    for field_tag in sorted(field_tags, key=lambda tag: (tag.sim_device.base_device.name, tag.name)):
+        tank = tank_for_device(field_tag.sim_device)
         spec = fluxolot_specs_by_name()[field_tag.name]
         runtime_tag, _created = RuntimeTag.objects.update_or_create(
             provider="default",
@@ -760,11 +768,11 @@ def fluxolot_specs_by_name() -> dict[str, FluxolotTagSpec]:
     return {spec.name: spec for spec in FLUXOLOT_TAGS}
 
 
-def tank_for_device(device: FieldDevice) -> FluxolotTankSpec:
+def tank_for_device(device: DeviceConfig) -> FluxolotTankSpec:
     for tank in FLUXOLOT_TANKS:
-        if tank.device_name == device.name:
+        if tank.device_name == device.base_device.name:
             return tank
-    raise ValueError(f"No Fluxolot tank spec for device {device.name!r}")
+    raise ValueError(f"No Fluxolot tank spec for device {device.base_device.name!r}")
 
 
 def tank_for_runtime_tag(tag: RuntimeTag) -> FluxolotTankSpec:
@@ -784,15 +792,15 @@ def tag_spec_for_runtime_tag(tag: RuntimeTag) -> FluxolotTagSpec:
 def fluxolot_value(tag: RuntimeTag, elapsed_minutes: int) -> Any:
     tank = tank_for_runtime_tag(tag)
     spec = tag_spec_for_runtime_tag(tag)
-    if spec.data_type == FieldTag.DataType.BOOL:
-        if spec.simulation_type == FieldTag.SimulationType.STATIC:
+    if spec.data_type == Tag.DataType.BOOL:
+        if spec.simulation_type == TagConfig.SimulationType.STATIC:
             return spec.initial_value.lower() == "true"
         return ((elapsed_minutes // 180) + tank.sort_order + int(spec.phase * 10)) % 2 == 0
-    if spec.data_type == FieldTag.DataType.INT:
+    if spec.data_type == Tag.DataType.INT:
         assert spec.max_value is not None
         cycle = int(spec.max_value) + 1
         return int(max(0, spec.max_value - ((elapsed_minutes + tank.sort_order * 17) % cycle)))
-    if spec.data_type == FieldTag.DataType.STRING:
+    if spec.data_type == Tag.DataType.STRING:
         return spec.initial_value
     assert spec.min_value is not None
     assert spec.max_value is not None

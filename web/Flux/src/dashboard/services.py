@@ -1,24 +1,23 @@
 from __future__ import annotations
 
-import os
 import socket
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from urllib.parse import urlparse
 
 from django.conf import settings
-from django.urls import reverse
 from django.utils import timezone
 
-from flux.base.models import FieldEndpoint, FieldTag
+from flux.base.field_selectors import enabled_runtime_totals, endpoint_runtime_counts
+from flux.sim.models import FieldEndpoint
 from flux.base.runtime import RuntimeTag
+from flux.bridge.models import IgnitionBridgeConfig
+from flux.bridge.services import fluxy_client
 from flux.opt.services import sample_runtime_tags
 from flux.serve.models import ServeHeartbeat, ServeServiceSnapshot
 from flux.serve.monitor import service_snapshot_status
 from flux.serve.server_commands import request_sim_server_start, request_sim_server_stop
 from flux.serve.status import runtime_read_status, serve_heartbeat_status
 from flux.trace.models import TraceProfile, TraceSignal
-
-from .models import IgnitionBridgeConfig
-
 
 @dataclass(frozen=True)
 class ReadinessItem:
@@ -31,62 +30,7 @@ class ReadinessItem:
     copy_docs_url: str = ""
     copy_table_markdown: str = ""
     copy_llm_markdown: str = ""
-
-
-def default_bridge_values() -> dict[str, str]:
-    return {
-        "base_url": os.getenv("FLUXY_BASE_URL", "http://localhost:8088/system/webdev/flux"),
-        "token": os.getenv("FLUXY_TOKEN", ""),
-    }
-
-
-def bridge_config() -> IgnitionBridgeConfig:
-    defaults = default_bridge_values()
-    config, _created = IgnitionBridgeConfig.objects.get_or_create(
-        name="default",
-        defaults={"base_url": defaults["base_url"], "token": defaults["token"]},
-    )
-    return config
-
-
-def update_bridge_config(
-    *, base_url: str | None = None, token: str | None = None, clear_token: bool = False
-) -> IgnitionBridgeConfig:
-    config = bridge_config()
-    if base_url:
-        config.base_url = base_url
-    if clear_token:
-        config.token = ""
-    elif token is not None:
-        config.token = token
-    config.last_test_ok = False
-    config.last_test_message = "Connection has not been tested since the latest change."
-    config.last_test_at = None
-    config.save()
-    return config
-
-
-def fluxy_client(config: IgnitionBridgeConfig | None = None):
-    import fluxy
-
-    config = config or bridge_config()
-    return fluxy.Fluxy(base_url=config.base_url, token=config.token or None)
-
-
-def test_bridge(config: IgnitionBridgeConfig | None = None) -> IgnitionBridgeConfig:
-    config = config or bridge_config()
-    try:
-        version = fluxy_client(config).util.get_version(refresh=True)
-    except Exception as exc:
-        config.last_test_ok = False
-        config.last_test_message = str(exc)[:255]
-    else:
-        config.last_test_ok = True
-        config.last_test_message = f"Connected to Ignition {version.version}."
-    config.last_test_at = timezone.now()
-    config.save(update_fields=["last_test_ok", "last_test_message", "last_test_at", "updated_at"])
-    return config
-
+    meta: dict[str, object] = field(default_factory=dict)
 
 def port_is_open(host: str, port: int, timeout: float = 0.15) -> bool:
     try:
@@ -97,12 +41,62 @@ def port_is_open(host: str, port: int, timeout: float = 0.15) -> bool:
 
 
 def stale_tag_item(tag: RuntimeTag, reason: str, age_seconds: int | None) -> dict[str, object]:
+    legacy_source_missing = stale_reason_is_legacy_source_missing(reason)
     return {
         "tag": tag,
         "reason": reason,
         "age_seconds": age_seconds,
-        "admin_url": reverse("admin:runtime_runtimetag_change", args=[tag.id]),
+        "source_context": "[%s] %s" % (tag.provider, tag.get_category_display()),
+        "legacy_source_missing": legacy_source_missing,
+        "status_label": "legacy source missing" if legacy_source_missing else "stale",
     }
+
+
+def stale_reason_is_legacy_source_missing(reason: str) -> bool:
+    """Identify stale rows caused by old Flux Field provider references.
+
+    These rows are preserved as runtime evidence, but the dashboard should not
+    mix them into normal stale-refresh triage as if a current provider simply
+    needs a retry.
+    """
+
+    normalized = reason.replace("\\\"", '"')
+    return "Flux Field" in normalized and "does not exist" in normalized
+
+
+def endpoint_url_parts(endpoint_url: str) -> dict[str, object]:
+    try:
+        parsed = urlparse(endpoint_url)
+        port = parsed.port
+    except ValueError:
+        return {"host": "", "port": None}
+    return {"host": parsed.hostname or "", "port": port}
+
+
+def field_endpoint_observed_state(endpoint: FieldEndpoint, latest_heartbeat, age_seconds: int | None) -> str:
+    stored = "last reported %s" % endpoint.status
+    if not endpoint.enabled:
+        return "disabled"
+    if latest_heartbeat is None:
+        return "%s · no heartbeat" % stored
+    if age_seconds is None or age_seconds > settings.STALE_AFTER_SECONDS:
+        return "%s · stale heartbeat" % stored
+    if latest_heartbeat.last_error:
+        return "%s · heartbeat error" % stored
+    if endpoint.status != FieldEndpoint.Status.RUNNING:
+        return "%s · fresh heartbeat" % stored
+    return "reported running · fresh heartbeat"
+
+
+def field_endpoint_has_fresh_running_evidence(endpoint: FieldEndpoint, latest_heartbeat, age_seconds: int | None) -> bool:
+    return bool(
+        endpoint.enabled
+        and endpoint.status == FieldEndpoint.Status.RUNNING
+        and latest_heartbeat is not None
+        and not latest_heartbeat.last_error
+        and age_seconds is not None
+        and age_seconds <= settings.STALE_AFTER_SECONDS
+    )
 
 
 def interface_runtime_tags():
@@ -159,8 +153,9 @@ def dashboard_readiness(state: dict[str, object], serve_state: dict[str, object]
     online_count = state["online_count"]
     stale_count = state["stale_count"]
     bad_quality_count = state["bad_quality_count"]
-    enabled_field_endpoints = FieldEndpoint.objects.filter(enabled=True).count()
-    enabled_field_tags = FieldTag.objects.filter(enabled=True, device__endpoint__enabled=True).count()
+    sim_totals = enabled_runtime_totals()
+    enabled_field_endpoints = sim_totals["endpoint_count"]
+    enabled_field_tags = sim_totals["tag_count"]
     sim_config_ok = bool(enabled_field_endpoints and enabled_field_tags)
     trace_chart_count = TraceProfile.objects.filter(enabled=True).count()
     trace_signal_count = TraceSignal.objects.filter(profile__enabled=True).count()
@@ -173,7 +168,7 @@ def dashboard_readiness(state: dict[str, object], serve_state: dict[str, object]
             "ok" if mine_counts["plc_count"] or mine_counts["hmi_count"] else "warning",
             "%s PLCs Mined, %s HMI's mined" % (mine_counts["plc_count"], mine_counts["hmi_count"]),
             "Mine sources",
-            "",
+            "/mine/",
             (
                 "%s PLCs Mined" % mine_counts["plc_count"],
                 "%s HMI's mined" % mine_counts["hmi_count"],
@@ -184,7 +179,7 @@ def dashboard_readiness(state: dict[str, object], serve_state: dict[str, object]
             "ok" if build_counts["cell_count"] else "warning",
             "%s cells built" % build_counts["cell_count"],
             "Build cells",
-            "",
+            "/build/",
             ("%s cells built" % build_counts["cell_count"],),
         ),
         ReadinessItem(
@@ -199,11 +194,11 @@ def dashboard_readiness(state: dict[str, object], serve_state: dict[str, object]
             ),
         ),
         ReadinessItem(
-            "Flux.live",
+            "Flux.spot",
             "ok" if online_count and not stale_count and not bad_quality_count else "warning" if online_count else "error",
             "%s online, %s stale, %s bad" % (online_count, stale_count, bad_quality_count),
-            "Live view",
-            "/live/",
+            "Spot view",
+            "/spot/",
             (
                 "%s online" % online_count,
                 "%s stale" % stale_count,
@@ -211,15 +206,16 @@ def dashboard_readiness(state: dict[str, object], serve_state: dict[str, object]
             ),
         ),
         ReadinessItem(
-            "Flux.trace",
+            "Flux.chart",
             "ok" if trace_chart_count else "warning",
             "%s charts, %s signals" % (trace_chart_count, trace_signal_count),
-            "Trace charts",
-            "/trace/",
+            "Charts",
+            "/chart/",
             (
                 "%s Charts" % trace_chart_count,
                 "%s Signals" % trace_signal_count,
             ),
+            meta={"chart_count": trace_chart_count, "signal_count": trace_signal_count},
         ),
     ]
     if serve_state is not None:
@@ -290,9 +286,9 @@ def ignition_bridge_status() -> dict[str, object]:
 
 
 def field_device_status() -> dict[str, object]:
-    endpoints = list(FieldEndpoint.objects.prefetch_related("devices__tags", "heartbeats").order_by("name"))
+    endpoints = list(FieldEndpoint.objects.prefetch_related("heartbeats").order_by("name"))
+    runtime_counts = endpoint_runtime_counts({endpoint.id for endpoint in endpoints})
     now = timezone.now()
-    reconcile_field_agent_heartbeats(endpoints, now=now)
     endpoint_items = []
     enabled_endpoint_count = 0
     running_endpoint_count = 0
@@ -302,31 +298,40 @@ def field_device_status() -> dict[str, object]:
     refresh_endpoint_state = False
 
     for endpoint in endpoints:
-        devices = list(endpoint.devices.all())
         heartbeats = list(endpoint.heartbeats.all())
-        latest_heartbeat = max((heartbeat.last_seen_at for heartbeat in heartbeats), default=None)
-        seen_at = endpoint.last_seen_at or latest_heartbeat
+        latest_heartbeat = max(heartbeats, key=lambda heartbeat: heartbeat.last_seen_at, default=None)
+        latest_heartbeat_at = latest_heartbeat.last_seen_at if latest_heartbeat else None
+        seen_at = max((seen for seen in (endpoint.last_seen_at, latest_heartbeat_at) if seen), default=None)
         if seen_at is not None and (latest_seen_at is None or seen_at > latest_seen_at):
             latest_seen_at = seen_at
         if endpoint.enabled:
             enabled_endpoint_count += 1
-        if endpoint.enabled and endpoint.status == FieldEndpoint.Status.RUNNING:
-            running_endpoint_count += 1
         if endpoint.enabled and endpoint.status == FieldEndpoint.Status.STARTING:
             refresh_endpoint_state = True
-        endpoint_enabled_devices = [device for device in devices if device.enabled]
-        endpoint_enabled_tag_count = sum(tag.enabled for device in endpoint_enabled_devices for tag in device.tags.all())
-        enabled_device_count += len(endpoint_enabled_devices)
+        endpoint_counts = runtime_counts.get(endpoint.id, {"device_count": 0, "tag_count": 0})
+        endpoint_enabled_device_count = endpoint_counts["device_count"]
+        endpoint_enabled_tag_count = endpoint_counts["tag_count"]
+        enabled_device_count += endpoint_enabled_device_count
         enabled_tag_count += endpoint_enabled_tag_count
         age_seconds = int((now - seen_at).total_seconds()) if seen_at else None
+        heartbeat_age_seconds = int((now - latest_heartbeat_at).total_seconds()) if latest_heartbeat_at else None
+        online = field_endpoint_has_fresh_running_evidence(endpoint, latest_heartbeat, heartbeat_age_seconds)
+        if online:
+            running_endpoint_count += 1
+        endpoint_parts = endpoint_url_parts(endpoint.endpoint_url)
         endpoint_items.append(
             {
                 "endpoint": endpoint,
-                "enabled_device_count": len(endpoint_enabled_devices),
+                "enabled_device_count": endpoint_enabled_device_count,
                 "enabled_tag_count": endpoint_enabled_tag_count,
                 "latest_seen_at": seen_at,
+                "latest_heartbeat": latest_heartbeat,
+                "endpoint_host": endpoint_parts["host"],
+                "endpoint_port": endpoint_parts["port"],
+                "observed_state": field_endpoint_observed_state(endpoint, latest_heartbeat, heartbeat_age_seconds),
                 "age_seconds": age_seconds,
-                "online": endpoint.enabled and endpoint.status == FieldEndpoint.Status.RUNNING,
+                "heartbeat_age_seconds": heartbeat_age_seconds,
+                "online": online,
             }
         )
 
@@ -340,49 +345,6 @@ def field_device_status() -> dict[str, object]:
         "refresh_endpoint_state": refresh_endpoint_state,
         "endpoint_items": endpoint_items,
     }
-
-
-def reconcile_field_agent_heartbeats(endpoints: list[FieldEndpoint], *, now) -> None:
-    for endpoint in endpoints:
-        if not endpoint.enabled:
-            continue
-        heartbeats = list(endpoint.heartbeats.all())
-        live_heartbeat = None
-        dead_heartbeat = None
-        for heartbeat in heartbeats:
-            if heartbeat.process_id and process_is_alive(heartbeat.process_id):
-                live_heartbeat = heartbeat
-                break
-            if heartbeat.process_id:
-                dead_heartbeat = heartbeat
-
-        if live_heartbeat is not None:
-            live_heartbeat.last_seen_at = now
-            live_heartbeat.last_error = ""
-            live_heartbeat.save(update_fields=["last_seen_at", "last_error"])
-            if endpoint.status != FieldEndpoint.Status.RUNNING or endpoint.last_seen_at != now:
-                endpoint.status = FieldEndpoint.Status.RUNNING
-                endpoint.last_seen_at = now
-                endpoint.last_error = ""
-                endpoint.save(update_fields=["status", "last_seen_at", "last_error", "updated_at"])
-            continue
-
-        if dead_heartbeat is not None and endpoint.status in (FieldEndpoint.Status.STARTING, FieldEndpoint.Status.RUNNING):
-            message = "FieldAgent process %s is no longer running" % dead_heartbeat.process_id
-            dead_heartbeat.process_id = None
-            dead_heartbeat.last_error = message
-            dead_heartbeat.save(update_fields=["process_id", "last_error"])
-            endpoint.status = FieldEndpoint.Status.ERROR
-            endpoint.last_error = message
-            endpoint.save(update_fields=["status", "last_error", "updated_at"])
-
-
-def process_is_alive(pid: int) -> bool:
-    try:
-        os.kill(pid, 0)
-    except OSError:
-        return False
-    return True
 
 
 def serve_status() -> dict[str, object]:

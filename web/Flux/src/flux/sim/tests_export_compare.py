@@ -2,34 +2,34 @@ from types import SimpleNamespace
 
 from django.test import TestCase
 
-from flux.base.models import FieldDevice, SimDevice, SimDeviceTag, SimDriver, TagProvider
+from flux.sim.models import SimDriver, TagProvider
 from flux.sim.export_compare import (
     compare_ignition_tag_configs,
     configure_export_compare_field_device_ignition,
     normalize_ignition_tag_configs,
 )
 from flux.sim.field_bridge import materialize_enabled_sim_devices
+from flux.sim.models import DeviceConfig
+from flux.sim.testing import create_device_config, create_tag_config
 
 
 class SimExportCompareTests(TestCase):
     def test_materialized_sim_device_configures_exports_and_compares_with_mock_fluxy(self):
         sim_device = self.create_sim_device()
-        SimDeviceTag.objects.create(
-            provider=sim_device.provider,
+        create_tag_config(
             device=sim_device,
             source_path="Area/RTU_01/PV",
-            tag_name="PV",
+            name="PV",
             data_type="Float4",
             value_source="opc",
             opc_server="Original OPC",
             opc_item_path="ns=2;s=RTU_01.40001F",
             enabled=True,
         )
-        SimDeviceTag.objects.create(
-            provider=sim_device.provider,
+        create_tag_config(
             device=sim_device,
             source_path="Area/RTU_01/Running",
-            tag_name="Running",
+            name="Running",
             data_type="Boolean",
             value_source="opc",
             opc_server="Original OPC",
@@ -37,7 +37,7 @@ class SimExportCompareTests(TestCase):
             enabled=True,
         )
         materialize_enabled_sim_devices(provider_name="Tag_02")
-        field_device = FieldDevice.objects.get(name="RTU_01")
+        field_device = DeviceConfig.objects.get(base_device__name="RTU_01", endpoint__isnull=False)
         fx = FakeFluxy()
 
         result = configure_export_compare_field_device_ignition(
@@ -100,12 +100,11 @@ class SimExportCompareTests(TestCase):
     def create_sim_device(self):
         provider = TagProvider.objects.create(name="Tag_02")
         driver = SimDriver.objects.create(key="opc_ua", label="OPC UA", strategy_key="acm")
-        return SimDevice.objects.create(
+        return create_device_config(
             provider=provider,
             name="RTU_01",
+            device_type=driver.label,
             driver=driver,
-            endpoint_url="opc.tcp://0.0.0.0:4840/flux/rtu_01",
-            namespace_uri="urn:flux:test:rtu_01",
             enabled=True,
         )
 

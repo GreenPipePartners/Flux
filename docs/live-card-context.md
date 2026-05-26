@@ -1,6 +1,6 @@
-# Flux Live Card Context
+# Flux Live Card Context Compatibility
 
-Flux Live cards can copy two clipboard shapes for troubleshooting and reproduction.
+Flux Spot cards can copy two clipboard shapes for troubleshooting and reproduction. This page preserves the old Live context link during the compatibility migration.
 
 This page is intentionally linked from each full LLM card export so the pasted context has a stable explanation of what the payload means.
 

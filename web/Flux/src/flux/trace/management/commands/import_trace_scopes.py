@@ -1,10 +1,10 @@
 from django.core.management.base import BaseCommand
 
-from trace.importer import import_trace_scopes_csv
+from flux.chart.importer import import_trace_scopes_csv
 
 
 class Command(BaseCommand):
-    help = "Import generic Flux.trace scopes from a wide CSV file."
+    help = "Import generic Flux.chart scopes from a wide CSV file."
 
     def add_arguments(self, parser):
         parser.add_argument("csv_path")

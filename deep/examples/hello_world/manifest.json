@@ -1,0 +1,30 @@
+{
+  "cycle_seconds": 1,
+  "isolation": "top-level core package; no Django or Ignition service coupling",
+  "name": "hello_world",
+  "notes": [
+    "The L5X file records the Logix ladder source intent.",
+    "OpenPLC does not run L5X directly; the ST file is the first executable target."
+  ],
+  "observed_tags": [
+    {
+      "data_type": "STRING",
+      "name": "DisplayText",
+      "values": [
+        "hello",
+        "world"
+      ]
+    },
+    {
+      "data_type": "DINT",
+      "name": "CycleCount"
+    }
+  ],
+  "openplc_entrypoint": "openplc/hello_world.st",
+  "owner": "Flux.Deep",
+  "runtime_backend": "openplc",
+  "schema": "flux.deep.workspace.v1",
+  "source_entrypoint": "hello_world.l5x",
+  "source_format": "logix_l5x",
+  "status": "seed_workspace"
+}

@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<RSLogix5000Content
+  SchemaRevision="1.0"
+  SoftwareRevision="35.00"
+  TargetName="hello_world"
+  TargetType="Controller"
+  ContainsContext="true"
+  Owner="Flux.Deep"
+  ExportOptions="References NoRawData L5KData DecoratedData Context">
+  <Controller
+    Use="Target"
+    Name="hello_world"
+    ProcessorType="1756-L83E"
+    MajorRev="35"
+    MinorRev="00"
+    TimeSlice="20"
+    ShareUnusedTimeSlice="1">
+    <Tags>
+      <Tag
+        Name="CycleCount"
+        TagType="Base"
+        DataType="DINT"
+        Radix="Decimal"
+        Constant="false"
+        ExternalAccess="Read/Write">
+        <Data Format="L5K"><![CDATA[0]]></Data>
+        <Data Format="Decorated">
+          <DataValue DataType="DINT" Radix="Decimal" Value="0" />
+        </Data>
+      </Tag>
+      <Tag
+        Name="CycleTimer"
+        TagType="Base"
+        DataType="TIMER"
+        Constant="false"
+        ExternalAccess="Read/Write" />
+      <Tag
+        Name="DisplayText"
+        TagType="Base"
+        DataType="STRING"
+        Constant="false"
+        ExternalAccess="Read/Write">
+        <Data Format="L5K"><![CDATA[[5,'world']]]></Data>
+        <Data Format="Decorated">
+          <Structure DataType="STRING">
+            <DataValueMember Name="LEN" DataType="DINT" Radix="Decimal" Value="5" />
+            <DataValueMember Name="DATA" DataType="SINT" Radix="ASCII" Value="'world'" />
+          </Structure>
+        </Data>
+      </Tag>
+      <Tag
+        Name="HelloText"
+        TagType="Base"
+        DataType="STRING"
+        Constant="false"
+        ExternalAccess="Read/Write">
+        <Data Format="L5K"><![CDATA[[5,'hello']]]></Data>
+        <Data Format="Decorated">
+          <Structure DataType="STRING">
+            <DataValueMember Name="LEN" DataType="DINT" Radix="Decimal" Value="5" />
+            <DataValueMember Name="DATA" DataType="SINT" Radix="ASCII" Value="'hello'" />
+          </Structure>
+        </Data>
+      </Tag>
+      <Tag
+        Name="WorldText"
+        TagType="Base"
+        DataType="STRING"
+        Constant="false"
+        ExternalAccess="Read/Write">
+        <Data Format="L5K"><![CDATA[[5,'world']]]></Data>
+        <Data Format="Decorated">
+          <Structure DataType="STRING">
+            <DataValueMember Name="LEN" DataType="DINT" Radix="Decimal" Value="5" />
+            <DataValueMember Name="DATA" DataType="SINT" Radix="ASCII" Value="'world'" />
+          </Structure>
+        </Data>
+      </Tag>
+    </Tags>
+    <Programs>
+      <Program
+        Name="MainProgram"
+        TestEdits="false"
+        MainRoutineName="MainRoutine"
+        Disabled="false">
+        <Routines>
+          <Routine Name="MainRoutine" Type="RLL">
+            <RLLContent>
+              <Rung Number="0" Type="N">
+                <Comment><![CDATA[Run a one second self-resetting timer.]]></Comment>
+                <Text><![CDATA[XIO(CycleTimer.DN)TON(CycleTimer,?,1000,0);]]></Text>
+              </Rung>
+              <Rung Number="1" Type="N">
+                <Comment><![CDATA[Count each completed one second cycle.]]></Comment>
+                <Text><![CDATA[XIC(CycleTimer.DN)ADD(CycleCount,1,CycleCount)RES(CycleTimer);]]></Text>
+              </Rung>
+              <Rung Number="2" Type="N">
+                <Comment><![CDATA[Odd cycles publish hello.]]></Comment>
+                <Text><![CDATA[XIC(CycleCount.0)COP(HelloText,DisplayText,1);]]></Text>
+              </Rung>
+              <Rung Number="3" Type="N">
+                <Comment><![CDATA[Even cycles publish world.]]></Comment>
+                <Text><![CDATA[XIO(CycleCount.0)COP(WorldText,DisplayText,1);]]></Text>
+              </Rung>
+            </RLLContent>
+          </Routine>
+        </Routines>
+      </Program>
+    </Programs>
+    <Tasks>
+      <Task
+        Name="MainTask"
+        Type="CONTINUOUS"
+        Watchdog="500"
+        DisableUpdateOutputs="false"
+        InhibitTask="false">
+        <ScheduledPrograms>
+          <ScheduledProgram Name="MainProgram" />
+        </ScheduledPrograms>
+      </Task>
+    </Tasks>
+  </Controller>
+</RSLogix5000Content>

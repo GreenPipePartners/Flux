@@ -1,3 +1,5 @@
+import os
+from dataclasses import replace
 from pathlib import Path
 from io import StringIO
 from tempfile import TemporaryDirectory
@@ -8,12 +10,16 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.utils import timezone
 
-from flux.base.models import FieldAgentHeartbeat, FieldDevice, FieldEndpoint, FieldTag
-from dashboard.models import IgnitionBridgeConfig
+from flux.base.models import Tag
+from flux.serve.models import FieldAgentHeartbeat
+from flux.sim.models import FieldEndpoint
+from flux.bridge.models import IgnitionBridgeConfig
+from flux.bridge.services import BridgeProbeResult
 
 from .field_supervisor import apply_reconciliation_plan, enabled_field_endpoints, process_spec, reconciliation_plan, server_endpoint_url, write_server_config
-from .monitor import MonitorOptions, service_catalog, service_snapshot_status
+from .monitor import MonitorOptions, refresh_service_snapshots, service_catalog, service_snapshot_status
 from .models import ServeCommand, ServeHeartbeat, ServeServiceSnapshot
+from flux.sim.testing import create_device_config, create_tag_config
 
 
 class ServeSmokeTests(TestCase):
@@ -40,6 +46,36 @@ class ServeSmokeTests(TestCase):
         self.assertContains(response, "Recent Logs")
         self.assertNotContains(response, ".NET 10")
         self.assertNotContains(response, "systemd")
+
+    def test_serve_heartbeat_table_uses_ten_row_server_side_htmx_pagination(self):
+        now = timezone.now()
+        for index in range(12):
+            ServeHeartbeat.objects.create(
+                service_name=f"worker-{index:02d}",
+                instance_id="default",
+                status=ServeHeartbeat.Status.RUNNING,
+                last_seen_at=now,
+            )
+
+        first_page = self.client.get("/serve/", {"card": "serve-platform", "mode": "detail"})
+        second_page = self.client.get(
+            "/serve/",
+            {"card": "serve-platform", "mode": "detail", "heartbeats_page": "2"},
+        )
+
+        self.assertContains(first_page, "Showing 1-10 of 12 heartbeats")
+        self.assertContains(first_page, 'hx-target="#serve-platform-comp-card"')
+        self.assertContains(first_page, "heartbeats_page=2")
+        self.assertEqual(
+            [item["heartbeat"].service_name for item in first_page.context["serve_status"]["items"]],
+            [f"worker-{index:02d}" for index in range(10)],
+        )
+        self.assertContains(second_page, "Showing 11-12 of 12 heartbeats")
+        self.assertContains(second_page, "heartbeats_page=1")
+        self.assertEqual(
+            [item["heartbeat"].service_name for item in second_page.context["serve_status"]["items"]],
+            ["worker-10", "worker-11"],
+        )
 
     def test_delete_stale_heartbeat_removes_artifact(self):
         heartbeat = ServeHeartbeat.objects.create(
@@ -90,7 +126,15 @@ class ServeSmokeTests(TestCase):
     def test_flux_worker_once_records_heartbeat(self):
         call_command("flux_worker", "--once", "--service-name", "test-worker")
 
-        self.assertTrue(ServeHeartbeat.objects.filter(service_name="test-worker").exists())
+        heartbeat = ServeHeartbeat.objects.get(service_name="test-worker")
+        self.assertEqual(heartbeat.platform, ServeHeartbeat.Platform.LINUX)
+
+    def test_flux_worker_rejects_non_linux_platform(self):
+        with patch("platform.system", return_value="Darwin"):
+            with self.assertRaisesMessage(RuntimeError, "Flux workers require Linux"):
+                call_command("flux_worker", "--once", "--service-name", "bad-worker")
+
+        self.assertFalse(ServeHeartbeat.objects.filter(service_name="bad-worker").exists())
 
     def test_serve_index_renders_service_snapshots(self):
         ServeServiceSnapshot.objects.create(
@@ -129,16 +173,106 @@ class ServeSmokeTests(TestCase):
         self.assertEqual(snapshots["Flux.plane.qdb"].observed_state, ServeServiceSnapshot.ObservedState.UNKNOWN)
 
     def test_flux_serve_monitor_records_field_agent_endpoint_snapshot(self):
-        endpoint = FieldEndpoint.objects.create(name="sir-fluxolot-fishtank", enabled=True, status=FieldEndpoint.Status.RUNNING)
-        device = FieldDevice.objects.create(endpoint=endpoint, name="Sir-Fluxolot-Fishtank", device_type="Simulator")
-        FieldTag.objects.create(device=device, name="TANK_TEMPERATURE", data_type=FieldTag.DataType.FLOAT)
-        FieldAgentHeartbeat.objects.create(endpoint=endpoint, instance_id="field-agent:%s" % endpoint.id, last_seen_at=timezone.now())
+        endpoint = FieldEndpoint.objects.create(
+            name="sir-fluxolot-fishtank",
+            endpoint_url="opc.tcp://localhost:5061/flux/field",
+            enabled=True,
+            status=FieldEndpoint.Status.RUNNING,
+        )
+        device = create_device_config(endpoint=endpoint, name="Sir-Fluxolot-Fishtank", device_type="Simulator")
+        create_tag_config(device=device, name="TANK_TEMPERATURE", data_type=Tag.DataType.FLOAT, materialized=True)
+        FieldAgentHeartbeat.objects.create(
+            endpoint=endpoint,
+            instance_id="field-agent:%s" % endpoint.id,
+            process_id=os.getpid(),
+            last_seen_at=timezone.now(),
+        )
 
-        call_command("flux_serve_monitor", "--once", "--skip-network")
+        with patch("flux.serve.monitor.tcp_available", return_value=(True, "")):
+            refresh_service_snapshots(options=MonitorOptions(timeout_seconds=0.01))
 
         snapshot = ServeServiceSnapshot.objects.get(service_key="Flux.serve.field-agent:sir-fluxolot-fishtank")
         self.assertEqual(snapshot.observed_state, ServeServiceSnapshot.ObservedState.HEALTHY)
         self.assertEqual(snapshot.severity, ServeServiceSnapshot.Severity.OK)
+        self.assertTrue(snapshot.metadata["process_alive"])
+        self.assertTrue(snapshot.metadata["tcp_ok"])
+        self.assertEqual(snapshot.metadata["port"], 5061)
+
+    def test_flux_serve_monitor_rejects_dead_field_agent_process(self):
+        endpoint = FieldEndpoint.objects.create(
+            name="sir-fluxolot-fishtank",
+            endpoint_url="opc.tcp://localhost:5061/flux/field",
+            enabled=True,
+            status=FieldEndpoint.Status.RUNNING,
+        )
+        device = create_device_config(endpoint=endpoint, name="Sir-Fluxolot-Fishtank", device_type="Simulator")
+        create_tag_config(device=device, name="TANK_TEMPERATURE", data_type=Tag.DataType.FLOAT, materialized=True)
+        FieldAgentHeartbeat.objects.create(
+            endpoint=endpoint,
+            instance_id="field-agent:%s" % endpoint.id,
+            process_id=987654,
+            last_seen_at=timezone.now(),
+        )
+
+        with patch("flux.serve.monitor.process_id_is_alive", return_value=(False, "Process 987654 does not exist.")):
+            refresh_service_snapshots(options=MonitorOptions(include_network=False))
+
+        snapshot = ServeServiceSnapshot.objects.get(service_key="Flux.serve.field-agent:sir-fluxolot-fishtank")
+        self.assertEqual(snapshot.observed_state, ServeServiceSnapshot.ObservedState.ERROR)
+        self.assertEqual(snapshot.severity, ServeServiceSnapshot.Severity.ERROR)
+        self.assertEqual(snapshot.summary, "FieldAgent process is not alive.")
+        self.assertFalse(snapshot.metadata["process_alive"])
+
+    def test_flux_serve_monitor_rejects_closed_field_agent_tcp_port(self):
+        endpoint = FieldEndpoint.objects.create(
+            name="sir-fluxolot-fishtank",
+            endpoint_url="opc.tcp://0.0.0.0:5061/flux/field",
+            enabled=True,
+            status=FieldEndpoint.Status.RUNNING,
+        )
+        device = create_device_config(endpoint=endpoint, name="Sir-Fluxolot-Fishtank", device_type="Simulator")
+        create_tag_config(device=device, name="TANK_TEMPERATURE", data_type=Tag.DataType.FLOAT, materialized=True)
+        FieldAgentHeartbeat.objects.create(
+            endpoint=endpoint,
+            instance_id="field-agent:%s" % endpoint.id,
+            process_id=os.getpid(),
+            last_seen_at=timezone.now(),
+        )
+
+        with patch("flux.serve.monitor.tcp_available", return_value=(False, "connection refused")):
+            refresh_service_snapshots(options=MonitorOptions(timeout_seconds=0.01))
+
+        snapshot = ServeServiceSnapshot.objects.get(service_key="Flux.serve.field-agent:sir-fluxolot-fishtank")
+        self.assertEqual(snapshot.observed_state, ServeServiceSnapshot.ObservedState.ERROR)
+        self.assertEqual(snapshot.severity, ServeServiceSnapshot.Severity.ERROR)
+        self.assertEqual(snapshot.summary, "FieldAgent TCP port is not reachable.")
+        self.assertEqual(snapshot.last_error, "connection refused")
+        self.assertEqual(snapshot.metadata["tcp_host"], "localhost")
+        self.assertFalse(snapshot.metadata["tcp_ok"])
+
+    def test_flux_serve_monitor_degrades_field_agent_when_tcp_probe_is_skipped(self):
+        endpoint = FieldEndpoint.objects.create(
+            name="sir-fluxolot-fishtank",
+            endpoint_url="opc.tcp://localhost:5061/flux/field",
+            enabled=True,
+            status=FieldEndpoint.Status.RUNNING,
+        )
+        device = create_device_config(endpoint=endpoint, name="Sir-Fluxolot-Fishtank", device_type="Simulator")
+        create_tag_config(device=device, name="TANK_TEMPERATURE", data_type=Tag.DataType.FLOAT, materialized=True)
+        FieldAgentHeartbeat.objects.create(
+            endpoint=endpoint,
+            instance_id="field-agent:%s" % endpoint.id,
+            process_id=os.getpid(),
+            last_seen_at=timezone.now(),
+        )
+
+        refresh_service_snapshots(options=MonitorOptions(include_network=False))
+
+        snapshot = ServeServiceSnapshot.objects.get(service_key="Flux.serve.field-agent:sir-fluxolot-fishtank")
+        self.assertEqual(snapshot.observed_state, ServeServiceSnapshot.ObservedState.DEGRADED)
+        self.assertEqual(snapshot.severity, ServeServiceSnapshot.Severity.WARNING)
+        self.assertEqual(snapshot.summary, "FieldAgent process is alive; TCP probe skipped.")
+        self.assertEqual(snapshot.metadata["tcp_probe"], "skipped")
 
     def test_flux_serve_monitor_marks_absent_field_agent_snapshot_stopped(self):
         ServeServiceSnapshot.objects.create(
@@ -160,8 +294,8 @@ class ServeSmokeTests(TestCase):
 
     def test_service_catalog_includes_static_dynamic_and_bridge_services(self):
         endpoint = FieldEndpoint.objects.create(name="sir-fluxolot-fishtank", enabled=True, status=FieldEndpoint.Status.RUNNING)
-        device = FieldDevice.objects.create(endpoint=endpoint, name="Sir-Fluxolot-Fishtank", device_type="Simulator")
-        FieldTag.objects.create(device=device, name="TANK_TEMPERATURE", data_type=FieldTag.DataType.FLOAT)
+        device = create_device_config(endpoint=endpoint, name="Sir-Fluxolot-Fishtank", device_type="Simulator")
+        create_tag_config(device=device, name="TANK_TEMPERATURE", data_type=Tag.DataType.FLOAT, materialized=True)
         IgnitionBridgeConfig.objects.create(name="simulator", base_url="http://localhost:8088/system/webdev/flux")
 
         definitions = service_catalog(options=MonitorOptions(include_network=False), monitor_service_name="flux-serve-monitor")
@@ -171,6 +305,30 @@ class ServeSmokeTests(TestCase):
         self.assertIn("Flux.web.server", keys)
         self.assertIn("Flux.serve.field-agent:sir-fluxolot-fishtank", keys)
         self.assertIn("Flux.bridge:simulator", keys)
+
+    def test_bridge_snapshot_refreshes_bridge_probe_and_latest_config_status(self):
+        config = IgnitionBridgeConfig.objects.create(name="simulator", base_url="http://localhost:8088/system/webdev/flux")
+        checked_at = timezone.now()
+
+        with patch(
+            "flux.serve.monitor.probe_bridge",
+            return_value=BridgeProbeResult(
+                ok=True,
+                message="Connected to Ignition 8.3.",
+                checked_at=checked_at,
+                version="8.3",
+            ),
+        ) as probe_bridge:
+            refresh_service_snapshots(options=MonitorOptions(include_network=True, timeout_seconds=0.01))
+
+        config.refresh_from_db()
+        snapshot = ServeServiceSnapshot.objects.get(service_key="Flux.bridge:simulator")
+        probe_bridge.assert_called_once()
+        self.assertTrue(config.last_test_ok)
+        self.assertEqual(config.last_test_message, "Connected to Ignition 8.3.")
+        self.assertEqual(snapshot.observed_state, ServeServiceSnapshot.ObservedState.HEALTHY)
+        self.assertEqual(snapshot.metadata["probe"], "fluxy_version")
+        self.assertEqual(snapshot.metadata["version"], "8.3")
 
     def test_service_snapshot_status_marks_old_snapshots_stale_without_mutating_row(self):
         snapshot = ServeServiceSnapshot.objects.create(
@@ -201,10 +359,10 @@ class FieldSupervisorTests(TestCase):
             name="FieldAgent",
             endpoint_url="opc.tcp://0.0.0.0:4840/flux/field",
         )
-        self.device = FieldDevice.objects.create(endpoint=self.endpoint, name="Device A", device_type="Simulator")
-        FieldTag.objects.create(device=self.device, name="Pressure", data_type=FieldTag.DataType.FLOAT)
-        self.second_device = FieldDevice.objects.create(endpoint=self.endpoint, name="Device B", device_type="Simulator")
-        FieldTag.objects.create(device=self.second_device, name="Temperature", data_type=FieldTag.DataType.FLOAT)
+        self.device = create_device_config(endpoint=self.endpoint, name="Device A", device_type="Simulator")
+        create_tag_config(device=self.device, name="Pressure", data_type=Tag.DataType.FLOAT, materialized=True)
+        self.second_device = create_device_config(endpoint=self.endpoint, name="Device B", device_type="Simulator")
+        create_tag_config(device=self.second_device, name="Temperature", data_type=Tag.DataType.FLOAT, materialized=True)
 
     def test_write_server_config_exports_one_endpoint_with_many_devices(self):
         with TemporaryDirectory() as temp_dir:
@@ -243,18 +401,18 @@ class FieldSupervisorTests(TestCase):
     def test_server_endpoint_url_is_deterministic_per_endpoint(self):
         self.assertEqual(
             server_endpoint_url(self.endpoint, base_port=4850),
-            "opc.tcp://0.0.0.0:%s/flux/sim/FieldAgent" % (4850 + self.endpoint.id),
+            "opc.tcp://localhost:%s/flux/sim/FieldAgent" % (4850 + self.endpoint.id),
         )
 
-    def test_server_endpoint_url_allows_local_bind_host(self):
+    def test_server_endpoint_url_allows_explicit_host(self):
         self.assertEqual(
-            server_endpoint_url(self.endpoint, base_port=4850, host="localhost"),
-            "opc.tcp://localhost:%s/flux/sim/FieldAgent" % (4850 + self.endpoint.id),
+            server_endpoint_url(self.endpoint, base_port=4850, host="192.0.2.10"),
+            "opc.tcp://192.0.2.10:%s/flux/sim/FieldAgent" % (4850 + self.endpoint.id),
         )
 
     def test_enabled_field_endpoints_excludes_disabled_endpoints_and_empty_endpoints(self):
         disabled_endpoint = FieldEndpoint.objects.create(name="Disabled Field", enabled=False)
-        FieldDevice.objects.create(endpoint=disabled_endpoint, name="Device C", device_type="Simulator")
+        create_device_config(endpoint=disabled_endpoint, name="Device C", device_type="Simulator")
         empty_endpoint = FieldEndpoint.objects.create(name="Empty Field", enabled=True)
 
         endpoints = list(enabled_field_endpoints())
@@ -274,7 +432,11 @@ class FieldSupervisorTests(TestCase):
 
             self.assertEqual(spec.key, "field-agent:%s" % self.endpoint.id)
             self.assertEqual(spec.config_path.name, "FieldAgent.json")
-            self.assertEqual(spec.command[-1], "--FluxField:ConfigPath=%s" % spec.config_path)
+            self.assertIn("--FluxField:ConfigPath=%s" % spec.config_path, spec.command)
+            self.assertIn(
+                "--FluxField:CertificateStorePath=%s" % (Path(temp_dir) / "pki" / "FieldAgent"),
+                spec.command,
+            )
             self.assertTrue(spec.config_path.exists())
 
     def test_reconciliation_keeps_existing_process_instead_of_starting_duplicate(self):
@@ -293,6 +455,25 @@ class FieldSupervisorTests(TestCase):
         self.assertEqual(plan.keep_keys, [spec.key])
         self.assertEqual(plan.start_keys, [])
         self.assertEqual(processes[spec.key], process)
+
+    def test_reconciliation_restarts_process_when_config_changes(self):
+        with TemporaryDirectory() as temp_dir:
+            spec = process_spec(
+                self.endpoint,
+                runtime_dir=Path(temp_dir),
+                base_port=4900,
+                project_path=Path("FieldAgent.csproj"),
+            )
+        old_spec = replace(spec, config_hash="old-config")
+        process = FakeProcess(pid=100)
+
+        plan = reconciliation_plan([spec], {spec.key: process}, {spec.key: old_spec})
+        processes = apply_reconciliation_plan(plan, {spec.key: process}, start=lambda spec: FakeProcess(pid=200))
+
+        self.assertEqual(plan.stop_keys, [spec.key])
+        self.assertEqual(plan.start_keys, [spec.key])
+        self.assertTrue(process.terminated)
+        self.assertEqual(processes[spec.key].pid, 200)
 
     def test_reconciliation_stops_process_for_disabled_device(self):
         with TemporaryDirectory() as temp_dir:
@@ -340,6 +521,9 @@ class FieldSupervisorTests(TestCase):
             )
 
         start_process.assert_called_once()
+        self.assertIn("opc.tcp://localhost:", start_process.call_args.args[0].endpoint_url)
+        self.endpoint.refresh_from_db()
+        self.assertEqual(self.endpoint.endpoint_url, start_process.call_args.args[0].endpoint_url)
         heartbeat = ServeHeartbeat.objects.get(service_name="flux-field-supervisor")
         self.assertEqual(heartbeat.metadata["servers"], ["field-agent:%s" % self.endpoint.id])
 

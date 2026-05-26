@@ -1,0 +1,25 @@
+<section id="sim-job-status" class="panel" hx-get="{% url 'sim:job_status' %}" hx-trigger="every 5s" hx-swap="outerHTML">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">Flux.sim.worker</p>
+      <h2>Simulation Job Queue</h2>
+    </div>
+    <span class="status-pill">{{ sim_job_summary.active_count }} active</span>
+  </div>
+  {% if sim_jobs %}
+    <div class="stale-list">
+      {% for job in sim_jobs %}
+        <div class="stale-row">
+          <div>
+            <strong>#{{ job.id }} {{ job.get_kind_display }}</strong>
+            <small>{{ job.get_status_display }}{% if job.provider %} · {{ job.provider }}{% endif %}{% if job.progress_label %} · {{ job.progress_label }}{% endif %}</small>
+            {% if job.error %}<small>{{ job.error }}</small>{% endif %}
+          </div>
+          <span class="status-pill">{{ job.status }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted">No simulation jobs have been queued yet.</p>
+  {% endif %}
+</section>

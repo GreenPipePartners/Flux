@@ -1,0 +1,4567 @@
+{
+  "browser": {
+    "available": true,
+    "comp_surface_clicks": [
+      {
+        "card": "bridges",
+        "result": "missing card"
+      },
+      {
+        "card": "sim-config",
+        "result": "missing card"
+      },
+      {
+        "card": "serve",
+        "result": "missing card"
+      },
+      {
+        "card": "live",
+        "result": "missing card"
+      }
+    ],
+    "console_errors": [],
+    "pages": [
+      {
+        "h1_count": 2,
+        "path": "/",
+        "title": "Initial Flux Setup",
+        "viewport": {
+          "height": 900,
+          "width": 1280
+        }
+      },
+      {
+        "h1_count": 2,
+        "path": "/",
+        "title": "Initial Flux Setup",
+        "viewport": {
+          "height": 844,
+          "width": 390
+        }
+      }
+    ],
+    "request_failures": []
+  },
+  "collected_at": "2026-05-24T10:16:11.000444+00:00",
+  "commands": [
+    {
+      "command": "uv run python manage.py check",
+      "outcome": "passed",
+      "workdir": "/home/bobby/Projects/11006-PRW-flux/web/Flux"
+    },
+    {
+      "command": "uv run pytest -q ../../site_audit/test_playwright_initial_scrape.py",
+      "outcome": "passed",
+      "workdir": "/home/bobby/Projects/11006-PRW-flux/web/Flux"
+    }
+  ],
+  "project_root": "/home/bobby/Projects/11006-PRW-flux",
+  "schema_version": 1,
+  "scrape": {
+    "client": "django.test.Client",
+    "route_count": 35,
+    "routes": [
+      {
+        "body_bytes": 0,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": true,
+            "missing_landmarks": true,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [],
+          "comp_cards": [],
+          "comp_focus": [],
+          "comp_surfaces": [],
+          "forms": [],
+          "h1": [],
+          "landmarks": [],
+          "links": [],
+          "mode_buttons": [],
+          "mode_controls": [],
+          "title": ""
+        },
+        "kind": "html",
+        "location": "/setup/",
+        "name": "dashboard home",
+        "path": "/",
+        "sha256_16": "e3b0c44298fc1c14",
+        "status": 302
+      },
+      {
+        "body_bytes": 4676,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": false,
+            "missing_landmarks": false,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [
+            {
+              "aria_label": "Choose color theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-current",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use green theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-green",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use blue theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-blue",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use coral theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-coral",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use purple theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-purple",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use orange theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-orange",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use black theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-black",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use white theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-white",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "",
+              "aria_pressed": "",
+              "classes": "button",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "Create superuser",
+              "type": "submit"
+            }
+          ],
+          "comp_cards": [],
+          "comp_focus": [],
+          "comp_surfaces": [],
+          "forms": [
+            {
+              "action": "",
+              "hx_post": "",
+              "method": "post"
+            }
+          ],
+          "h1": [
+            "Welcome to Flux!",
+            "Initial Account"
+          ],
+          "landmarks": [
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "header"
+            },
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            },
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "main"
+            }
+          ],
+          "links": [
+            {
+              "aria_label": "",
+              "href": "/",
+              "text": "FluxControl Workbench"
+            },
+            {
+              "aria_label": "",
+              "href": "/",
+              "text": "Dashboard"
+            },
+            {
+              "aria_label": "",
+              "href": "/mine/",
+              "text": "Mine"
+            },
+            {
+              "aria_label": "",
+              "href": "/build/",
+              "text": "Build"
+            },
+            {
+              "aria_label": "",
+              "href": "/live/",
+              "text": "Live"
+            },
+            {
+              "aria_label": "",
+              "href": "/charts/",
+              "text": "Charts"
+            },
+            {
+              "aria_label": "",
+              "href": "/sim/",
+              "text": "Sim"
+            },
+            {
+              "aria_label": "",
+              "href": "/serve/",
+              "text": "Serve"
+            }
+          ],
+          "mode_buttons": [],
+          "mode_controls": [],
+          "title": "Initial Flux Setup"
+        },
+        "kind": "html",
+        "location": "",
+        "name": "dashboard setup",
+        "path": "/setup/",
+        "sha256_16": "fb7379f2f8520301",
+        "status": 200
+      },
+      {
+        "body_bytes": 0,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": true,
+            "missing_landmarks": true,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [],
+          "comp_cards": [],
+          "comp_focus": [],
+          "comp_surfaces": [],
+          "forms": [],
+          "h1": [],
+          "landmarks": [],
+          "links": [],
+          "mode_buttons": [],
+          "mode_controls": [],
+          "title": ""
+        },
+        "kind": "html",
+        "location": "/setup/",
+        "name": "dashboard bridges",
+        "path": "/bridges/",
+        "sha256_16": "e3b0c44298fc1c14",
+        "status": 302
+      },
+      {
+        "body_bytes": 7766,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": false,
+            "missing_landmarks": false,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [
+            {
+              "aria_label": "Choose color theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-current",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use green theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-green",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use blue theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-blue",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use coral theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-coral",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use purple theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-purple",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use orange theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-orange",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use black theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-black",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use white theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-white",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Copy Flux Serve Platform context",
+              "aria_pressed": "",
+              "classes": "copy-corner",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=serve-platform&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#serve-platform-comp-card",
+              "text": "\u2196",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=serve-platform&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#serve-platform-comp-card",
+              "text": "[\u2198]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Copy Serve Logs context",
+              "aria_pressed": "",
+              "classes": "copy-corner",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=serve-commands&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#serve-commands-comp-card",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=serve-commands&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#serve-commands-comp-card",
+              "text": "\u2198",
+              "type": "button"
+            }
+          ],
+          "comp_cards": [
+            {
+              "classes": "panel comp-card",
+              "id": "serve-platform-comp-card",
+              "mode": "detail"
+            },
+            {
+              "classes": "panel comp-card",
+              "id": "serve-commands-comp-card",
+              "mode": "summary"
+            }
+          ],
+          "comp_focus": [],
+          "comp_surfaces": [],
+          "forms": [],
+          "h1": [
+            "Service Platform",
+            "Recent Logs"
+          ],
+          "landmarks": [
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "header"
+            },
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            },
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "main"
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            }
+          ],
+          "links": [
+            {
+              "aria_label": "",
+              "href": "/",
+              "text": "FluxControl Workbench"
+            },
+            {
+              "aria_label": "",
+              "href": "/",
+              "text": "Dashboard"
+            },
+            {
+              "aria_label": "",
+              "href": "/mine/",
+              "text": "Mine"
+            },
+            {
+              "aria_label": "",
+              "href": "/build/",
+              "text": "Build"
+            },
+            {
+              "aria_label": "",
+              "href": "/live/",
+              "text": "Live"
+            },
+            {
+              "aria_label": "",
+              "href": "/charts/",
+              "text": "Charts"
+            },
+            {
+              "aria_label": "",
+              "href": "/sim/",
+              "text": "Sim"
+            },
+            {
+              "aria_label": "",
+              "href": "/serve/",
+              "text": "Serve"
+            }
+          ],
+          "mode_buttons": [
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=serve-platform&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#serve-platform-comp-card",
+              "text": "\u2196",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=serve-platform&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#serve-platform-comp-card",
+              "text": "[\u2198]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=serve-commands&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#serve-commands-comp-card",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=serve-commands&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#serve-commands-comp-card",
+              "text": "\u2198",
+              "type": "button"
+            }
+          ],
+          "mode_controls": [
+            {
+              "aria_label": "Comp card view mode",
+              "id": ""
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": ""
+            }
+          ],
+          "title": "Flux Serve"
+        },
+        "kind": "html",
+        "location": "",
+        "name": "serve index",
+        "path": "/serve/",
+        "sha256_16": "548604167a203e01",
+        "status": 200
+      },
+      {
+        "body_bytes": 4571,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": false,
+            "missing_landmarks": false,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [
+            {
+              "aria_label": "Choose color theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-current",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use green theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-green",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use blue theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-blue",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use coral theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-coral",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use purple theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-purple",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use orange theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-orange",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use black theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-black",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use white theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-white",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "",
+              "aria_pressed": "",
+              "classes": "button",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "Import Source",
+              "type": "submit"
+            }
+          ],
+          "comp_cards": [
+            {
+              "classes": "panel comp-card",
+              "id": "",
+              "mode": "detail"
+            },
+            {
+              "classes": "panel comp-card",
+              "id": "",
+              "mode": "configure"
+            }
+          ],
+          "comp_focus": [],
+          "comp_surfaces": [],
+          "forms": [
+            {
+              "action": "/mine/import/",
+              "hx_post": "",
+              "method": "post"
+            }
+          ],
+          "h1": [
+            "Flux.mine"
+          ],
+          "landmarks": [
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "header"
+            },
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            },
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "main"
+            }
+          ],
+          "links": [
+            {
+              "aria_label": "",
+              "href": "/",
+              "text": "FluxControl Workbench"
+            },
+            {
+              "aria_label": "",
+              "href": "/",
+              "text": "Dashboard"
+            },
+            {
+              "aria_label": "",
+              "href": "/mine/",
+              "text": "Mine"
+            },
+            {
+              "aria_label": "",
+              "href": "/build/",
+              "text": "Build"
+            },
+            {
+              "aria_label": "",
+              "href": "/live/",
+              "text": "Live"
+            },
+            {
+              "aria_label": "",
+              "href": "/charts/",
+              "text": "Charts"
+            },
+            {
+              "aria_label": "",
+              "href": "/sim/",
+              "text": "Sim"
+            },
+            {
+              "aria_label": "",
+              "href": "/serve/",
+              "text": "Serve"
+            }
+          ],
+          "mode_buttons": [],
+          "mode_controls": [],
+          "title": "Flux Mine"
+        },
+        "kind": "html",
+        "location": "",
+        "name": "mine index",
+        "path": "/mine/",
+        "sha256_16": "9514731d76895967",
+        "status": 200
+      },
+      {
+        "body_bytes": 3910,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": false,
+            "missing_landmarks": false,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [
+            {
+              "aria_label": "Choose color theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-current",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use green theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-green",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use blue theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-blue",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use coral theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-coral",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use purple theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-purple",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use orange theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-orange",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use black theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-black",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use white theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-white",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "",
+              "aria_pressed": "",
+              "classes": "button",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "Seed HMI Demo",
+              "type": "submit"
+            }
+          ],
+          "comp_cards": [
+            {
+              "classes": "panel comp-card",
+              "id": "",
+              "mode": "detail"
+            },
+            {
+              "classes": "panel comp-card",
+              "id": "",
+              "mode": "configure"
+            }
+          ],
+          "comp_focus": [],
+          "comp_surfaces": [],
+          "forms": [
+            {
+              "action": "/build/seed-hmi-demo/",
+              "hx_post": "",
+              "method": "post"
+            }
+          ],
+          "h1": [
+            "Flux.build"
+          ],
+          "landmarks": [
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "header"
+            },
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            },
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "main"
+            }
+          ],
+          "links": [
+            {
+              "aria_label": "",
+              "href": "/",
+              "text": "FluxControl Workbench"
+            },
+            {
+              "aria_label": "",
+              "href": "/",
+              "text": "Dashboard"
+            },
+            {
+              "aria_label": "",
+              "href": "/mine/",
+              "text": "Mine"
+            },
+            {
+              "aria_label": "",
+              "href": "/build/",
+              "text": "Build"
+            },
+            {
+              "aria_label": "",
+              "href": "/live/",
+              "text": "Live"
+            },
+            {
+              "aria_label": "",
+              "href": "/charts/",
+              "text": "Charts"
+            },
+            {
+              "aria_label": "",
+              "href": "/sim/",
+              "text": "Sim"
+            },
+            {
+              "aria_label": "",
+              "href": "/serve/",
+              "text": "Serve"
+            }
+          ],
+          "mode_buttons": [],
+          "mode_controls": [],
+          "title": "Flux Build"
+        },
+        "kind": "html",
+        "location": "",
+        "name": "build index",
+        "path": "/build/",
+        "sha256_16": "bb9dc7f57e782c86",
+        "status": 200
+      },
+      {
+        "body_bytes": 0,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": true,
+            "missing_landmarks": true,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [],
+          "comp_cards": [],
+          "comp_focus": [],
+          "comp_surfaces": [],
+          "forms": [],
+          "h1": [],
+          "landmarks": [],
+          "links": [],
+          "mode_buttons": [],
+          "mode_controls": [],
+          "title": ""
+        },
+        "kind": "action",
+        "location": "",
+        "name": "build seed demo",
+        "path": "/build/seed-hmi-demo/",
+        "sha256_16": "e3b0c44298fc1c14",
+        "status": 405
+      },
+      {
+        "body_bytes": 0,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": true,
+            "missing_landmarks": true,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [],
+          "comp_cards": [],
+          "comp_focus": [],
+          "comp_surfaces": [],
+          "forms": [],
+          "h1": [],
+          "landmarks": [],
+          "links": [],
+          "mode_buttons": [],
+          "mode_controls": [],
+          "title": ""
+        },
+        "kind": "action",
+        "location": "",
+        "name": "build hmi map",
+        "path": "/build/hmi-map/build/",
+        "sha256_16": "e3b0c44298fc1c14",
+        "status": 405
+      },
+      {
+        "body_bytes": 4949,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": false,
+            "missing_landmarks": false,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [
+            {
+              "aria_label": "Choose color theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-current",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use green theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-green",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use blue theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-blue",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use coral theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-coral",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use purple theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-purple",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use orange theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-orange",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use black theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-black",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use white theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-white",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "",
+              "aria_pressed": "",
+              "classes": "button",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "Seed Demo Cell",
+              "type": "submit"
+            },
+            {
+              "aria_label": "",
+              "aria_pressed": "",
+              "classes": "button",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "Import Cell Bundle",
+              "type": "submit"
+            }
+          ],
+          "comp_cards": [
+            {
+              "classes": "panel comp-card",
+              "id": "",
+              "mode": "detail"
+            },
+            {
+              "classes": "panel comp-card",
+              "id": "",
+              "mode": "configure"
+            }
+          ],
+          "comp_focus": [],
+          "comp_surfaces": [],
+          "forms": [
+            {
+              "action": "/cell/seed-demo/",
+              "hx_post": "",
+              "method": "post"
+            },
+            {
+              "action": "/cell/import/",
+              "hx_post": "",
+              "method": "post"
+            }
+          ],
+          "h1": [
+            "Flux.cell"
+          ],
+          "landmarks": [
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "header"
+            },
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            },
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "main"
+            }
+          ],
+          "links": [
+            {
+              "aria_label": "",
+              "href": "/",
+              "text": "FluxControl Workbench"
+            },
+            {
+              "aria_label": "",
+              "href": "/",
+              "text": "Dashboard"
+            },
+            {
+              "aria_label": "",
+              "href": "/mine/",
+              "text": "Mine"
+            },
+            {
+              "aria_label": "",
+              "href": "/build/",
+              "text": "Build"
+            },
+            {
+              "aria_label": "",
+              "href": "/live/",
+              "text": "Live"
+            },
+            {
+              "aria_label": "",
+              "href": "/charts/",
+              "text": "Charts"
+            },
+            {
+              "aria_label": "",
+              "href": "/sim/",
+              "text": "Sim"
+            },
+            {
+              "aria_label": "",
+              "href": "/serve/",
+              "text": "Serve"
+            }
+          ],
+          "mode_buttons": [],
+          "mode_controls": [],
+          "title": "Flux Cell"
+        },
+        "kind": "html",
+        "location": "",
+        "name": "cell index",
+        "path": "/cell/",
+        "sha256_16": "4bc74876c9a91523",
+        "status": 200
+      },
+      {
+        "body_bytes": 881,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": true,
+            "missing_landmarks": false,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [],
+          "comp_cards": [],
+          "comp_focus": [],
+          "comp_surfaces": [],
+          "forms": [],
+          "h1": [],
+          "landmarks": [
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "main"
+            }
+          ],
+          "links": [],
+          "mode_buttons": [],
+          "mode_controls": [],
+          "title": "Flux Cell Phone Demo"
+        },
+        "kind": "html",
+        "location": "",
+        "name": "cell phone demo",
+        "path": "/cell/phone-demo/",
+        "sha256_16": "1fcfbfd376e70381",
+        "status": 200
+      },
+      {
+        "body_bytes": 0,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": true,
+            "missing_landmarks": true,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [],
+          "comp_cards": [],
+          "comp_focus": [],
+          "comp_surfaces": [],
+          "forms": [],
+          "h1": [],
+          "landmarks": [],
+          "links": [],
+          "mode_buttons": [],
+          "mode_controls": [],
+          "title": ""
+        },
+        "kind": "action",
+        "location": "",
+        "name": "cell seed demo",
+        "path": "/cell/seed-demo/",
+        "sha256_16": "e3b0c44298fc1c14",
+        "status": 405
+      },
+      {
+        "body_bytes": 13565,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": false,
+            "missing_landmarks": false,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [
+            {
+              "aria_label": "Choose color theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-current",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use green theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-green",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use blue theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-blue",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use coral theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-coral",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use purple theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-purple",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use orange theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-orange",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use black theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-black",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use white theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-white",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Copy Flux.sim.runtime context",
+              "aria_pressed": "",
+              "classes": "copy-corner",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "",
+              "type": "button"
+            },
+            {
+              "aria_label": "Copy Flux.sim.catalog context",
+              "aria_pressed": "",
+              "classes": "copy-corner",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=sim-catalog&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#sim-comp-surface",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=sim-catalog&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#sim-comp-surface",
+              "text": "\u2198",
+              "type": "button"
+            },
+            {
+              "aria_label": "Copy Flux.sim.import context",
+              "aria_pressed": "",
+              "classes": "copy-corner",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=sim-import&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#sim-comp-surface",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show configure view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=sim-import&mode=configure",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#sim-comp-surface",
+              "text": "\u2699",
+              "type": "button"
+            },
+            {
+              "aria_label": "Copy Flux.sim.output context",
+              "aria_pressed": "",
+              "classes": "copy-corner",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=sim-output&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#sim-comp-surface",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=sim-output&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#sim-comp-surface",
+              "text": "\u2198",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show configure view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=sim-output&mode=configure",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#sim-comp-surface",
+              "text": "\u2699",
+              "type": "button"
+            }
+          ],
+          "comp_cards": [
+            {
+              "classes": "readiness-card readiness-warning comp-card",
+              "id": "sim-catalog-comp-card",
+              "mode": "summary"
+            },
+            {
+              "classes": "readiness-card readiness-ok comp-card",
+              "id": "sim-import-comp-card",
+              "mode": "summary"
+            },
+            {
+              "classes": "readiness-card readiness-ok comp-card",
+              "id": "sim-output-comp-card",
+              "mode": "summary"
+            }
+          ],
+          "comp_focus": [],
+          "comp_surfaces": [
+            {
+              "id": "sim-comp-surface",
+              "mode": "summary",
+              "selected_card": ""
+            }
+          ],
+          "forms": [],
+          "h1": [
+            "Flux.sim"
+          ],
+          "landmarks": [
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "header"
+            },
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            },
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "main"
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            }
+          ],
+          "links": [
+            {
+              "aria_label": "",
+              "href": "/",
+              "text": "FluxControl Workbench"
+            },
+            {
+              "aria_label": "",
+              "href": "/",
+              "text": "Dashboard"
+            },
+            {
+              "aria_label": "",
+              "href": "/mine/",
+              "text": "Mine"
+            },
+            {
+              "aria_label": "",
+              "href": "/build/",
+              "text": "Build"
+            },
+            {
+              "aria_label": "",
+              "href": "/live/",
+              "text": "Live"
+            },
+            {
+              "aria_label": "",
+              "href": "/charts/",
+              "text": "Charts"
+            },
+            {
+              "aria_label": "",
+              "href": "/sim/",
+              "text": "Sim"
+            },
+            {
+              "aria_label": "",
+              "href": "/serve/",
+              "text": "Serve"
+            }
+          ],
+          "mode_buttons": [
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=sim-catalog&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#sim-comp-surface",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=sim-catalog&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#sim-comp-surface",
+              "text": "\u2198",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=sim-import&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#sim-comp-surface",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show configure view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=sim-import&mode=configure",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#sim-comp-surface",
+              "text": "\u2699",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=sim-output&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#sim-comp-surface",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=sim-output&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#sim-comp-surface",
+              "text": "\u2198",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show configure view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=sim-output&mode=configure",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#sim-comp-surface",
+              "text": "\u2699",
+              "type": "button"
+            }
+          ],
+          "mode_controls": [
+            {
+              "aria_label": "Comp card view mode",
+              "id": ""
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": ""
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": ""
+            }
+          ],
+          "title": "Flux Sim"
+        },
+        "kind": "html",
+        "location": "",
+        "name": "sim index",
+        "path": "/sim/",
+        "sha256_16": "c8ce1af4e8cdb2ed",
+        "status": 200
+      },
+      {
+        "body_bytes": 0,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": true,
+            "missing_landmarks": true,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [],
+          "comp_cards": [],
+          "comp_focus": [],
+          "comp_surfaces": [],
+          "forms": [],
+          "h1": [],
+          "landmarks": [],
+          "links": [],
+          "mode_buttons": [],
+          "mode_controls": [],
+          "title": ""
+        },
+        "kind": "action",
+        "location": "",
+        "name": "sim json import",
+        "path": "/sim/import/json/",
+        "sha256_16": "e3b0c44298fc1c14",
+        "status": 405
+      },
+      {
+        "body_bytes": 0,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": true,
+            "missing_landmarks": true,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [],
+          "comp_cards": [],
+          "comp_focus": [],
+          "comp_surfaces": [],
+          "forms": [],
+          "h1": [],
+          "landmarks": [],
+          "links": [],
+          "mode_buttons": [],
+          "mode_controls": [],
+          "title": ""
+        },
+        "kind": "action",
+        "location": "",
+        "name": "sim ignition import",
+        "path": "/sim/import/ignition/",
+        "sha256_16": "e3b0c44298fc1c14",
+        "status": 405
+      },
+      {
+        "body_bytes": 0,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": true,
+            "missing_landmarks": true,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [],
+          "comp_cards": [],
+          "comp_focus": [],
+          "comp_surfaces": [],
+          "forms": [],
+          "h1": [],
+          "landmarks": [],
+          "links": [],
+          "mode_buttons": [],
+          "mode_controls": [],
+          "title": ""
+        },
+        "kind": "action",
+        "location": "",
+        "name": "sim remove ignition tags",
+        "path": "/sim/remove-ignition-tags/",
+        "sha256_16": "e3b0c44298fc1c14",
+        "status": 405
+      },
+      {
+        "body_bytes": 382,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": true,
+            "missing_landmarks": true,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [],
+          "comp_cards": [],
+          "comp_focus": [],
+          "comp_surfaces": [],
+          "forms": [],
+          "h1": [],
+          "landmarks": [],
+          "links": [],
+          "mode_buttons": [],
+          "mode_controls": [],
+          "title": ""
+        },
+        "kind": "fragment",
+        "location": "",
+        "name": "sim job status",
+        "path": "/sim/jobs/status/",
+        "sha256_16": "095b74c4e2347e6b",
+        "status": 200
+      },
+      {
+        "body_bytes": 1199,
+        "body_preview": "{\"endpoints\": [{\"name\": \"local-field\", \"endpoint_url\": \"opc.tcp://0.0.0.0:4840/flux/field\", \"application_uri\": \"urn:flux:field\", \"product_uri\": \"urn:flux:field\", \"namespace_uri\": \"urn:flux:field:sim\", \"security_policy\": \"None\", \"devices\": [",
+        "content_type": "application/json",
+        "kind": "json",
+        "location": "",
+        "name": "sim field config",
+        "path": "/sim/field-config.json",
+        "sha256_16": "21f4c291057d96a9",
+        "status": 200
+      },
+      {
+        "body_bytes": 8575,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": false,
+            "missing_landmarks": false,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [
+            {
+              "aria_label": "Choose color theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-current",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use green theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-green",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use blue theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-blue",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use coral theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-coral",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use purple theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-purple",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use orange theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-orange",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use black theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-black",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use white theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-white",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Copy Flux.live.platform context",
+              "aria_pressed": "",
+              "classes": "copy-corner",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=live-platform&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#live-comp-surface",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=live-platform&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#live-comp-surface",
+              "text": "\u2198",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=live-paths&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#live-comp-surface",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=live-paths&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#live-comp-surface",
+              "text": "\u2198",
+              "type": "button"
+            },
+            {
+              "aria_label": "Copy Flux.live.table context",
+              "aria_pressed": "",
+              "classes": "copy-corner",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=live-table&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#live-comp-surface",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=live-table&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#live-comp-surface",
+              "text": "\u2198",
+              "type": "button"
+            }
+          ],
+          "comp_cards": [
+            {
+              "classes": "readiness-card readiness-error comp-card",
+              "id": "live-platform-comp-card",
+              "mode": "summary"
+            },
+            {
+              "classes": "readiness-card readiness-ok comp-card",
+              "id": "live-paths-comp-card",
+              "mode": "summary"
+            },
+            {
+              "classes": "readiness-card readiness-error comp-card",
+              "id": "live-table-comp-card",
+              "mode": "summary"
+            }
+          ],
+          "comp_focus": [],
+          "comp_surfaces": [
+            {
+              "id": "live-comp-surface",
+              "mode": "summary",
+              "selected_card": ""
+            }
+          ],
+          "forms": [],
+          "h1": [
+            "Flux.live"
+          ],
+          "landmarks": [
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "header"
+            },
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            },
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "main"
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            }
+          ],
+          "links": [
+            {
+              "aria_label": "",
+              "href": "/",
+              "text": "FluxControl Workbench"
+            },
+            {
+              "aria_label": "",
+              "href": "/",
+              "text": "Dashboard"
+            },
+            {
+              "aria_label": "",
+              "href": "/mine/",
+              "text": "Mine"
+            },
+            {
+              "aria_label": "",
+              "href": "/build/",
+              "text": "Build"
+            },
+            {
+              "aria_label": "",
+              "href": "/live/",
+              "text": "Live"
+            },
+            {
+              "aria_label": "",
+              "href": "/charts/",
+              "text": "Charts"
+            },
+            {
+              "aria_label": "",
+              "href": "/sim/",
+              "text": "Sim"
+            },
+            {
+              "aria_label": "",
+              "href": "/serve/",
+              "text": "Serve"
+            }
+          ],
+          "mode_buttons": [
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=live-platform&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#live-comp-surface",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=live-platform&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#live-comp-surface",
+              "text": "\u2198",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=live-paths&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#live-comp-surface",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=live-paths&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#live-comp-surface",
+              "text": "\u2198",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=live-table&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#live-comp-surface",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=live-table&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#live-comp-surface",
+              "text": "\u2198",
+              "type": "button"
+            }
+          ],
+          "mode_controls": [
+            {
+              "aria_label": "Comp card view mode",
+              "id": ""
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": ""
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": ""
+            }
+          ],
+          "title": "Flux Live"
+        },
+        "kind": "html",
+        "location": "",
+        "name": "live index",
+        "path": "/live/",
+        "sha256_16": "c7dfd01c1e2f6675",
+        "status": 200
+      },
+      {
+        "body_bytes": 6726,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": false,
+            "missing_landmarks": false,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [
+            {
+              "aria_label": "Choose color theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-current",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use green theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-green",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use blue theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-blue",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use coral theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-coral",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use purple theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-purple",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use orange theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-orange",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use black theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-black",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use white theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-white",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Copy Pad Overview Demo context",
+              "aria_pressed": "",
+              "classes": "copy-corner",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=pad-overview&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#pad-overview-comp-card",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=pad-overview&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#pad-overview-comp-card",
+              "text": "\u2198",
+              "type": "button"
+            }
+          ],
+          "comp_cards": [
+            {
+              "classes": "panel comp-card",
+              "id": "pad-overview-comp-card",
+              "mode": "summary"
+            }
+          ],
+          "comp_focus": [],
+          "comp_surfaces": [],
+          "forms": [],
+          "h1": [
+            "Pad Overview Demo"
+          ],
+          "landmarks": [
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "header"
+            },
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            },
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "main"
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            }
+          ],
+          "links": [
+            {
+              "aria_label": "",
+              "href": "/",
+              "text": "FluxControl Workbench"
+            },
+            {
+              "aria_label": "",
+              "href": "/",
+              "text": "Dashboard"
+            },
+            {
+              "aria_label": "",
+              "href": "/mine/",
+              "text": "Mine"
+            },
+            {
+              "aria_label": "",
+              "href": "/build/",
+              "text": "Build"
+            },
+            {
+              "aria_label": "",
+              "href": "/live/",
+              "text": "Live"
+            },
+            {
+              "aria_label": "",
+              "href": "/charts/",
+              "text": "Charts"
+            },
+            {
+              "aria_label": "",
+              "href": "/sim/",
+              "text": "Sim"
+            },
+            {
+              "aria_label": "",
+              "href": "/serve/",
+              "text": "Serve"
+            },
+            {
+              "aria_label": "",
+              "href": "/live/pad-overview/?equipment=well",
+              "text": "Well"
+            },
+            {
+              "aria_label": "",
+              "href": "/live/pad-overview/?equipment=meter",
+              "text": "Meter"
+            },
+            {
+              "aria_label": "",
+              "href": "/live/pad-overview/?equipment=tank",
+              "text": "Tank"
+            }
+          ],
+          "mode_buttons": [
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=pad-overview&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#pad-overview-comp-card",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=pad-overview&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#pad-overview-comp-card",
+              "text": "\u2198",
+              "type": "button"
+            }
+          ],
+          "mode_controls": [
+            {
+              "aria_label": "Comp card view mode",
+              "id": ""
+            }
+          ],
+          "title": "Flux Live Pad Overview"
+        },
+        "kind": "html",
+        "location": "",
+        "name": "live pad overview",
+        "path": "/live/pad-overview/",
+        "sha256_16": "2a5cb3db63179185",
+        "status": 200
+      },
+      {
+        "body_bytes": 2115,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": true,
+            "missing_landmarks": true,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [],
+          "comp_cards": [],
+          "comp_focus": [],
+          "comp_surfaces": [],
+          "forms": [],
+          "h1": [],
+          "landmarks": [],
+          "links": [
+            {
+              "aria_label": "",
+              "href": "/live/pad-overview/?equipment=well",
+              "text": "Well"
+            },
+            {
+              "aria_label": "",
+              "href": "/live/pad-overview/?equipment=meter",
+              "text": "Meter"
+            },
+            {
+              "aria_label": "",
+              "href": "/live/pad-overview/?equipment=tank",
+              "text": "Tank"
+            }
+          ],
+          "mode_buttons": [],
+          "mode_controls": [],
+          "title": ""
+        },
+        "kind": "fragment",
+        "location": "",
+        "name": "live pad panel",
+        "path": "/live/pad-overview/panel/",
+        "sha256_16": "61027b3e9d694589",
+        "status": 200
+      },
+      {
+        "body_bytes": 777,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": true,
+            "missing_landmarks": true,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [],
+          "comp_cards": [],
+          "comp_focus": [],
+          "comp_surfaces": [],
+          "forms": [],
+          "h1": [],
+          "landmarks": [],
+          "links": [],
+          "mode_buttons": [],
+          "mode_controls": [],
+          "title": ""
+        },
+        "kind": "fragment",
+        "location": "",
+        "name": "live pad cards",
+        "path": "/live/pad-overview/cards/",
+        "sha256_16": "5096e81a1995c4c7",
+        "status": 200
+      },
+      {
+        "body_bytes": 6236,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": false,
+            "missing_landmarks": false,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [
+            {
+              "aria_label": "Choose color theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-current",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use green theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-green",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use blue theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-blue",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use coral theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-coral",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use purple theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-purple",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use orange theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-orange",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use black theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-black",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use white theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-white",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=trace-paths&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=trace-paths&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "\u2198",
+              "type": "button"
+            },
+            {
+              "aria_label": "Copy Flux.charts.samples context",
+              "aria_pressed": "",
+              "classes": "copy-corner",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=trace-samples&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=trace-samples&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "\u2198",
+              "type": "button"
+            }
+          ],
+          "comp_cards": [
+            {
+              "classes": "readiness-card readiness-ok comp-card",
+              "id": "trace-paths-comp-card",
+              "mode": "summary"
+            },
+            {
+              "classes": "readiness-card readiness-ok comp-card",
+              "id": "trace-samples-comp-card",
+              "mode": "summary"
+            }
+          ],
+          "comp_focus": [],
+          "comp_surfaces": [
+            {
+              "id": "trace-comp-surface",
+              "mode": "summary",
+              "selected_card": ""
+            }
+          ],
+          "forms": [],
+          "h1": [
+            "Flux.charts"
+          ],
+          "landmarks": [
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "header"
+            },
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            },
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "main"
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            }
+          ],
+          "links": [
+            {
+              "aria_label": "",
+              "href": "/",
+              "text": "FluxControl Workbench"
+            },
+            {
+              "aria_label": "",
+              "href": "/",
+              "text": "Dashboard"
+            },
+            {
+              "aria_label": "",
+              "href": "/mine/",
+              "text": "Mine"
+            },
+            {
+              "aria_label": "",
+              "href": "/build/",
+              "text": "Build"
+            },
+            {
+              "aria_label": "",
+              "href": "/live/",
+              "text": "Live"
+            },
+            {
+              "aria_label": "",
+              "href": "/charts/",
+              "text": "Charts"
+            },
+            {
+              "aria_label": "",
+              "href": "/sim/",
+              "text": "Sim"
+            },
+            {
+              "aria_label": "",
+              "href": "/serve/",
+              "text": "Serve"
+            }
+          ],
+          "mode_buttons": [
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=trace-paths&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=trace-paths&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "\u2198",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=trace-samples&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=trace-samples&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "\u2198",
+              "type": "button"
+            }
+          ],
+          "mode_controls": [
+            {
+              "aria_label": "Comp card view mode",
+              "id": ""
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": ""
+            }
+          ],
+          "title": "Flux Charts"
+        },
+        "kind": "html",
+        "location": "",
+        "name": "charts index",
+        "path": "/charts/",
+        "sha256_16": "e2cc581de2a2e123",
+        "status": 200
+      },
+      {
+        "body_bytes": 8650,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": false,
+            "missing_landmarks": false,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [
+            {
+              "aria_label": "Choose color theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-current",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use green theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-green",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use blue theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-blue",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use coral theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-coral",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use purple theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-purple",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use orange theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-orange",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use black theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-black",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use white theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-white",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "",
+              "aria_pressed": "",
+              "classes": "button button-secondary",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "Previous Well",
+              "type": "button"
+            },
+            {
+              "aria_label": "",
+              "aria_pressed": "",
+              "classes": "button button-secondary",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "Next Well",
+              "type": "button"
+            },
+            {
+              "aria_label": "",
+              "aria_pressed": "",
+              "classes": "button button-secondary",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "Reset Range",
+              "type": "button"
+            },
+            {
+              "aria_label": "",
+              "aria_pressed": "",
+              "classes": "button button-secondary",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "Clear Pinned Traces",
+              "type": "button"
+            },
+            {
+              "aria_label": "",
+              "aria_pressed": "",
+              "classes": "button button-secondary",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "Apply",
+              "type": "submit"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=trace-chart&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "\u2196",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=trace-chart&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "[\u2198]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show configure view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=trace-chart&mode=configure",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "\u2699",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=trace-paths&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=trace-paths&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "\u2198",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=trace-samples&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=trace-samples&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "\u2198",
+              "type": "button"
+            }
+          ],
+          "comp_cards": [
+            {
+              "classes": "panel trace-chart-panel comp-focus",
+              "id": "trace-chart-comp-focus",
+              "mode": ""
+            },
+            {
+              "classes": "readiness-card readiness-ok comp-card",
+              "id": "trace-paths-comp-card",
+              "mode": "summary"
+            },
+            {
+              "classes": "readiness-card readiness-ok comp-card",
+              "id": "trace-samples-comp-card",
+              "mode": "summary"
+            }
+          ],
+          "comp_focus": [
+            {
+              "card": "trace-chart",
+              "id": "trace-chart-comp-focus",
+              "mode": "detail"
+            }
+          ],
+          "comp_surfaces": [
+            {
+              "id": "trace-comp-surface",
+              "mode": "detail",
+              "selected_card": "trace-chart"
+            }
+          ],
+          "forms": [
+            {
+              "action": ".",
+              "hx_post": "",
+              "method": "get"
+            }
+          ],
+          "h1": [
+            "Flux.charts"
+          ],
+          "landmarks": [
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "header"
+            },
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            },
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "main"
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            }
+          ],
+          "links": [
+            {
+              "aria_label": "",
+              "href": "/",
+              "text": "FluxControl Workbench"
+            },
+            {
+              "aria_label": "",
+              "href": "/",
+              "text": "Dashboard"
+            },
+            {
+              "aria_label": "",
+              "href": "/mine/",
+              "text": "Mine"
+            },
+            {
+              "aria_label": "",
+              "href": "/build/",
+              "text": "Build"
+            },
+            {
+              "aria_label": "",
+              "href": "/live/",
+              "text": "Live"
+            },
+            {
+              "aria_label": "",
+              "href": "/charts/",
+              "text": "Charts"
+            },
+            {
+              "aria_label": "",
+              "href": "/sim/",
+              "text": "Sim"
+            },
+            {
+              "aria_label": "",
+              "href": "/serve/",
+              "text": "Serve"
+            },
+            {
+              "aria_label": "",
+              "href": "/charts/live/",
+              "text": "Live Charts"
+            }
+          ],
+          "mode_buttons": [
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=trace-chart&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "\u2196",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=trace-chart&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "[\u2198]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show configure view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=trace-chart&mode=configure",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "\u2699",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=trace-paths&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=trace-paths&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "\u2198",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=trace-samples&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=trace-samples&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "\u2198",
+              "type": "button"
+            }
+          ],
+          "mode_controls": [
+            {
+              "aria_label": "Comp card view mode",
+              "id": ""
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": ""
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": ""
+            }
+          ],
+          "title": "Flux Charts"
+        },
+        "kind": "html",
+        "location": "",
+        "name": "charts wells",
+        "path": "/charts/wells/",
+        "sha256_16": "8727db594a2b69f5",
+        "status": 200
+      },
+      {
+        "body_bytes": 2812,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": true,
+            "missing_landmarks": false,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [
+            {
+              "aria_label": "",
+              "aria_pressed": "",
+              "classes": "button button-secondary",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "Previous Well",
+              "type": "button"
+            },
+            {
+              "aria_label": "",
+              "aria_pressed": "",
+              "classes": "button button-secondary",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "Next Well",
+              "type": "button"
+            },
+            {
+              "aria_label": "",
+              "aria_pressed": "",
+              "classes": "button button-secondary",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "Reset Range",
+              "type": "button"
+            },
+            {
+              "aria_label": "",
+              "aria_pressed": "",
+              "classes": "button button-secondary",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "Clear Pinned Traces",
+              "type": "button"
+            },
+            {
+              "aria_label": "",
+              "aria_pressed": "",
+              "classes": "button button-secondary",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "Apply",
+              "type": "submit"
+            }
+          ],
+          "comp_cards": [
+            {
+              "classes": "panel trace-chart-panel comp-card",
+              "id": "trace-chart-comp-card",
+              "mode": "detail"
+            }
+          ],
+          "comp_focus": [],
+          "comp_surfaces": [],
+          "forms": [
+            {
+              "action": ".",
+              "hx_post": "",
+              "method": "get"
+            }
+          ],
+          "h1": [],
+          "landmarks": [
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "main"
+            }
+          ],
+          "links": [],
+          "mode_buttons": [],
+          "mode_controls": [],
+          "title": "Flux Charts"
+        },
+        "kind": "fragment",
+        "location": "",
+        "name": "charts wells embed",
+        "path": "/charts/wells/embed/",
+        "sha256_16": "4f3afd5a8e8f50e4",
+        "status": 200
+      },
+      {
+        "body_bytes": 233,
+        "body_preview": "{\"traceChart\": {\"x\": [], \"series\": [], \"axisGroups\": [], \"windowDays\": 1, \"windowLabel\": \"1 day\", \"source\": \"questdb-trace-cache\", \"setIndex\": 1, \"setLabel\": \"No Wells\"}, \"traceError\": \"No navigation well trace profiles seeded yet.\"}",
+        "content_type": "application/json",
+        "kind": "json",
+        "location": "",
+        "name": "charts wells payload",
+        "path": "/charts/wells/payload/",
+        "sha256_16": "f69fc87ecf9efe5c",
+        "status": 200
+      },
+      {
+        "body_bytes": 39,
+        "body_preview": "{\"ok\": false, \"error\": \"POST required\"}",
+        "content_type": "application/json",
+        "kind": "html",
+        "location": "",
+        "name": "charts annotations",
+        "path": "/charts/annotations/",
+        "sha256_16": "8970a14ad8768cb3",
+        "status": 405
+      },
+      {
+        "body_bytes": 39,
+        "body_preview": "{\"ok\": false, \"error\": \"POST required\"}",
+        "content_type": "application/json",
+        "kind": "json",
+        "location": "",
+        "name": "charts annotation query",
+        "path": "/charts/annotations/query/",
+        "sha256_16": "8970a14ad8768cb3",
+        "status": 405
+      },
+      {
+        "body_bytes": 0,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": true,
+            "missing_landmarks": true,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [],
+          "comp_cards": [],
+          "comp_focus": [],
+          "comp_surfaces": [],
+          "forms": [],
+          "h1": [],
+          "landmarks": [],
+          "links": [],
+          "mode_buttons": [],
+          "mode_controls": [],
+          "title": ""
+        },
+        "kind": "html",
+        "location": "",
+        "name": "charts demand",
+        "path": "/charts/demand/",
+        "sha256_16": "e3b0c44298fc1c14",
+        "status": 405
+      },
+      {
+        "body_bytes": 7733,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": false,
+            "missing_landmarks": false,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [
+            {
+              "aria_label": "Choose color theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-current",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use green theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-green",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use blue theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-blue",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use coral theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-coral",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use purple theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-purple",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use orange theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-orange",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use black theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-black",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use white theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-white",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Copy Live Charts context",
+              "aria_pressed": "",
+              "classes": "copy-corner",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "",
+              "type": "button"
+            },
+            {
+              "aria_label": "",
+              "aria_pressed": "",
+              "classes": "button button-secondary",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "Pause",
+              "type": "button"
+            },
+            {
+              "aria_label": "",
+              "aria_pressed": "",
+              "classes": "button button-secondary",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "Reset Range",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=live-trace-page&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#live-trace-page-comp-card",
+              "text": "\u2196",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=live-trace-page&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#live-trace-page-comp-card",
+              "text": "[\u2198]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Copy Streaming Sample Trend context",
+              "aria_pressed": "",
+              "classes": "copy-corner",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=live-trace-chart&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#live-trace-chart-comp-card",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=live-trace-chart&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#live-trace-chart-comp-card",
+              "text": "\u2198",
+              "type": "button"
+            }
+          ],
+          "comp_cards": [
+            {
+              "classes": "panel comp-card",
+              "id": "live-trace-page-comp-card",
+              "mode": "detail"
+            },
+            {
+              "classes": "panel trace-chart-panel comp-card",
+              "id": "live-trace-chart-comp-card",
+              "mode": "summary"
+            }
+          ],
+          "comp_focus": [],
+          "comp_surfaces": [],
+          "forms": [],
+          "h1": [
+            "Live Tag Charts"
+          ],
+          "landmarks": [
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "header"
+            },
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            },
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "main"
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            }
+          ],
+          "links": [
+            {
+              "aria_label": "",
+              "href": "/",
+              "text": "FluxControl Workbench"
+            },
+            {
+              "aria_label": "",
+              "href": "/",
+              "text": "Dashboard"
+            },
+            {
+              "aria_label": "",
+              "href": "/mine/",
+              "text": "Mine"
+            },
+            {
+              "aria_label": "",
+              "href": "/build/",
+              "text": "Build"
+            },
+            {
+              "aria_label": "",
+              "href": "/live/",
+              "text": "Live"
+            },
+            {
+              "aria_label": "",
+              "href": "/charts/",
+              "text": "Charts"
+            },
+            {
+              "aria_label": "",
+              "href": "/sim/",
+              "text": "Sim"
+            },
+            {
+              "aria_label": "",
+              "href": "/serve/",
+              "text": "Serve"
+            },
+            {
+              "aria_label": "",
+              "href": "/charts/",
+              "text": "Historical Charts"
+            }
+          ],
+          "mode_buttons": [
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=live-trace-page&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#live-trace-page-comp-card",
+              "text": "\u2196",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=live-trace-page&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#live-trace-page-comp-card",
+              "text": "[\u2198]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=live-trace-chart&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#live-trace-chart-comp-card",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=live-trace-chart&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#live-trace-chart-comp-card",
+              "text": "\u2198",
+              "type": "button"
+            }
+          ],
+          "mode_controls": [
+            {
+              "aria_label": "Comp card view mode",
+              "id": ""
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": ""
+            }
+          ],
+          "title": "Flux Live Charts"
+        },
+        "kind": "html",
+        "location": "",
+        "name": "charts live",
+        "path": "/charts/live/",
+        "sha256_16": "588c3eac912a98c4",
+        "status": 200
+      },
+      {
+        "body_bytes": 390,
+        "body_preview": "{\"x\": [], \"series\": [], \"axisGroups\": [{\"key\": \"pressure\", \"label\": \"Pressure\", \"unit\": \"psi\", \"range\": [0, 1200], \"side\": 1}, {\"key\": \"percent\", \"label\": \"Percent\", \"unit\": \"%\", \"range\": [0, 100], \"side\": 1}, {\"key\": \"process\", \"label\": \"P",
+        "content_type": "application/json",
+        "kind": "json",
+        "location": "",
+        "name": "charts live samples",
+        "path": "/charts/live/samples/",
+        "sha256_16": "d1ae7feccfb33167",
+        "status": 200
+      },
+      {
+        "body_bytes": 8897,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": false,
+            "missing_landmarks": false,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [
+            {
+              "aria_label": "Choose color theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-current",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use green theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-green",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use blue theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-blue",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use coral theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-coral",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use purple theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-purple",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use orange theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-orange",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use black theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-black",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "Use white theme",
+              "aria_pressed": "",
+              "classes": "theme-swatch theme-swatch-white",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "\u2588",
+              "type": "button"
+            },
+            {
+              "aria_label": "",
+              "aria_pressed": "",
+              "classes": "button button-secondary",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "Previous Tank",
+              "type": "button"
+            },
+            {
+              "aria_label": "",
+              "aria_pressed": "",
+              "classes": "button button-secondary",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "Next Tank",
+              "type": "button"
+            },
+            {
+              "aria_label": "",
+              "aria_pressed": "",
+              "classes": "button button-secondary",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "Reset Range",
+              "type": "button"
+            },
+            {
+              "aria_label": "",
+              "aria_pressed": "",
+              "classes": "button button-secondary",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "Clear Pinned Traces",
+              "type": "button"
+            },
+            {
+              "aria_label": "",
+              "aria_pressed": "",
+              "classes": "button button-secondary",
+              "hx_get": "",
+              "hx_post": "",
+              "hx_swap": "",
+              "hx_target": "",
+              "text": "Apply",
+              "type": "submit"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=trace-chart&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "\u2196",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=trace-chart&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "[\u2198]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show configure view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=trace-chart&mode=configure",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "\u2699",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=trace-paths&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=trace-paths&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "\u2198",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=trace-samples&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=trace-samples&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "\u2198",
+              "type": "button"
+            }
+          ],
+          "comp_cards": [
+            {
+              "classes": "panel trace-chart-panel comp-focus",
+              "id": "trace-chart-comp-focus",
+              "mode": ""
+            },
+            {
+              "classes": "readiness-card readiness-ok comp-card",
+              "id": "trace-paths-comp-card",
+              "mode": "summary"
+            },
+            {
+              "classes": "readiness-card readiness-ok comp-card",
+              "id": "trace-samples-comp-card",
+              "mode": "summary"
+            }
+          ],
+          "comp_focus": [
+            {
+              "card": "trace-chart",
+              "id": "trace-chart-comp-focus",
+              "mode": "detail"
+            }
+          ],
+          "comp_surfaces": [
+            {
+              "id": "trace-comp-surface",
+              "mode": "detail",
+              "selected_card": "trace-chart"
+            }
+          ],
+          "forms": [
+            {
+              "action": ".",
+              "hx_post": "",
+              "method": "get"
+            }
+          ],
+          "h1": [
+            "Flux.charts"
+          ],
+          "landmarks": [
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "header"
+            },
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            },
+            {
+              "aria_label": "",
+              "id": "",
+              "role": "",
+              "tag": "main"
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": "",
+              "role": "",
+              "tag": "nav"
+            }
+          ],
+          "links": [
+            {
+              "aria_label": "",
+              "href": "/",
+              "text": "FluxControl Workbench"
+            },
+            {
+              "aria_label": "",
+              "href": "/",
+              "text": "Dashboard"
+            },
+            {
+              "aria_label": "",
+              "href": "/mine/",
+              "text": "Mine"
+            },
+            {
+              "aria_label": "",
+              "href": "/build/",
+              "text": "Build"
+            },
+            {
+              "aria_label": "",
+              "href": "/live/",
+              "text": "Live"
+            },
+            {
+              "aria_label": "",
+              "href": "/charts/",
+              "text": "Charts"
+            },
+            {
+              "aria_label": "",
+              "href": "/sim/",
+              "text": "Sim"
+            },
+            {
+              "aria_label": "",
+              "href": "/serve/",
+              "text": "Serve"
+            },
+            {
+              "aria_label": "",
+              "href": "/charts/live/",
+              "text": "Live Charts"
+            }
+          ],
+          "mode_buttons": [
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=trace-chart&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "\u2196",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=trace-chart&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "[\u2198]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show configure view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=trace-chart&mode=configure",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "\u2699",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=trace-paths&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=trace-paths&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "\u2198",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show summary view",
+              "aria_pressed": "true",
+              "classes": "comp-card-mode-control is-active",
+              "hx_get": "?card=trace-samples&mode=summary",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "[\u2196]",
+              "type": "button"
+            },
+            {
+              "aria_label": "Show detail view",
+              "aria_pressed": "false",
+              "classes": "comp-card-mode-control",
+              "hx_get": "?card=trace-samples&mode=detail",
+              "hx_post": "",
+              "hx_swap": "outerHTML show:none",
+              "hx_target": "#trace-comp-surface",
+              "text": "\u2198",
+              "type": "button"
+            }
+          ],
+          "mode_controls": [
+            {
+              "aria_label": "Comp card view mode",
+              "id": ""
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": ""
+            },
+            {
+              "aria_label": "Comp card view mode",
+              "id": ""
+            }
+          ],
+          "title": "Flux Charts"
+        },
+        "kind": "html",
+        "location": "",
+        "name": "charts fluxolot",
+        "path": "/charts/fluxolot/",
+        "sha256_16": "1cb8bfca8a7c1474",
+        "status": 200
+      },
+      {
+        "body_bytes": 227,
+        "body_preview": "{\"traceChart\": {\"x\": [], \"series\": [], \"axisGroups\": [], \"windowDays\": 1, \"windowLabel\": \"1 day\", \"source\": \"trace-cache\", \"setIndex\": 1, \"setLabel\": \"No Fluxolot Tanks\"}, \"traceError\": \"No Fluxolot trace profiles seeded yet.\"}",
+        "content_type": "application/json",
+        "kind": "json",
+        "location": "",
+        "name": "charts fluxolot payload",
+        "path": "/charts/fluxolot/payload/",
+        "sha256_16": "f985bef57b042a74",
+        "status": 200
+      },
+      {
+        "body_bytes": 0,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": true,
+            "missing_landmarks": true,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [],
+          "comp_cards": [],
+          "comp_focus": [],
+          "comp_surfaces": [],
+          "forms": [],
+          "h1": [],
+          "landmarks": [],
+          "links": [],
+          "mode_buttons": [],
+          "mode_controls": [],
+          "title": ""
+        },
+        "kind": "redirect",
+        "location": "/charts/",
+        "name": "trace redirect",
+        "path": "/trace/",
+        "sha256_16": "e3b0c44298fc1c14",
+        "status": 302
+      },
+      {
+        "body_bytes": 0,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": true,
+            "missing_landmarks": true,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [],
+          "comp_cards": [],
+          "comp_focus": [],
+          "comp_surfaces": [],
+          "forms": [],
+          "h1": [],
+          "landmarks": [],
+          "links": [],
+          "mode_buttons": [],
+          "mode_controls": [],
+          "title": ""
+        },
+        "kind": "redirect",
+        "location": "/charts/wells/",
+        "name": "trace wells redirect",
+        "path": "/trace/wells/",
+        "sha256_16": "e3b0c44298fc1c14",
+        "status": 302
+      },
+      {
+        "body_bytes": 0,
+        "content_type": "text/html; charset=utf-8",
+        "dom": {
+          "accessibility_flags": {
+            "missing_h1": true,
+            "missing_landmarks": true,
+            "unnamed_buttons": []
+          },
+          "admin_links": [],
+          "buttons": [],
+          "comp_cards": [],
+          "comp_focus": [],
+          "comp_surfaces": [],
+          "forms": [],
+          "h1": [],
+          "landmarks": [],
+          "links": [],
+          "mode_buttons": [],
+          "mode_controls": [],
+          "title": ""
+        },
+        "kind": "redirect",
+        "location": "/charts/",
+        "name": "trace clone redirect",
+        "path": "/trace-clone/",
+        "sha256_16": "e3b0c44298fc1c14",
+        "status": 302
+      }
+    ]
+  },
+  "target": {
+    "client_base": "http://testserver",
+    "live_server_url": "http://localhost:48471",
+    "server_mode": "django pytest live_server / test client",
+    "site_started_by_agent": false
+  }
+}

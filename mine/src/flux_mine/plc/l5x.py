@@ -10,8 +10,12 @@ from flux_mine.plc.models import (
     PlcMember,
     PlcProgram,
     PlcProject,
+    PlcRoutine,
+    PlcRung,
+    PlcTask,
     PlcTag,
     parse_dimensions,
+    parse_rll_instructions,
 )
 
 
@@ -40,6 +44,7 @@ def parse_controller(node: ET.Element, *, source_path: str = "") -> PlcControlle
     data_types += tuple(parse_add_on_instructions(child(node, "AddOnInstructionDefinitions")))
     tags = tuple(parse_tags(child(node, "Tags"), scope="Global"))
     programs = tuple(parse_programs(child(node, "Programs")))
+    tasks = tuple(parse_tasks(child(node, "Tasks")))
     major_version = int_or_none(node.attrib.get("MajorRev"))
     return PlcController(
         name=node.attrib.get("Name", "Unknown"),
@@ -49,6 +54,7 @@ def parse_controller(node: ET.Element, *, source_path: str = "") -> PlcControlle
         data_types=data_types,
         tags=tags,
         programs=programs,
+        tasks=tasks,
         source_path=source_path,
         raw=dict(node.attrib),
     )
@@ -139,8 +145,80 @@ def parse_programs(node: ET.Element | None) -> list[PlcProgram]:
         result.append(
             PlcProgram(
                 name=name,
+                main_routine_name=program_node.attrib.get("MainRoutineName", ""),
                 tags=tuple(parse_tags(child(program_node, "Tags"), scope=name)),
+                routines=tuple(parse_routines(child(program_node, "Routines"))),
                 raw=dict(program_node.attrib),
+            )
+        )
+    return result
+
+
+def parse_routines(node: ET.Element | None) -> list[PlcRoutine]:
+    if node is None:
+        return []
+    result: list[PlcRoutine] = []
+    for routine_node in children(node, "Routine"):
+        name = routine_node.attrib.get("Name")
+        if not name:
+            continue
+        routine_type = routine_node.attrib.get("Type", "")
+        result.append(
+            PlcRoutine(
+                name=name,
+                routine_type=routine_type,
+                rungs=tuple(parse_rungs(child(routine_node, "RLLContent"))),
+                raw=dict(routine_node.attrib),
+            )
+        )
+    return result
+
+
+def parse_rungs(node: ET.Element | None) -> list[PlcRung]:
+    if node is None:
+        return []
+    result: list[PlcRung] = []
+    for sort_order, rung_node in enumerate(children(node, "Rung")):
+        text_node = child(rung_node, "Text")
+        rung_number = int_or_none(rung_node.attrib.get("Number"))
+        text = (text_node.text or "").strip() if text_node is not None else ""
+        result.append(
+            PlcRung(
+                number=rung_number if rung_number is not None else sort_order,
+                rung_type=rung_node.attrib.get("Type", ""),
+                text=text,
+                comment=description(rung_node),
+                instructions=parse_rll_instructions(text),
+                raw=dict(rung_node.attrib),
+            )
+        )
+    return result
+
+
+def parse_tasks(node: ET.Element | None) -> list[PlcTask]:
+    if node is None:
+        return []
+    result: list[PlcTask] = []
+    for task_node in children(node, "Task"):
+        name = task_node.attrib.get("Name")
+        if not name:
+            continue
+        scheduled_programs_node = child(task_node, "ScheduledPrograms")
+        result.append(
+            PlcTask(
+                name=name,
+                task_type=task_node.attrib.get("Type", ""),
+                priority=int_or_none(task_node.attrib.get("Priority")),
+                rate=int_or_none(task_node.attrib.get("Rate")),
+                watchdog=int_or_none(task_node.attrib.get("Watchdog")),
+                disable_update_outputs=optional_bool_attr(task_node.attrib.get("DisableUpdateOutputs")),
+                inhibit_task=optional_bool_attr(task_node.attrib.get("InhibitTask")),
+                scheduled_programs=tuple(
+                    scheduled.attrib["Name"]
+                    for scheduled in children(scheduled_programs_node, "ScheduledProgram")
+                    if scheduled.attrib.get("Name")
+                ),
+                raw=dict(task_node.attrib),
             )
         )
     return result
@@ -156,6 +234,10 @@ def parse_tags(node: ET.Element | None, *, scope: str) -> list[PlcTag]:
             continue
         tag_type = tag_node.attrib.get("TagType", "Base")
         alias_for = tag_node.attrib.get("AliasFor", "")
+        raw = dict(tag_node.attrib)
+        tag_data = parse_tag_data(tag_node)
+        if tag_data:
+            raw["data"] = tag_data
         result.append(
             PlcTag(
                 name=name,
@@ -169,10 +251,27 @@ def parse_tags(node: ET.Element | None, *, scope: str) -> list[PlcTag]:
                 external_access=tag_node.attrib.get("ExternalAccess", ""),
                 constant=optional_bool_attr(tag_node.attrib.get("Constant")),
                 radix=tag_node.attrib.get("Radix", ""),
-                raw=dict(tag_node.attrib),
+                raw=raw,
             )
         )
     return result
+
+
+def parse_tag_data(node: ET.Element) -> list[dict[str, object]]:
+    payloads: list[dict[str, object]] = []
+    for data_node in children(node, "Data"):
+        payload: dict[str, object] = {
+            "format": data_node.attrib.get("Format", ""),
+            "attributes": dict(data_node.attrib),
+        }
+        text = (data_node.text or "").strip()
+        if text:
+            payload["text"] = text
+        child_xml = [ET.tostring(data_child, encoding="unicode") for data_child in data_node]
+        if child_xml:
+            payload["children"] = child_xml
+        payloads.append(payload)
+    return payloads
 
 
 def dimensions_from_attrs(attrs: dict[str, str]) -> tuple[int, ...]:
@@ -193,7 +292,9 @@ def child(node: ET.Element, name: str) -> ET.Element | None:
     return None
 
 
-def children(node: ET.Element, name: str) -> list[ET.Element]:
+def children(node: ET.Element | None, name: str) -> list[ET.Element]:
+    if node is None:
+        return []
     return [candidate for candidate in node if local_name(candidate.tag) == name]
 
 

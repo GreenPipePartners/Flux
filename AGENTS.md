@@ -1,3 +1,6 @@
+# Design Document
+Working to build a master source of truth specification here: `/docs/Master Design.md`
+This migration is curently in-progress. These specifications should be taken very seriously, and we should shape feedback around polishing this document
 # Philosophy
 - I always like to use python `uv` for projects
 - Everything in python
@@ -78,25 +81,24 @@
 # Architectural diagram
 
 ```
-
                               ┌──────────┐  ╔══════════╗        ┏━━━━━━Flux━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
                               │ Internal │  ║ Features ║        ┃                            ╔═══════════════════╗                                  ┃
                               └──────────┘  ╚══════════╝        ┃                            ║                   ║                                  ┃
                                                                 ┃  ╔═══════════════════╗     ║    Flux.build:    ║     ╔═══════════════════╗        ┃
-                                                                ┃  ║    Flux.mine:     ║     ║ Design Flux.cells ║     ║    Flux.trace:    ║        ┃
+                                                                ┃  ║    Flux.mine:     ║     ║ Design Flux.cells ║     ║    Flux.charts:   ║        ┃
                                                                 ┃  ║   Recover Tags    ║     ║  from old SCADA   ║     ║    Power user     ║        ┃
                                                                 ┃  ║ & HMI primitives  ║←─┐  ║                   ║  ┌─→║   customizeable   ║←────   ┃
                                                                 ┃  ║  from old SCADA   ║  │  ╚═════════↑═════════╝  │  ║  modern charting  ║    │   ┃
                                                                 ┃  ║                   ║  └─────────┐  │  ┌─────────┘  ║                   ║    │   ┃
                                                                 ┃  ╚═══════════════════╝            │  │  │            ╚═══════════════════╝    │   ┃
-                                                                ┃                                   │  │  │           ┌────────────────────┐    │   ┃
-                                                                ┃  ╔═══════════════════╗     ┌───────────────────┐    │   Configurator:    │    │   ┃
-                                                                ┃  ║    Flux.live:     ║     │                   │    │    - Flux.trace    │    │   ┃
-                                                                ┃  ║   light process   ║     │     Flux.web:     │    │    - Flux.live     │    │   ┃
-                                                                ┃  ║   visualization   ←──────   Client portal   ────→│    - Flux.sim      │    │   ┃
-                                                                ┃  ║      module       ║     │                   │    │    - Flux.serve    │    │   ┃
-                                                                ┃  ║                   ║     │                   │    │    - Flux.opt      │    │   ┃
-                                                                ┃  ╚════════════════↑══╝     └──────↑─────────↑──┘    └────────────────────┘    │   ┃
+                                                                ┃                                   │  │  │                                     │   ┃
+                                                                ┃  ╔═══════════════════╗     ┌───────────────────┐     ╔═══════════════════╗    │   ┃
+                                                                ┃  ║    Flux.live:     ║     │                   │     ║                   ║    │   ┃
+                                                                ┃  ║   light process   ║     │     Flux.web:     │     ║    Flux.cell:     ║    │   ┃
+                                                                ┃  ║   visualization   ←──────   Client portal   ──────→   Process Flow    ║    │   ┃
+                                                                ┃  ║      module       ║     │                   │     ║    Collection     ║    │   ┃
+                                                                ┃  ║                   ║     │                   │     ║                   ║    │   ┃
+                                                                ┃  ╚════════════════↑══╝     └──────↑─────────↑──┘     ╚═══════════════════╝    │   ┃
                                                                 ┃                   │               │         │                                 │   ┃
                               ┌────────────────┐ ┌──Flux.bridge──────────────────┐ ┌│───────────────│──┐    ┌───────────────────┐┌───────────┐  │   ┃
                               │                │ │┌───────────┐    ╔═══════════╗ │ │                   │    │    Flux.base:     ││ Flux.opt: │  │   ┃
@@ -114,16 +116,17 @@
                               │                │ │└───────────┘    ╚═══════════╝ │ ║                   ║     │                   │                  ┃
                               └────────────────┘ └───────────────────────────────┘ ╚═══════════════════╝     └───────────────────┘                  ┃
                                                                 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-
-
-
-
-
-
+                                                                                             ┏━Flux.Deep━━━━━━━━━━━━━┓
+                                                                                             ┃ ╔═══════════════════╗ ┃
+                                                                                             ┃ ║                   ║ ┃
+                                                                                             ┃ ║     Flux.plc:     ║ ┃
+                                                                                             ┃ ║   PLC Emulation   ║ ┃
+                                                                                             ┃ ║                   ║ ┃
+                                                                                             ┃ ║                   ║ ┃
+                                                                                             ┃ ╚═══════════════════╝ ┃
+                                                                                             ┗━━━━━━━━━━━━━━━━━━━━━━━┛
 
 ```
-
-
 # Tech notes
 - When I paste in the LLM from the UI, I am trying to call out an object from the UI. You should treat this as an element reference, unless I reference the content of it directly
 

@@ -1,14 +1,28 @@
 # Trace
 
-Flux Trace is the historical and live trend surface.
+Flux Trace owns historical-time context: profiles, signals, runtime sample history, and demand signals for active trend surfaces.
 
-It renders from recorded runtime samples and local rolling cache data rather than creating browser-driven Ignition binding load.
+Trace is not a direct Ignition read surface. It should use local runtime samples, chart cache rows, and explicit demand signals so external IO stays centralized in Flux.serve workers.
 
-## Fluxolot Proof Surface
+## Operator Surfaces
 
-- `/trace/fluxolot/` cycles between Sir and Missus Fluxolot tank charts.
-- `/trace/fluxolot-sir/` opens the Sir profile directly.
-- `/trace/fluxolot-missus/` opens the Missus profile directly.
-- `install_fluxolot_fishtank --long-history --trace-cache-all --export-questdb` seeds the years-long proof dataset and exports local cache rows to QuestDB.
+- `/chart/` surfaces trend views backed by Trace profiles and Flux.chart rendering.
+- `/chart/demand/` records active profile demand so related runtime tags can be sampled hot by the worker path.
+- Fluxolot proof charts live under `/chart/fluxolot/`, `/chart/fluxolot-sir/`, and `/chart/fluxolot-missus/`.
 
-See `trace-architecture.md` for JavaScript and performance boundaries.
+## Service Contract
+
+Trace demand should flow through Flux.opt and Flux.serve:
+
+```text
+active trace profile -> RuntimeDemand -> due runtime tags -> Fluxy block read -> LatestTagValue + TagSample
+```
+
+If trace data is old but quality is good, inspect the relevant sampling worker, demand lease state, and cache worker before blaming the browser page.
+
+## Related Docs
+
+- `trace-architecture.md`
+- `charts-architecture.md`
+- `apps/chart.md`
+- `apps/opt.md`

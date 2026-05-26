@@ -7,7 +7,10 @@ from pathlib import Path
 import pytest
 
 from flux.base.field_config import ignition_tag_config
-from flux.base.models import FieldDevice, FieldEndpoint, FieldTag
+from flux.base.models import Tag
+from flux.sim.models import FieldEndpoint
+from flux.sim.models import TagConfig
+from flux.sim.testing import create_device_config, create_tag_config
 from flux.serve.field_supervisor import process_spec, start_process
 
 
@@ -34,7 +37,13 @@ def test_field_supervisor_multi_process_devices_read_through_fluxy(tmp_path):
     tag_folder = os.getenv("FLUX_FIELD_SUPERVISOR_TAG_FOLDER", "FluxFieldSupervisor")
     cert_path = tmp_path / "pki"
     endpoint, field_tags = create_supervised_devices()
-    spec = process_spec(endpoint, runtime_dir=tmp_path / "runtime", base_port=base_port, project_path=project_path)
+    spec = process_spec(
+        endpoint,
+        runtime_dir=tmp_path / "runtime",
+        base_port=base_port,
+        project_path=project_path,
+        host=public_host,
+    )
     specs = [spec]
     processes = []
     fx = fluxy.Fluxy(
@@ -77,17 +86,18 @@ def create_supervised_devices():
     endpoint = FieldEndpoint.objects.create(name="supervised-field", security_policy="None")
     field_tags = []
     for index, device_name in enumerate(["SupervisorA", "SupervisorB"], start=1):
-        device = FieldDevice.objects.create(endpoint=endpoint, name=device_name, device_type="ControlLogix")
+        device = create_device_config(endpoint=endpoint, name=device_name, device_type="ControlLogix")
         field_tags.append(
-            FieldTag.objects.create(
+            create_tag_config(
                 device=device,
                 name="Value",
-                data_type=FieldTag.DataType.INT,
+                data_type=Tag.DataType.INT,
                 update_rate_ms=500,
-                simulation_type=FieldTag.SimulationType.RAMP,
+                simulation_type=TagConfig.SimulationType.RAMP,
                 min_value=0,
                 max_value=1000,
                 initial_value=str(index),
+                materialized=True,
             )
         )
     return endpoint, field_tags

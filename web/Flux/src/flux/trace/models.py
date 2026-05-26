@@ -25,6 +25,7 @@ class TraceProfile(models.Model):
 class TraceSignal(models.Model):
     profile = models.ForeignKey(TraceProfile, on_delete=models.CASCADE, related_name="signals")
     tag = models.ForeignKey(RuntimeTag, on_delete=models.CASCADE, related_name="trace_signals")
+    series = models.ForeignKey("plane.Series", on_delete=models.SET_NULL, related_name="chart_signals", blank=True, null=True)
     label = models.CharField(max_length=255, blank=True)
     unit = models.CharField(max_length=80, blank=True)
     axis_key = models.SlugField(max_length=80, default="process")
@@ -51,11 +52,35 @@ class TraceSignal(models.Model):
 
     @property
     def display_label(self) -> str:
-        return self.label or self.tag.display_name
+        if self.label:
+            return self.label
+        series_base_tag = self.series_base_tag
+        if series_base_tag is not None:
+            return series_base_tag.name
+        return self.tag.display_name
 
     @property
     def display_unit(self) -> str:
         return self.unit or self.tag.engineering_units
+
+    @property
+    def series_base_tag(self):
+        series = getattr(self, "series", None)
+        return getattr(series, "base_tag", None) if series is not None else None
+
+    @property
+    def series_storage_key(self) -> str:
+        series = getattr(self, "series", None)
+        if series is not None and series.storage_key:
+            return series.storage_key
+        series_base_tag = self.series_base_tag
+        if series_base_tag is not None:
+            return series_base_tag.full_path
+        return self.tag.full_path
+
+    @property
+    def chart_full_path(self) -> str:
+        return self.series_storage_key
 
     @property
     def historian_provider(self) -> str:
@@ -63,31 +88,13 @@ class TraceSignal(models.Model):
 
     @property
     def historian_path(self) -> str:
-        path = (self.source_path or self.tag.path).strip("/")
-        return f"histprov:{self.historian_provider}:/sys:gateway:/prov:{self.tag.provider}:/tag:{path}"
+        series_base_tag = self.series_base_tag
+        provider = series_base_tag.provider if series_base_tag is not None else self.tag.provider
+        path = (self.source_path or (series_base_tag.tagpath if series_base_tag is not None else self.tag.path)).strip("/")
+        return f"histprov:{self.historian_provider}:/sys:gateway:/prov:{provider}:/tag:{path}"
 
     def __str__(self) -> str:
         return f"{self.profile.key}: {self.display_label}"
-
-
-class TraceCachePoint(models.Model):
-    signal = models.ForeignKey(TraceSignal, on_delete=models.CASCADE, related_name="cache_points")
-    timestamp = models.DateTimeField()
-    value_float = models.FloatField()
-    quality_code = models.CharField(max_length=120, default="Good")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        constraints = [models.UniqueConstraint(fields=["signal", "timestamp"], name="unique_trace_cache_signal_timestamp")]
-        indexes = [
-            models.Index(fields=["signal", "-timestamp"], name="trace_cache_sig_time_idx"),
-            models.Index(fields=["timestamp"], name="trace_cache_timestamp_idx"),
-        ]
-        ordering = ["-timestamp"]
-
-    def __str__(self) -> str:
-        return f"{self.signal_id} @ {self.timestamp}: {self.value_float}"
 
 
 class TraceCacheCursor(models.Model):

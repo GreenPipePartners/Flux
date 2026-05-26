@@ -64,7 +64,7 @@ This is the local operator path from a checked-in `tag_data` export to Ignition-
 - Django web app on `http://localhost:8000/`
 - QuestDB Trace data plane on `postgresql://admin:quest@localhost:8812/qdb`
 - FieldAgent OPC UA adapter process or processes, depending on `FLUX_FIELD_AGENT_MODE`
-- Fluxolot live sampler that reads Ignition through Fluxy and writes latest values into Flux
+- Fluxolot Spot sampler that reads Ignition through Fluxy and writes latest values into Flux
 
 The service runs `scripts/flux-start.sh`.
 
@@ -75,8 +75,7 @@ The launcher intentionally:
 - exports FieldAgent config for the legacy single-process FieldAgent path
 - starts QuestDB from `.runtime/questdb-dist` with data in `.runtime/questdb-data`
 - starts Django through Gunicorn on Linux with `FLUX_WEB_WORKERS=8` and `FLUX_WEB_THREADS=2` by default
-- starts Django through Waitress on Windows for native compatibility
-- starts FieldAgent in `FLUX_FIELD_AGENT_MODE=legacy` by default, with `FLUX_FIELD_AGENT_MODE=supervised` available for the `Flux.serve` per-device supervisor
+- starts FieldAgent in `FLUX_FIELD_AGENT_MODE=supervised` by default, with `FLUX_FIELD_AGENT_MODE=legacy` retained for the single-process compatibility path
 - waits until Django responds before declaring the stack ready
 - keeps all child services under one cleanup boundary
 
@@ -84,7 +83,7 @@ FieldAgent modes:
 
 - `FLUX_FIELD_AGENT_MODE=legacy` starts one FieldAgent from `web/Flux/field/field-config.json` on `opc.tcp://localhost:4840/flux/field`.
 - `FLUX_FIELD_AGENT_MODE=supervised` starts `manage.py flux_field_supervisor`, which writes per-device runtime configs under `.runtime/field-agent` and starts one FieldAgent process per enabled field device.
-- Run the supervisor directly with `cd web/Flux && uv run python manage.py flux_field_supervisor --runtime-dir ../../.runtime/field-agent`.
+- Run the supervisor directly with `uv run python web/Flux/manage.py flux_field_supervisor --runtime-dir .runtime/field-agent`.
 
 Architecture boundary:
 
@@ -114,7 +113,7 @@ This runs `manage.py import_tag_data_catalog`. It imports the provider tree, cor
 flux field materialize --provider Tag_02
 ```
 
-This runs `manage.py materialize_sim_field_config`. It creates enabled `FieldEndpoint`, `FieldDevice`, and `FieldTag` rows from the imported simulation catalog.
+This runs `manage.py materialize_sim_field_config`. It creates enabled `sim.Endpoint`, `sim.DeviceConfig`, and `sim.TagConfig` rows from the imported simulation catalog.
 
 3. Start supervised FieldAgent processes:
 
@@ -164,13 +163,12 @@ flux doctor
 For direct Django access, the equivalent commands are:
 
 ```bash
-cd web/Flux
-uv run python manage.py import_tag_data_catalog Tag_02 \
-  --devices ../../tag_data/tag_data/tag_02\ devices.txt \
-  --tags ../../tag_data/tag_data/tags02.json
-uv run python manage.py materialize_sim_field_config --provider Tag_02
-uv run python manage.py configure_field_ignition --tag-provider default --tag-folder FieldAgent
-uv run python manage.py flux_field_supervisor --runtime-dir ../../.runtime/field-agent
+uv run python web/Flux/manage.py import_tag_data_catalog Tag_02 \
+  --devices "tag_data/tag_data/tag_02 devices.txt" \
+  --tags tag_data/tag_data/tags02.json
+uv run python web/Flux/manage.py materialize_sim_field_config --provider Tag_02
+uv run python web/Flux/manage.py configure_field_ignition --tag-provider default --tag-folder FieldAgent
+uv run python web/Flux/manage.py flux_field_supervisor --runtime-dir .runtime/field-agent
 ```
 
 Start/stop/status wrappers:
@@ -201,6 +199,8 @@ It shows:
 
 The stale recovery action performs one Fluxy `read_blocking([...])` block read for the stale set, then updates `LatestTagValue` and `TagSample`. Avoid per-tag read loops.
 
+Runtime health is cached state. In steady state a Flux.serve sampler should keep runtime tags fresh through Flux.opt block reads. A page reload or HTMX refresh may update the display, but it should not be the mechanism that performs Ignition reads.
+
 The Live Ignition Bridge configuration is stored in Django as `dashboard.IgnitionBridgeConfig`.
 
 Token behavior:
@@ -209,6 +209,7 @@ Token behavior:
 - blank token input keeps the existing token
 - `Clear stored token` explicitly clears it
 - `Test connection` calls Fluxy `util_get_version`
+- `Ignition 8.3.6 (b2026042713)` is the Ignition product version plus vendor build identifier returned by the bridge test
 
 ## Health
 
@@ -226,7 +227,7 @@ The health check currently covers:
 - runtime tag count, stale count, bad quality count, and latest read age
 - Live Ignition Bridge token/config and live Ignition version probe
 - historian datasource type/status
-- QuestDB Trace data-plane reachability, `trace_points` count, and latest timestamp
+- QuestDB Trace data-plane reachability, `plane_samples` count, and latest timestamp
 - Ignition Gateway and Fluxy WebDev readiness
 
 Architecture boundary:
@@ -238,36 +239,33 @@ Architecture boundary:
 - `Flux.serve` owns FieldAgent adapter supervision; FieldAgent is the OPC UA process that services materialized `Flux.sim` devices.
 - Django request handlers should not directly own long-lived process supervision.
 
-## Trace Worker
+## Chart Worker
 
-Flux Trace has a dedicated `flux.serve` worker command for keeping local rolling-history cache current from Ignition/Fluxy.
+Flux.chart has a dedicated `flux.serve` worker command for keeping local rolling-history cache current from Ignition/Fluxy.
 
 Run one generic cache sync:
 
 ```bash
-cd web/Flux
-uv run python manage.py flux_trace_worker --once
+uv run python web/Flux/manage.py flux_charts_worker --once
 ```
 
 Run one navigation-well live cycle for the first ten seeded wells:
 
 ```bash
-cd web/Flux
-uv run python manage.py flux_trace_worker --once --nav-well-live --nav-well-limit 10
+uv run python web/Flux/manage.py flux_charts_worker --once --nav-well-live --nav-well-limit 10
 ```
 
 Run continuously every minute:
 
 ```bash
-cd web/Flux
-uv run python manage.py flux_trace_worker --nav-well-live --nav-well-limit 10 --interval 60
+uv run python web/Flux/manage.py flux_charts_worker --nav-well-live --nav-well-limit 10 --interval 60
 ```
 
-The dedicated Trace worker performs service/process work. Trace views should only read local cache payloads.
+The dedicated Trace worker performs service/process work. Trace views should only read local Plane sample payloads.
 
 ## QuestDB Trace Data Plane
 
-Navigation-well Trace uses QuestDB as its only HTTP payload data plane. The Postgres/local ORM cache remains the control plane and source/export staging area; browser payloads are served from QuestDB.
+Navigation-well Trace uses QuestDB as its high-volume HTTP payload data plane. Postgres `plane.sample` remains the control-plane source/export staging area; browser payloads are served from QuestDB when available.
 
 Start QuestDB directly:
 
@@ -275,25 +273,18 @@ Start QuestDB directly:
 scripts/questdb-start.sh
 ```
 
-On Windows:
-
-```powershell
-scripts\questdb-start.ps1
-```
-
 The scripts download QuestDB `9.3.5` into `.runtime/questdb-dist` when missing and store data under `.runtime/questdb-data`. Override with `QUESTDB_VERSION`, `FLUX_QUESTDB_DIST`, or `FLUX_QUESTDB_DATA` if needed.
 
-Export current nav-well Trace cache rows into QuestDB:
+Export current nav-well Plane sample rows into QuestDB:
 
 ```bash
-cd web/Flux
-uv run python manage.py sync_trace_questdb --limit 10 --replace
+uv run python web/Flux/manage.py sync_charts_questdb --limit 10 --replace
 ```
 
 The active nav-well payload endpoint is:
 
 ```text
-http://localhost:8000/trace/wells/payload/?set=1&window_minutes=10080&step_minutes=7
+http://localhost:8000/chart/wells/payload/?set=1&window_minutes=10080&step_minutes=7
 ```
 
 Known good output ends with:
@@ -302,22 +293,11 @@ Known good output ends with:
 Flux is healthy.
 ```
 
-## Windows
-
-Windows foreground startup exists:
-
-```cmd
-scripts\flux-start.cmd
-```
-
-Windows background service management is not wired yet. The repo contains placeholder `.cmd` service scripts that fail clearly instead of pretending Windows background service support exists.
-
 ## Optional Browser Tests
 
 Trace interaction tests use Playwright and are gated behind `FLUX_PLAYWRIGHT=1`.
 
 ```bash
-cd web/Flux
 uv run python -m playwright install chromium
-FLUX_PLAYWRIGHT=1 DATABASE_URL= uv run pytest src/flux/trace/test_e2e_playwright.py -q
+FLUX_PLAYWRIGHT=1 DATABASE_URL= uv run pytest web/Flux/src/flux/trace/test_e2e_playwright.py -q
 ```

@@ -16,12 +16,12 @@ flux doctor
 
 See `../../docs/operator-guide.md`.
 
-Manual Django-only startup remains useful for isolated checks:
+Manual Django-only startup remains useful for isolated checks. Run these from the repository root because `uv` is rooted there:
 
 ```bash
 uv sync
-uv run python manage.py migrate
-uv run python manage.py runserver --noreload -6 [::]:8000
+uv run python web/Flux/manage.py migrate
+uv run python web/Flux/manage.py runserver --noreload -6 [::]:8000
 ```
 
 Local settings default to SQLite when `DATABASE_URL` is empty. Production should use Postgres.
@@ -40,7 +40,7 @@ sudo -u postgres createdb --owner flux flux
 Create `.env` from the example:
 
 ```bash
-cp .env.example .env
+cp web/Flux/.env.example web/Flux/.env
 ```
 
 Ensure it contains:
@@ -49,17 +49,17 @@ Ensure it contains:
 DATABASE_URL=postgres://flux:flux@localhost:5432/flux
 ```
 
-Then migrate and run:
+Then migrate and run from the repository root:
 
 ```bash
-uv run python manage.py migrate
-uv run python manage.py runserver
+uv run python web/Flux/manage.py migrate
+uv run python web/Flux/manage.py runserver
 ```
 
 Run the live Field demo worker in another terminal:
 
 ```bash
-uv run python manage.py run_sim_demo --interval 10
+uv run python web/Flux/manage.py run_sim_demo --interval 10
 ```
 
 ## Flux Sim Provider Selection
@@ -72,7 +72,7 @@ The `/sim/` page includes two simulation areas:
 Import an Ignition provider export into the standalone Flux Sim database:
 
 ```bash
-uv run python manage.py import_tag_provider_export ../../tags02.json --provider ACM02
+uv run python web/Flux/manage.py import_tag_provider_export tags02.json --provider ACM02
 ```
 
 Then open:
@@ -94,13 +94,13 @@ Save selected branches with `Save Selection`, then export selected OPC source pa
 
 ```bash
 curl 'http://localhost:8000/sim/imported/selected-paths.json?provider=ACM02' \
-  > ../../sim/selected-paths.json
+  > sim/selected-paths.json
 ```
 
 Use that file with `flux-sim-configure-ignition`:
 
 ```bash
-cd ../../sim
+cd sim
 uv run --with ../fluxy flux-sim-configure-ignition \
   field-config.sim.json \
   --base-url http://localhost:8088/system/webdev/flux \
@@ -116,14 +116,14 @@ uv run --with ../fluxy flux-sim-configure-ignition \
 Apply migrations after pulling these changes:
 
 ```bash
-uv run python manage.py migrate sim
+uv run python web/Flux/manage.py migrate sim
 ```
 
-## Flux Trace
+## Flux Chart
 
-`flux.trace` uses uPlot for visualizing sample tag history. uPlot assets are vendored locally under `src/static/flux/vendor/uplot/`, and Trace behavior is split into static ES modules under `src/static/flux/trace/`.
+`flux.chart` uses uPlot for visualizing sample tag history. uPlot assets are vendored locally under `src/static/flux/vendor/uplot/`, and Chart behavior is split into static ES modules under `src/static/flux/chart/`.
 
-The current trace uses local sample tag data and returns a renderer-neutral shape:
+The current chart surface uses local sample tag data and returns a renderer-neutral shape:
 
 ```json
 {
@@ -133,20 +133,20 @@ The current trace uses local sample tag data and returns a renderer-neutral shap
 }
 ```
 
-Trace is now a first-class operating space. Its fast path is configured tags plus `TraceSignal` significance, synced from Ignition historian into local `TraceCachePoint` rows, then rendered from the local rolling cache.
+Flux.chart is now a first-class operating space. Its fast path is configured tags plus `TraceSignal` significance, synced from Ignition historian into local `plane.sample` rows, then rendered from the local rolling cache.
 
-See `../../docs/trace-architecture.md`.
+See `../../docs/charts-architecture.md`.
 
-Seed the first ten navigation wells through the Ignition-backed Trace path:
+Seed the first ten navigation wells through the Ignition-backed Chart path:
 
 ```bash
-uv run python manage.py seed_nav_well_trace --limit 10 --configure-ignition --inject-history --update-live --sync-cache
+uv run python web/Flux/manage.py seed_nav_well_charts --limit 10 --configure-ignition --inject-history --update-live --sync-cache
 ```
 
 Then open:
 
 ```text
-http://localhost:8000/trace/wells/
+http://localhost:8000/chart/wells/
 ```
 
 ## Live Extraction Trial
@@ -156,13 +156,13 @@ The live-to-sim extraction trial builds memory tags and raw history in a live na
 Run the command against the local dev gateway:
 
 ```bash
-uv run python manage.py trial_live_extraction --cleanup
+uv run python web/Flux/manage.py trial_live_extraction --cleanup
 ```
 
 Run the gated integration test:
 
 ```bash
-FLUX_LIVE_EXTRACTION_INTEGRATION=1 uv run pytest src/flux/sim/test_integration_live_extract.py -q
+FLUX_LIVE_EXTRACTION_INTEGRATION=1 uv run pytest web/Flux/src/flux/sim/test_integration_live_extract.py -q
 ```
 
 This is closed-loop for tag state. Raw historian data-point deletion is not available through public Ignition/Fluxy APIs, so database-specific cleanup adapters are documented as the next step.
@@ -188,7 +188,7 @@ This is intentionally a bootstrap-only web configuration path for production env
 - `flux.sim`: simulated tag configuration, scheduled writes, and historical backfill.
 - `flux.base`: persistent datastore, including FieldAgent endpoint/device/tag configuration.
 - `flux.live`: live/current-state HTMX display.
-- `flux.trace`: historical and live uPlot traces over recorded runtime samples.
+- `flux.charts`: historical and live uPlot charts over recorded runtime samples.
 
 See `docs/architecture-roadmap.md` for the current roadmap.
 

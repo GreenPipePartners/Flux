@@ -34,6 +34,17 @@ def comp_card_mode(request, card_id: str, default: str = "summary") -> str:
     return mode if mode in VALID_COMP_CARD_MODES else default
 
 
+@register.simple_tag
+def page_query(request, page_param: str, page_number: int) -> str:
+    """Preserve the current query string while swapping one pagination param."""
+
+    if request is None:
+        return f"?{page_param}={page_number}"
+    query = request.GET.copy()
+    query[page_param] = str(page_number)
+    return "?" + query.urlencode()
+
+
 @register.inclusion_tag("flux/partials/comp_card_controls.html")
 def comp_card_controls(card_id: str, current_mode: str, modes: str = "summary,detail,configure"):
     requested_modes = [mode.strip() for mode in modes.split(",")]

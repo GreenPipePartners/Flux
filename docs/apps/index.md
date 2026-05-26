@@ -7,8 +7,9 @@ They should not create unnecessary Ignition IO from browser interactions. Runtim
 ## App Map
 
 - `dashboard`: readiness, stale recovery, bridge setup, and service summaries.
-- `flux.live`: current-state cards and LLM-friendly card context exports.
-- `flux.trace`: historical and live trend analysis over stored samples.
+- `flux.spot`: current-state cards and LLM-friendly card context exports. The database app label remains `flux.live` during compatibility migration.
+- `flux.chart`: chart UI, payloads, and trend workflows over stored samples. Trace persistence remains `flux.trace`.
+- `flux.cell`: process-cell definitions, cell cards, relationships, and Live/Trace-compatible exports.
 - `flux.serve`: supervised worker and FieldAgent process control.
 - `flux.sim`: simulation catalog and generated runtime configuration.
 - `flux.opt`: browse/read planning and demand leases.

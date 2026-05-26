@@ -17,7 +17,7 @@ Build a human-interfaceable way to manage Flux Field from the web app:
   - `FieldNode`
   - `FieldAgentHeartbeat`
 - Django admin is currently the first-class config UI for endpoints/devices/tags.
-- `/field/` is read-only status/config review.
+- `/field/` was retired; FieldAgent runtime/config review now belongs on Flux.sim/Flux.serve surfaces backed by `flux.base` state.
 - `/sim/field-config.json` exports enabled endpoint/device/tag config for `Flux.FieldAgent`.
 - `export_field_config` writes the same payload to a JSON file.
 - `.NET Flux.FieldAgent` can read config from `/sim/field-config.json` or a config file.
@@ -72,7 +72,7 @@ This keeps the web app as the human interface and command source, while a worker
 ## Smallest Good Build
 
 1. Keep Django admin for detailed endpoint/device/tag CRUD for now.
-2. Improve `/field/` into the human Field control panel.
+2. Improve Flux.sim/Flux.serve runtime surfaces into the human FieldAgent control panel.
 3. Add Field service buttons:
    - Start FieldAgent
    - Stop FieldAgent
@@ -86,14 +86,11 @@ This keeps the web app as the human interface and command source, while a worker
    - FieldAgent via `dotnet run --project field/Flux.FieldAgent/Flux.FieldAgent.csproj --FluxField:ConfigUrl=http://localhost:8000/sim/field-config.json`
    - Demo reader via `uv run python manage.py run_sim_demo`
 7. Persist enough process state to stop/restart services safely.
-8. Show running/stale/error status on `/field/` from heartbeat/process state.
+8. Show running/stale/error status on Flux.sim/Flux.serve from heartbeat/process state.
 9. Add tests around command creation and command execution dispatch, avoiding real long-running processes in tests.
 
 ## Likely Files To Touch
 
-- `web/Flux/src/flux/field/views.py`
-- `web/Flux/src/flux/field/urls.py`
-- `web/Flux/src/templates/field/index.html`
 - `web/Flux/src/flux/serve/models.py`
 - `web/Flux/src/flux/serve/management/commands/flux_worker.py`
 - `web/Flux/src/flux/serve/views.py`
@@ -103,10 +100,9 @@ This keeps the web app as the human interface and command source, while a worker
 
 ## Follow-On Improvement
 
-After the local worker path works, decide whether deployed service control should map to:
+After the local worker path works, deployed service control should map to:
 
 - systemd units on Linux
-- Windows Services on Windows
 - local subprocess supervision for dev only
 
 The current development path should favor subprocess supervision first because it is fastest to validate.

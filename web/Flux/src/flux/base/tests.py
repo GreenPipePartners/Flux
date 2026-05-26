@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from .models import TagNode, TagProvider, TagSelection
+from flux.sim.models import TagNode, TagProvider, TagSelection
 from .services import build_provider_tree, import_provider_payload, replace_selection, selected_source_paths
 
 
@@ -29,7 +29,8 @@ class BaseTagModelTests(TestCase):
 
         self.assertIsNotNone(tree)
         self.assertEqual(tree.selected_count, 1)
-        self.assertTrue(tree.nodes[0].partial)
+        self.assertTrue(tree.nodes[0].selected)
+        self.assertFalse(tree.nodes[0].partial)
         self.assertTrue(tree.nodes[0].children_list[0].selected)
 
     def test_selected_source_paths_returns_opc_leaf_paths(self):

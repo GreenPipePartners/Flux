@@ -1,66 +1,81 @@
 {% extends "flux/base.html" %}
 {% load nav_extras %}
 
-{% block title %}Flux Live{% endblock %}
+{% block title %}Flux Spot{% endblock %}
 
 {% block content %}
-{% if request.GET.card == "live-platform" %}{% firstof request.GET.mode "summary" as live_platform_mode %}{% else %}{% firstof "summary" as live_platform_mode %}{% endif %}
-<section id="live-platform-comp-card" class="panel comp-card" data-comp-card data-comp-card-mode="{{ live_platform_mode }}">
-  {% include "flux/partials/link_copy.html" with link=live_index_link label="Live Tag Snapshots" %}
-  <div class="panel-header">
-    <div>
-      <p class="eyebrow">flux.live</p>
-      <h1>Live Tag Snapshots</h1>
-    </div>
-    <span class="status-pill">current state</span>
+<section class="feature-hero">
+  <div class="feature-hero-title">
+    <h1>Flux.spot</h1>
+    {% include "flux/partials/display_pulse_bar.html" %}
   </div>
-  <p>Flux Live renders the latest cached tag values without live Perspective binding pressure.</p>
-  {% if live_platform_mode == "detail" %}
-  <div class="actions">
-    <a class="button" href="{% url 'live:pad_overview' %}">Open Pad Overview Demo</a>
+  <div class="service-summary service-summary-{{ platform_status.state }}">
+    <span class="eyebrow">Platform</span>
+    <strong>{{ platform_status.label }}</strong>
+    <small>{{ online_count }} online · {{ stale_count }} stale · {{ bad_quality_count }} bad</small>
   </div>
-  {% endif %}
-  {% include "flux/partials/comp_card_controls.html" with card_id="live-platform" current_mode=live_platform_mode show_detail=True %}
 </section>
 
-<section class="terminal-strip">
-  <span>&gt; stale_after={{ stale_after_seconds }}s</span>
-  <span class="terminal-ok">&gt; online={{ online_count }}</span>
-  <span>&gt; stale={{ stale_count }}</span>
-  <span>&gt; bad_quality={{ bad_quality_count }}</span>
-</section>
+<section id="spot-comp-surface" data-comp-surface data-selected-card="{{ selected_live_card }}" data-comp-mode="{{ live_surface_mode }}">
+  {% if live_surface_mode == "detail" %}
+    <section id="spot-comp-focus-region" class="comp-focus-region">
+      {% if selected_live_card == "live-platform" %}
+        <article id="live-platform-comp-focus" class="panel comp-focus" data-comp-focus data-comp-card="live-platform" data-comp-mode="{{ live_platform_mode }}" tabindex="-1">
+          {% include "flux/partials/link_copy.html" with link=live_index_link label="Flux.spot.platform" %}
+          <section data-comp-view="detail">
+            <div class="panel-header"><div><p class="eyebrow">Flux.spot.platform</p><h2>Spot Tag Snapshots</h2></div><span class="status-pill">current state</span></div>
+            <p>Flux Spot renders the latest cached tag values without direct Perspective binding pressure.</p>
+            <section class="terminal-strip">
+              <span>&gt; stale_after={{ stale_after_seconds }}s</span>
+              <span class="terminal-ok">&gt; live_table={{ live_table_summary.shown_count }}/{{ live_table_summary.total_count }}</span>
+              {% if live_table_summary.hidden_trace_count %}<span>&gt; trace_backing_hidden={{ live_table_summary.hidden_trace_count }}</span>{% endif %}
+              {% if live_table_summary.hidden_unlisted_count %}<span>&gt; unlisted_hidden={{ live_table_summary.hidden_unlisted_count }}</span>{% endif %}
+              <span class="terminal-ok">&gt; online={{ online_count }}</span>
+              <span>&gt; stale={{ stale_count }}</span>
+              <span>&gt; bad_quality={{ bad_quality_count }}</span>
+            </section>
+            <div class="actions"><a class="button" href="{% url live_pad_overview_route %}">Open Pad Overview Demo</a></div>
+          </section>
+          {% include "flux/partials/comp_card_controls.html" with card_id="live-platform" current_mode=live_platform_mode show_detail=True target_id="spot-comp-surface" %}
+        </article>
+      {% elif selected_live_card == "live-paths" %}
+        <article id="live-paths-comp-focus" class="panel comp-focus" data-comp-focus data-comp-card="live-paths" data-comp-mode="{{ live_paths_mode }}" tabindex="-1">
+          <section data-comp-view="detail">
+            <div class="panel-header"><div><p class="eyebrow">Flux.spot.paths</p><h2>Available Flux.spot Paths</h2></div><span class="status-pill">{{ live_paths|length }} paths</span></div>
+            <p class="muted">Current Flux.spot surfaces. Dashboard card titles link here for quick route discovery.</p>
+            <div class="stale-list">{% for item in live_paths %}<div class="stale-row"><div><strong>{{ item.label }}</strong><small>{{ item.path }} · {{ item.detail }}</small><small>{{ item.description }}</small></div><a href="{{ item.path }}">Open</a></div>{% endfor %}</div>
+          </section>
+          {% include "flux/partials/comp_card_controls.html" with card_id="live-paths" current_mode=live_paths_mode show_detail=True target_id="spot-comp-surface" %}
+        </article>
+      {% elif selected_live_card == "live-table" %}
+        <article id="live-table-comp-focus" class="panel comp-focus" data-comp-focus data-comp-card="live-table" data-comp-mode="{{ live_table_mode }}" tabindex="-1">
+          {% include "flux/partials/link_copy.html" with link=live_index_link label="Flux.spot.table" %}
+          <section data-comp-view="detail">
+            <div class="panel-header"><div><p class="eyebrow">Flux.spot.table</p><h2>Spot Tag Table</h2></div><span class="status-pill">{{ live_table_summary.shown_count }} tags</span></div>
+            {% if live_table_summary.hidden_count %}<p class="muted">Showing spot-scope and pad overview tags only. Hidden from this current-state table: {{ live_table_summary.hidden_trace_count }} trace backing tags and {{ live_table_summary.hidden_unlisted_count }} unlisted runtime tags.</p>{% endif %}
+            {% if tags %}<table><thead><tr><th>Asset</th><th>Tag</th><th>Value</th><th>Quality</th><th>Read At</th><th>Schedule</th></tr></thead><tbody>{% for tag in tags %}<tr><td>{{ tag.asset_name|default:"-" }}</td><td><span title="{{ tag.full_path }}">{{ tag.display_name }}</span></td><td>{% if tag.latest_value %}{{ tag.latest_value.value }} {{ tag.engineering_units }}{% else %}<span class="status-missing">missing</span>{% endif %}</td><td>{% if tag.latest_value %}<span class="status-pill {% if tag.latest_value.quality_code != 'Good' %}status-failed{% endif %}">{{ tag.latest_value.quality_code }}</span>{% else %}<span class="status-pill status-missing">No read</span>{% endif %}</td><td>{% if tag.latest_value %}{{ tag.latest_value.read_at }}{% else %}-{% endif %}</td><td>{{ tag.schedule.name }} / {{ tag.schedule.interval_seconds }}s</td></tr>{% endfor %}</tbody></table>{% include "flux/partials/pagination_controls.html" with page_obj=tag_page page_param="live_table_page" target_id="spot-comp-surface" select_id="spot-comp-surface" label="Spot tag pages" item_label="tags" %}{% else %}<p>No spot tags configured yet. Existing runtime models will feed this view.</p>{% endif %}
+          </section>
+          {% include "flux/partials/comp_card_controls.html" with card_id="live-table" current_mode=live_table_mode show_detail=True target_id="spot-comp-surface" %}
+        </article>
+      {% endif %}
+    </section>
+  {% endif %}
 
-{% if request.GET.card == "live-tag-table" %}{% firstof request.GET.mode "detail" as live_tag_table_mode %}{% else %}{% firstof "detail" as live_tag_table_mode %}{% endif %}
-<section id="live-tag-table-comp-card" class="panel comp-card" data-comp-card data-comp-card-mode="{{ live_tag_table_mode }}">
-  {% include "flux/partials/link_copy.html" with link=live_index_link label="Live Tag Table" %}
-  <div class="panel-header">
-    <div>
-      <p class="eyebrow">runtime tags</p>
-      <h1>Live Tag Table</h1>
-    </div>
-    <span class="status-pill">{{ tags|length }} tags</span>
-  </div>
-  {% if live_tag_table_mode == "detail" %}
-  {% if tags %}
-    <table>
-      <thead><tr><th>Asset</th><th>Tag</th><th>Value</th><th>Quality</th><th>Read At</th><th>Schedule</th></tr></thead>
-      <tbody>
-        {% for tag in tags %}
-          <tr>
-            <td>{{ tag.asset_name|default:"-" }}</td>
-            <td><span title="{{ tag.full_path }}">{{ tag.display_name }}</span></td>
-            <td>{% if tag.latest_value %}{{ tag.latest_value.value }} {{ tag.engineering_units }}{% else %}<span class="status-missing">missing</span>{% endif %}</td>
-            <td>{% if tag.latest_value %}<span class="status-pill {% if tag.latest_value.quality_code != 'Good' %}status-failed{% endif %}">{{ tag.latest_value.quality_code }}</span>{% else %}<span class="status-pill status-missing">No read</span>{% endif %}</td>
-            <td>{% if tag.latest_value %}{{ tag.latest_value.read_at }}{% else %}-{% endif %}</td>
-            <td>{{ tag.schedule.name }} / {{ tag.schedule.interval_seconds }}s</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <p>No live tags configured yet. Existing runtime models will feed this view.</p>
-  {% endif %}
-  {% endif %}
-  {% include "flux/partials/comp_card_controls.html" with card_id="live-tag-table" current_mode=live_tag_table_mode show_detail=True %}
+  <section class="readiness-grid" data-comp-card-grid>
+    <article id="live-platform-comp-card" class="readiness-card readiness-{{ platform_status.state }} comp-card{% if selected_live_card == 'live-platform' and live_platform_mode != 'summary' %} comp-card-anchor{% endif %}" data-comp-card data-comp-card-mode="{{ live_platform_mode }}">
+      {% include "flux/partials/link_copy.html" with link=live_index_link label="Flux.spot.platform" %}
+      <section data-comp-view="summary"><div><span class="status-dot" aria-hidden="true"></span><p class="eyebrow">{{ platform_status.state }}</p><h2>Flux.spot.platform</h2></div><p><span class="readiness-detail-line">{{ online_count }} online</span><span class="readiness-detail-line">{{ stale_count }} stale</span><span class="readiness-detail-line">{{ bad_quality_count }} bad</span></p></section>
+      {% include "flux/partials/comp_card_controls.html" with card_id="live-platform" current_mode=live_platform_mode show_detail=True target_id="spot-comp-surface" %}
+    </article>
+    <article id="live-paths-comp-card" class="readiness-card readiness-ok comp-card{% if selected_live_card == 'live-paths' and live_paths_mode != 'summary' %} comp-card-anchor{% endif %}" data-comp-card data-comp-card-mode="{{ live_paths_mode }}">
+      <section data-comp-view="summary"><div><span class="status-dot" aria-hidden="true"></span><p class="eyebrow">routes</p><h2>Flux.spot.paths</h2></div><p><span class="readiness-detail-line">{{ live_paths|length }} paths</span><span class="readiness-detail-line">Pad overview ready</span></p></section>
+      {% include "flux/partials/comp_card_controls.html" with card_id="live-paths" current_mode=live_paths_mode show_detail=True target_id="spot-comp-surface" %}
+    </article>
+    <article id="live-table-comp-card" class="readiness-card readiness-{{ platform_status.state }} comp-card{% if selected_live_card == 'live-table' and live_table_mode != 'summary' %} comp-card-anchor{% endif %}" data-comp-card data-comp-card-mode="{{ live_table_mode }}">
+      {% include "flux/partials/link_copy.html" with link=live_index_link label="Flux.spot.table" %}
+      <section data-comp-view="summary"><div><span class="status-dot" aria-hidden="true"></span><p class="eyebrow">current state</p><h2>Flux.spot.table</h2></div><p><span class="readiness-detail-line">{{ live_table_summary.shown_count }}/{{ live_table_summary.total_count }} shown</span><span class="readiness-detail-line">{{ live_table_summary.hidden_count }} hidden</span></p></section>
+      {% include "flux/partials/comp_card_controls.html" with card_id="live-table" current_mode=live_table_mode show_detail=True target_id="spot-comp-surface" %}
+    </article>
+  </section>
 </section>
 {% endblock %}

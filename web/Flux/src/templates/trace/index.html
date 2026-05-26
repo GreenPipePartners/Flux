@@ -1,139 +1,68 @@
 {% extends "flux/base.html" %}
 {% load static nav_extras %}
 
-{% block title %}Flux Trace{% endblock %}
+{% block title %}Flux Chart{% endblock %}
 
 {% block content %}
-{% if not trace_embed %}{% if request.GET.card == "trace-page" %}{% firstof request.GET.mode "summary" as trace_page_mode %}{% else %}{% firstof "summary" as trace_page_mode %}{% endif %}<section id="trace-page-comp-card" class="panel comp-card" data-comp-card data-comp-card-mode="{{ trace_page_mode }}">
-  {% include "flux/partials/link_copy.html" with link=trace_page_link label="Trace Page" %}
-  <div class="panel-header">
-    <div>
-      <p class="eyebrow">flux.trace</p>
-      <h1>{{ trace_title|default:"Historical Tag Trace" }}</h1>
-    </div>
-    <span class="status-pill" data-trace-set-label>{% if trace_chart.setLabel %}{{ trace_chart.setLabel }}{% elif trace_badge %}{{ trace_badge }}{% else %}uPlot{% endif %}</span>
+{% if trace_embed %}
+  {% firstof trace_chart_mode "detail" as trace_chart_mode %}
+  <section id="trace-chart-comp-card" class="panel trace-chart-panel comp-card" data-comp-card data-comp-card-mode="detail">
+    {% include "trace/partials/chart_body.html" %}
+  </section>
+{% else %}
+<section class="feature-hero">
+  <div class="feature-hero-title">
+    <h1>Flux.chart</h1>
   </div>
-  <p>{{ trace_subtitle|default:"Trace uses uPlot for low-overhead historian-style inspection of local runtime samples." }}</p>
-  {% if trace_page_mode == "detail" %}
-    <p class="muted">Use the chart verbose view for source selection, range reset, compression, and pinned trace controls.</p>
-  {% endif %}
-  {% include "flux/partials/comp_card_controls.html" with card_id="trace-page" current_mode=trace_page_mode show_detail=True %}
-</section>{% endif %}
-
-{% if request.GET.card == "trace-chart" %}{% firstof request.GET.mode "detail" as trace_chart_mode %}{% else %}{% firstof "detail" as trace_chart_mode %}{% endif %}
-<section id="trace-chart-comp-card" class="panel trace-chart-panel comp-card" data-comp-card data-comp-card-mode="{{ trace_chart_mode }}">
-  {% include "flux/partials/link_copy.html" with link=trace_chart_link label="Trace Chart" %}
-  <div class="panel-header">
-    <div>
-      <p class="eyebrow">trace.uplot</p>
-      <h2>Sample Tag Trend</h2>
-    </div>
-    <span class="status-pill">latest {{ trace_chart.windowLabel|default:"4 days" }}</span>
+  <div class="service-summary service-summary-{{ platform_status.state|default:'ok' }}">
+    <span class="eyebrow">Platform</span>
+    <strong>{{ platform_status.label|default:"Ready" }}</strong>
+    <small>{{ trace_path_total }} paths{% if trace_path_page.paginator.num_pages > 1 %} · showing {{ trace_path_page.start_index }}-{{ trace_path_page.end_index }}{% endif %}{% if trace_chart.series %} · {{ trace_chart.series|length }} series{% endif %}</small>
   </div>
-  {% if trace_chart_mode == "detail" or trace_chart_mode == "configure" %}
-  <div class="trace-actions">
-    {% if not trace_embed %}<a class="button button-secondary" href="{% url 'trace:live' %}">Live Trace</a>{% endif %}
-    {% if trace_source_options %}
-      <label class="trace-control-label">Source
-        <select data-trace-source-select aria-label="Trace source">
-          {% for option in trace_source_options %}
-            <option value="{{ option.value }}" data-set-index="{{ option.set_index }}"{% if option.value == trace_chart.wellId %} selected{% endif %}>{{ option.label }}</option>
-          {% endfor %}
-        </select>
-      </label>
-    {% endif %}
-    {% if trace_cycle_url %}
-      <button class="button button-secondary" type="button" data-trace-prev-set>Previous {{ trace_cycle_label|default:"Set" }}</button>
-      <button class="button button-secondary" type="button" data-trace-next-set>Next {{ trace_cycle_label|default:"Set" }}</button>
-    {% endif %}
-    <button class="button button-secondary" type="button" data-reset-trace-range>Reset Range</button>
-    <button class="button button-secondary" type="button" data-clear-pinned-traces>Clear Pinned Traces</button>
-    {% if trace_cycle_url %}
-      <details class="trace-compression" data-trace-compression>
-        <summary>Compression</summary>
-        <form method="get" action="." class="trace-compression-form">
-          {% if trace_chart.wellId %}<input type="hidden" name="source" value="{{ trace_chart.wellId }}">{% endif %}
-          {% if trace_embed %}<input type="hidden" name="embed" value="1">{% endif %}
-          <label>Window minutes
-            <input name="window_minutes" type="number" min="60" max="{{ trace_window_max_minutes|default:10080 }}" step="60" value="{{ trace_window_minutes|default:1440 }}">
-          </label>
-          <label>Step minutes
-            <input name="step_minutes" type="number" min="1" max="1440" step="1" value="{{ trace_step_minutes|default:1 }}">
-          </label>
-          <button class="button button-secondary" type="submit">Apply</button>
-        </form>
-        <p class="form-help">Higher step minutes compress the trace by sampling fewer points from the same window.</p>
-      </details>
-    {% endif %}
-    <p class="form-help">{{ trace_help|default:"Click inside the chart to pin a vertical trace cursor. Drag selects an x-range to zoom. Shift-drag pans. Wheel zooms; side-scroll pans. Use Previous/Next Set or left/right arrow keys to cycle sets." }}</p>
-    <p class="form-help" data-trace-status>Ready to pin trace markers.</p>
-  </div>
-  {% endif %}
-  {% if trace_chart.series %}
-    <link rel="stylesheet" href="{% static 'flux/vendor/uplot/uPlot.min.css' %}?v=trace-shared-x-2">
-    <div
-      class="trace-chart"
-      data-trace-chart
-      data-trace-annotation-url="{% url 'trace:annotations' %}"
-      data-trace-annotation-query-url="{% url 'trace:query-annotations' %}"
-      data-trace-csrf-token="{{ csrf_token }}"
-      {% if trace_cycle_url %}data-trace-cycle-url="{{ trace_cycle_url }}"{% endif %}
-      {% if trace_set_count %}data-trace-set-count="{{ trace_set_count }}"{% endif %}
-      {% if trace_live_refresh_seconds %}data-trace-live-refresh-seconds="{{ trace_live_refresh_seconds }}"{% endif %}
-      role="img"
-      aria-label="uPlot sample tag trend chart"
-    ></div>
-    <section class="trace-marker-panel" aria-label="Pinned trace marker values">
-      <div class="trace-marker-heading">
-        <h3>Pinned Trace Values</h3>
-        <button class="trace-copy-button" type="button" data-send-trace-annotations aria-label="Send pending trace annotations to Ignition">Send Annotations</button>
-        <button class="trace-copy-button" type="button" data-copy-pinned-traces aria-label="Copy pinned trace values as markdown">Copy</button>
-      </div>
-      <div data-pinned-trace-table>
-        <p class="muted">No pinned traces yet.</p>
-      </div>
-    </section>
-    {{ trace_chart|json_script:"trace-data" }}
-    <script src="{% static 'flux/vendor/uplot/uPlot.iife.min.js' %}?v=trace-shared-x-2"></script>
-    <script type="module" src="{% static 'flux/trace/historical-page.js' %}?v=trace-shared-x-2"></script>
-  {% else %}
-    {% if trace_error %}
-      <p class="form-help">Trace query failed: {{ trace_error }}</p>
-    {% else %}
-      <p>No numeric tag samples available for uPlot yet.</p>
-    {% endif %}
-  {% endif %}
-  {% include "flux/partials/comp_card_controls.html" with card_id="trace-chart" current_mode=trace_chart_mode show_detail=True show_configure=True %}
 </section>
 
-{% if not trace_embed %}{% if request.GET.card == "trace-samples" %}{% firstof request.GET.mode "detail" as trace_samples_mode %}{% else %}{% firstof "detail" as trace_samples_mode %}{% endif %}<section id="trace-samples-comp-card" class="panel comp-card" data-comp-card data-comp-card-mode="{{ trace_samples_mode }}">
-  {% include "flux/partials/link_copy.html" with link=trace_chart_link label="Trace Samples" %}
-  <div class="panel-header">
-    <div>
-      <p class="eyebrow">trace samples</p>
-      <h2>Historical Samples</h2>
-    </div>
-    <span class="status-pill">{{ samples|length }} samples</span>
-  </div>
-  {% if trace_samples_mode == "detail" %}
-  {% if samples %}
-    <table>
-      <thead><tr><th>Tag</th><th>Value</th><th>Quality</th><th>Read At</th></tr></thead>
-      <tbody>
-        {% for sample in samples %}
-          <tr>
-            <td>{{ sample.tag }}</td>
-            <td>{{ sample.value }}</td>
-            <td>{{ sample.quality_code }}</td>
-            <td>{{ sample.read_at }}</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <p>No historical samples recorded yet.</p>
+<section id="chart-comp-surface" data-comp-surface data-selected-card="{{ selected_trace_card }}" data-comp-mode="{{ trace_surface_mode }}">
+  {% if trace_surface_mode == "detail" or trace_surface_mode == "configure" %}
+    <section id="chart-comp-focus-region" class="comp-focus-region">
+      {% if selected_trace_card == "trace-paths" %}
+        <article id="trace-paths-comp-focus" class="panel comp-focus" data-comp-focus data-comp-card="trace-paths" data-comp-mode="{{ trace_paths_mode }}" tabindex="-1">
+          <section data-comp-view="detail">
+            <div class="panel-header">
+              <div><p class="eyebrow">Flux.chart.paths</p><h2>Available Flux.chart Paths</h2></div>
+              <span class="status-pill">{{ trace_path_total }} paths</span>
+            </div>
+            <p class="muted">Current Flux.chart surfaces and configured chart profiles. This list is paginated to keep stress imports scan-friendly while preserving the rotating Navigation Wells surface.</p>
+            <div class="stale-list">{% for item in trace_paths %}<div class="stale-row"><div><strong>{{ item.label }}</strong><small>{{ item.path }} · {{ item.detail }}</small><small>{{ item.description }}</small></div><a href="{{ item.path }}">Open</a></div>{% endfor %}</div>
+            {% include "flux/partials/pagination_controls.html" with page_obj=trace_path_page page_param="paths_page" target_id="chart-comp-surface" select_id="chart-comp-surface" label="Flux.chart path pages" item_label="paths" %}
+          </section>
+          {% include "flux/partials/comp_card_controls.html" with card_id="trace-paths" current_mode=trace_paths_mode show_detail=True target_id="chart-comp-surface" %}
+        </article>
+      {% elif selected_trace_card == "trace-chart" %}
+        <article id="trace-chart-comp-focus" class="panel trace-chart-panel comp-focus" data-comp-focus data-comp-card="trace-chart" data-comp-mode="{{ trace_chart_mode }}" tabindex="-1">
+          <section data-comp-view="{{ trace_chart_mode }}">{% include "trace/partials/chart_body.html" %}</section>
+          {% include "flux/partials/comp_card_controls.html" with card_id="trace-chart" current_mode=trace_chart_mode show_detail=True show_configure=True target_id="chart-comp-surface" %}
+        </article>
+      {% elif selected_trace_card == "trace-samples" %}
+        <article id="trace-samples-comp-focus" class="panel comp-focus" data-comp-focus data-comp-card="trace-samples" data-comp-mode="{{ trace_samples_mode }}" tabindex="-1">
+          {% if trace_samples_link %}{% include "flux/partials/link_copy.html" with link=trace_samples_link label="Flux.chart.samples" %}{% endif %}
+          <section data-comp-view="detail"><div class="panel-header"><div><p class="eyebrow">Flux.chart.samples</p><h2>Historical Samples</h2></div><span class="status-pill">{{ sample_total_count }} samples</span></div>{% if sample_groups %}<div class="trace-sample-groups">{% for group in sample_groups %}<details class="trace-sample-group"><summary><span><strong>{{ group.label }}</strong><small>{{ group.sample_count }} samples on this page · latest {{ group.latest_read }}</small><small><a href="{{ group.path }}">{{ group.path }}</a> · {{ group.detail }}</small></span></summary><table><thead><tr><th>Series</th><th>Value</th><th>Quality</th><th>Read At</th></tr></thead><tbody>{% for sample in group.samples %}<tr><td><span title="{{ sample.series.storage_key }}">{{ sample.series.base_tag.name }}</span></td><td>{{ sample.value_float }}</td><td>{{ sample.quality_code }}</td><td>{{ sample.timestamp }}</td></tr>{% endfor %}</tbody></table></details>{% endfor %}</div>{% include "flux/partials/pagination_controls.html" with page_obj=sample_page page_param="samples_page" target_id="chart-comp-surface" select_id="chart-comp-surface" label="Flux.chart sample pages" item_label="samples" %}{% else %}<p>No historical samples recorded yet.</p>{% endif %}</section>
+          {% include "flux/partials/comp_card_controls.html" with card_id="trace-samples" current_mode=trace_samples_mode show_detail=True target_id="chart-comp-surface" %}
+        </article>
+      {% endif %}
+    </section>
   {% endif %}
-  {% endif %}
-  {% include "flux/partials/comp_card_controls.html" with card_id="trace-samples" current_mode=trace_samples_mode show_detail=True %}
-</section>{% endif %}
+
+  <section class="readiness-grid" data-comp-card-grid>
+    <article id="trace-paths-comp-card" class="readiness-card readiness-ok comp-card{% if selected_trace_card == 'trace-paths' and trace_paths_mode != 'summary' %} comp-card-anchor{% endif %}" data-comp-card data-comp-card-mode="{{ trace_paths_mode }}">
+      <section data-comp-view="summary"><div><span class="status-dot" aria-hidden="true"></span><p class="eyebrow">routes</p><h2>Flux.chart.paths</h2></div><p><span class="readiness-detail-line">{{ trace_path_total }} paths</span><span class="readiness-detail-line">profiles indexed</span></p></section>
+      {% include "flux/partials/comp_card_controls.html" with card_id="trace-paths" current_mode=trace_paths_mode show_detail=True target_id="chart-comp-surface" %}
+    </article>
+    <article id="trace-samples-comp-card" class="readiness-card readiness-ok comp-card{% if selected_trace_card == 'trace-samples' and trace_samples_mode != 'summary' %} comp-card-anchor{% endif %}" data-comp-card data-comp-card-mode="{{ trace_samples_mode }}">
+      {% if trace_samples_link %}{% include "flux/partials/link_copy.html" with link=trace_samples_link label="Flux.chart.samples" %}{% endif %}
+      <section data-comp-view="summary"><div><span class="status-dot" aria-hidden="true"></span><p class="eyebrow">samples</p><h2>Flux.chart.samples</h2></div><p><span class="readiness-detail-line">{{ sample_total_count }} recent samples</span></p></section>
+      {% include "flux/partials/comp_card_controls.html" with card_id="trace-samples" current_mode=trace_samples_mode show_detail=True target_id="chart-comp-surface" %}
+    </article>
+  </section>
+</section>
+{% endif %}
 {% endblock %}

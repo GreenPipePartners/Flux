@@ -6,6 +6,8 @@ from django.db import models
 class BuildRun(models.Model):
     class Target(models.TextChoices):
         IGNITION_TAGS = "ignition_tags", "Ignition Tags"
+        HMI_SYMBOLIC_MAP = "hmi_symbolic_map", "HMI Symbolic Map"
+        LOGIX_L5X = "logix_l5x", "Logix L5X"
 
     class Status(models.TextChoices):
         RUNNING = "running", "Running"
@@ -58,3 +60,24 @@ class BuildDiagnostic(models.Model):
     class Meta:
         ordering = ["run", "severity", "code", "id"]
         indexes = [models.Index(fields=["run", "severity"], name="build_diag_severity_idx")]
+
+
+class HmiMapSelection(models.Model):
+    mine_run = models.ForeignKey("mine.MineRun", on_delete=models.CASCADE, related_name="hmi_map_selections")
+    screen = models.ForeignKey("mine.HmiScreenFact", on_delete=models.CASCADE, related_name="hmi_map_selections")
+    component = models.ForeignKey(
+        "mine.HmiComponentFact",
+        on_delete=models.CASCADE,
+        related_name="hmi_map_selections",
+        blank=True,
+        null=True,
+    )
+    enabled = models.BooleanField(default=True)
+    config = models.JSONField(default=dict, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["mine_run", "screen", "component"], name="unique_hmi_map_selection")
+        ]
+        indexes = [models.Index(fields=["mine_run", "enabled"], name="hmi_map_sel_run_enabled_idx")]

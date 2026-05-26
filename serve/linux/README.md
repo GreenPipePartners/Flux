@@ -9,10 +9,11 @@ flux-web.service
 flux-worker.service
 ```
 
-The Linux path can run Python directly under systemd first. A cross-platform `.NET Flux.Agent` can be added later only if product symmetry is worth the extra moving part.
+The Linux path runs Python directly under systemd. Cross-platform service wrappers are intentionally out of scope.
 
-Install the Linux web dependency group before enabling `flux-web.service`:
+Install the web project dependencies before enabling `flux-web.service`:
 
 ```bash
-uv sync --group linux
+cd web/Flux
+uv sync
 ```

@@ -14,6 +14,7 @@ FLUX_SAMPLER_INTERVAL="${FLUX_SAMPLER_INTERVAL:-5}"
 FLUX_SAMPLER_BATCH_SIZE="${FLUX_SAMPLER_BATCH_SIZE:-100}"
 
 pids=()
+shutdown_requested=0
 
 cleanup() {
   if ((${#pids[@]})); then
@@ -21,6 +22,11 @@ cleanup() {
     kill "${pids[@]}" 2>/dev/null || true
     wait "${pids[@]}" 2>/dev/null || true
   fi
+}
+
+request_shutdown() {
+  shutdown_requested=1
+  cleanup
 }
 
 start_service() {
@@ -50,7 +56,8 @@ wait_for_url() {
   return 1
 }
 
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap request_shutdown INT TERM
 
 case "$FLUX_FIELD_AGENT_MODE" in
   legacy|supervised)
@@ -97,6 +104,7 @@ else
   start_service "field" dotnet run --project "$FIELD_PROJECT" --FluxField:ConfigPath="$FIELD_CONFIG"
 fi
 start_service "serve-monitor" bash -lc "cd '$WEB_DIR' && PYTHONPATH='src:$ROOT_DIR' uv run python manage.py flux_serve_monitor"
+start_service "sim-worker" bash -lc "cd '$WEB_DIR' && PYTHONPATH='src:$ROOT_DIR' uv run python manage.py flux_sim_worker"
 start_service "fluxolot-sampler" bash -lc "cd '$WEB_DIR' && PYTHONPATH='src:$ROOT_DIR' uv run python manage.py flux_sampling_worker --profile fluxolot-fishtank --interval '$FLUX_SAMPLER_INTERVAL' --batch-size '$FLUX_SAMPLER_BATCH_SIZE'"
 
 printf '\nFlux stack is running. Open http://localhost:8000/live/, http://localhost:8000/sim/, or http://localhost:8001/.\n'
@@ -108,4 +116,7 @@ status=$?
 set -e
 
 printf '\nA Flux service exited with status %s. Shutting down the rest.\n' "$status"
+if ((shutdown_requested)); then
+  exit 0
+fi
 exit "$status"

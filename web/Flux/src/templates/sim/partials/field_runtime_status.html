@@ -1,0 +1,34 @@
+<section id="sim-field-runtime-status" class="panel readiness-{{ sim_field_runtime.state }}">
+  {% include "flux/partials/link_copy.html" with link=sim_field_runtime_link label="Flux.sim.runtime" %}
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">Flux.sim.runtime</p>
+      <h2>FieldAgent Runtime</h2>
+    </div>
+    <span class="status-pill">{{ sim_field_runtime.verified_endpoint_count }} verified</span>
+  </div>
+  <p class="muted">Runtime status is verified from Flux.serve snapshots that prove PID and TCP port truth. Stored endpoint rows and FieldAgent heartbeats are retained as evidence; this card does not run probes itself.</p>
+  <div class="readiness-grid compact-grid">
+    <div class="stage-card"><span>Endpoints</span><strong>{{ sim_field_runtime.enabled_endpoint_count }} enabled</strong></div>
+    <div class="stage-card"><span>Devices</span><strong>{{ sim_field_runtime.enabled_device_count }} enabled</strong></div>
+    <div class="stage-card"><span>Tags</span><strong>{{ sim_field_runtime.enabled_tag_count }} enabled</strong></div>
+    <div class="stage-card"><span>Heartbeats</span><strong>{{ sim_field_runtime.heartbeat_count }} recorded</strong></div>
+  </div>
+  <details class="stage-card">
+    <summary><strong>{{ sim_field_runtime.endpoint_count }} FieldAgent endpoints</strong></summary>
+    <div class="stale-list">
+      {% for item in sim_field_runtime.endpoint_items %}
+        <div class="stale-row">
+          <div>
+            <strong>{{ item.endpoint.name }}</strong>
+            <small>stored {{ item.endpoint.status }} · {{ item.enabled_device_count }} devices · {{ item.enabled_tag_count }} tags{% if item.latest_seen_at %} · seen {{ item.latest_seen_at }}{% endif %}</small>
+            {% if item.snapshot %}<small>Flux.serve: {{ item.snapshot.observed_state }} · {{ item.snapshot.severity }} · {{ item.snapshot.summary }}</small>{% endif %}
+          </div>
+          <span class="status-pill">{% if item.snapshot %}{{ item.snapshot.observed_state }}{% else %}unverified{% endif %}</span>
+        </div>
+      {% empty %}
+        <p class="muted">No FieldAgent runtime endpoints configured yet.</p>
+      {% endfor %}
+    </div>
+  </details>
+</section>

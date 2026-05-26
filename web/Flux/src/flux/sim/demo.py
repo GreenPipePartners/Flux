@@ -7,8 +7,8 @@ from django.utils import timezone
 
 from flux.base.runtime import LatestTagValue, RuntimeTag, TagSample, TagSchedule, assign_balancer_codes, scheduler_config
 from flux.base.field_config import ignition_tag_config
-from flux.base.models import FieldTag
 from flux.sim.field_demo import DEMO_TAG_FOLDER, demo_tag_metadata, ensure_demo_field_config
+from flux.sim.models import TagConfig
 
 
 DEMO_SCHEDULE_NAME = "sim-demo-10s"
@@ -24,15 +24,17 @@ def ensure_demo_runtime_config() -> list[RuntimeTag]:
     metadata = demo_tag_metadata()
     runtime_tags: list[RuntimeTag] = []
     for field_tag in field_tags:
-        demo_tag = metadata.get((field_tag.device.name, field_tag.name))
+        device_name = field_tag.sim_device.base_device.name
+        device_type = field_tag.sim_device.base_device.device_type
+        demo_tag = metadata.get((device_name, field_tag.name))
         display_name = demo_tag.label if demo_tag and demo_tag.label else field_tag.name.replace("_", " ").title()
         engineering_units = demo_tag.units if demo_tag else ""
         runtime_tag, _created = RuntimeTag.objects.update_or_create(
             provider="default",
-            path=f"{DEMO_TAG_FOLDER}/{field_tag.device.name}_{field_tag.name}",
+            path=f"{DEMO_TAG_FOLDER}/{device_name}_{field_tag.name}",
             defaults={
                 "display_name": display_name,
-                "asset_name": f"{field_tag.device.device_type}: {field_tag.device.name}",
+                "asset_name": f"{device_type}: {device_name}",
                 "engineering_units": engineering_units,
                 "category": RuntimeTag.Category.SIMULATION,
                 "schedule": schedule,
@@ -85,11 +87,11 @@ def read_demo_runtime_values(fx: Any, *, runtime_tags: list[RuntimeTag] | None =
     return len(runtime_tags)
 
 
-def demo_ignition_tag_config(field_tag: FieldTag, opc_server: str) -> dict[str, Any]:
+def demo_ignition_tag_config(field_tag: TagConfig, opc_server: str) -> dict[str, Any]:
     return ignition_tag_config(
         field_tag,
         opc_server,
-        tag_name=f"{field_tag.device.name}_{field_tag.name}",
+        tag_name=f"{field_tag.sim_device.base_device.name}_{field_tag.name}",
     )
 
 

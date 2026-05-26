@@ -11,15 +11,10 @@ from django.test import TestCase
 
 from flux.base.field_config import single_device_endpoint_config
 from flux.base.models import (
-    FieldDevice,
-    FieldEndpoint,
-    FieldTag,
-    SimDevice,
-    SimDeviceTag,
-    SimDriver,
-    TagNode,
-    TagProvider,
+    Device,
+    Tag,
 )
+from flux.sim.models import DeviceConfig, FieldEndpoint, SimDriver, TagConfig, TagNode, TagProvider
 from flux.sim.tag_data_ingest import ingest_live_tag_data_catalog, ingest_tag_data_catalog
 
 
@@ -38,8 +33,10 @@ class TagDataIngestTests(TestCase):
         self.assertEqual(TagProvider.objects.get(name="Tag_02").sim_server.name, "Flux sim OPC-UA Server")
         self.assertTrue(TagNode.objects.filter(provider__name="Tag_02", path="Area/RTU_01/PV").exists())
         self.assertEqual(SimDriver.objects.get(key="opc_ua").strategy_key, "acm")
-        self.assertEqual(SimDevice.objects.filter(provider__name="Tag_02").count(), 2)
-        self.assertEqual(SimDeviceTag.objects.filter(provider__name="Tag_02").count(), 3)
+        self.assertEqual(Device.objects.filter(namespace="provider:Tag_02").count(), 2)
+        self.assertEqual(Tag.objects.filter(provider="Tag_02").count(), 3)
+        self.assertEqual(DeviceConfig.objects.filter(source_provider__name="Tag_02").count(), 2)
+        self.assertEqual(TagConfig.objects.filter(base_tag__provider="Tag_02", materialized=False).count(), 3)
 
     def test_ingest_tag_data_catalog_assigns_acm_provider_to_distinct_sim_server(self):
         with catalog_files(opc_server="ACM_02") as (devices_path, tags_path):
@@ -56,7 +53,7 @@ class TagDataIngestTests(TestCase):
         provider = TagProvider.objects.get(name="Tag_05")
 
         self.assertEqual(provider.sim_server.name, "Flux sim OPC-UA Server")
-        logix_tag = SimDeviceTag.objects.get(source_path="Area/Standalone")
+        logix_tag = TagConfig.objects.get(base_tag__provider="Tag_05", source_path="Area/Standalone")
         self.assertEqual(logix_tag.device.name, "PLC_01")
         self.assertEqual(logix_tag.address_strategy, "logix")
         self.assertEqual(logix_tag.address["local_member"], "1:I.Data.0")
@@ -67,14 +64,14 @@ class TagDataIngestTests(TestCase):
             ingest_tag_data_catalog(provider_name="Tag_02", devices_path=devices_path, tags_path=tags_path)
 
         self.assertEqual(TagProvider.objects.filter(name="Tag_02").count(), 1)
-        self.assertEqual(SimDevice.objects.filter(provider__name="Tag_02").count(), 2)
-        self.assertEqual(SimDeviceTag.objects.filter(provider__name="Tag_02").count(), 3)
+        self.assertEqual(DeviceConfig.objects.filter(source_provider__name="Tag_02").count(), 2)
+        self.assertEqual(TagConfig.objects.filter(base_tag__provider="Tag_02", materialized=False).count(), 3)
 
     def test_import_tag_data_catalog_command_reports_counts(self):
         with catalog_files() as (devices_path, tags_path):
             call_command("import_tag_data_catalog", "Tag_02", "--devices", str(devices_path), "--tags", str(tags_path))
 
-        self.assertEqual(SimDeviceTag.objects.filter(provider__name="Tag_02").count(), 3)
+        self.assertEqual(TagConfig.objects.filter(base_tag__provider="Tag_02", materialized=False).count(), 3)
 
 
 class BoundedRealTagDataMaterializationTests(TestCase):
@@ -92,13 +89,13 @@ class BoundedRealTagDataMaterializationTests(TestCase):
                     "ACM_02": {
                         "device_type": "OPC UA",
                         "tags": [
-                            ("FlowRate", FieldTag.DataType.FLOAT),
-                            ("RunStatus", FieldTag.DataType.BOOL),
+                            ("FlowRate", Tag.DataType.FLOAT),
+                            ("RunStatus", Tag.DataType.BOOL),
                         ],
                     },
                     "BR05_30_Murphy": {
                         "device_type": "ModbusTcp",
-                        "tags": [("Pressure", FieldTag.DataType.FLOAT)],
+                        "tags": [("Pressure", Tag.DataType.FLOAT)],
                     },
                 },
             ),
@@ -114,13 +111,13 @@ class BoundedRealTagDataMaterializationTests(TestCase):
                     "AB_CGF02": {
                         "device_type": "ControlLogix",
                         "tags": [
-                            ("Local_Int", FieldTag.DataType.INT),
-                            ("RunStatus", FieldTag.DataType.BOOL),
+                            ("Local_Int", Tag.DataType.INT),
+                            ("RunStatus", Tag.DataType.BOOL),
                         ],
                     },
                     "CGF04_EPOD": {
                         "device_type": "ModbusTcp",
-                        "tags": [("BusVoltage", FieldTag.DataType.FLOAT)],
+                        "tags": [("BusVoltage", Tag.DataType.FLOAT)],
                     },
                 },
             ),
@@ -141,12 +138,12 @@ class BoundedRealTagDataMaterializationTests(TestCase):
                     )
                     call_command("materialize_sim_field_config", "--provider", case.provider)
 
-                    self.assertEqual(SimDevice.objects.filter(provider__name=case.provider).count(), 2)
+                    self.assertEqual(DeviceConfig.objects.filter(source_provider__name=case.provider).count(), 2)
                     self.assertEqual(
-                        SimDeviceTag.objects.filter(provider__name=case.provider).count(), 3
+                        TagConfig.objects.filter(base_tag__provider=case.provider, materialized=True).count(), 3
                     )
                     self.assertEqual(
-                        FieldEndpoint.objects.filter(devices__browse_path=case.provider)
+                        FieldEndpoint.objects.filter(sim_device_configs__browse_path=case.provider)
                         .distinct()
                         .count(),
                         1,
@@ -155,8 +152,8 @@ class BoundedRealTagDataMaterializationTests(TestCase):
                     for device_name, expected in case.expected.items():
                         if device_name == "server":
                             continue
-                        field_device = FieldDevice.objects.get(
-                            browse_path=case.provider, name=device_name
+                        field_device = DeviceConfig.objects.get(
+                            browse_path=case.provider, base_device__name=device_name
                         )
                         config = single_device_endpoint_config(field_device)
                         device_config = config["devices"][0]
@@ -164,8 +161,8 @@ class BoundedRealTagDataMaterializationTests(TestCase):
                         self.assertEqual(device_config["name"], device_name)
                         self.assertEqual(device_config["device_type"], expected["device_type"])
                         self.assertEqual(device_config["browse_path"], case.provider)
-                        self.assertEqual(device_config["mode"], SimDevice.Mode.STANDARD)
-                        self.assertEqual(device_config["metadata"]["source"], "sim_device")
+                        self.assertEqual(device_config["mode"], DeviceConfig.Mode.STANDARD)
+                        self.assertEqual(device_config["metadata"]["source"], "sim_device_config")
                         self.assertEqual(
                             [(tag["name"], tag["data_type"]) for tag in device_config["tags"]],
                             expected["tags"],
@@ -200,8 +197,8 @@ def test_import_tag_data_catalog_command_smokes_real_tag_02_files_if_present():
     )
 
     assert TagProvider.objects.filter(name="Tag_02_RealSmoke").exists()
-    assert SimDevice.objects.filter(provider__name="Tag_02_RealSmoke").count() > 0
-    assert SimDeviceTag.objects.filter(provider__name="Tag_02_RealSmoke").count() > 0
+    assert DeviceConfig.objects.filter(source_provider__name="Tag_02_RealSmoke").count() > 0
+    assert TagConfig.objects.filter(base_tag__provider="Tag_02_RealSmoke").count() > 0
 
 
 
@@ -216,8 +213,8 @@ class LiveTagDataIngestTests(TestCase):
         self.assertEqual(fx.tag.export_calls, [("[default]", True)])
         self.assertEqual(fx.device.list_calls, 1)
         self.assertTrue(TagProvider.objects.filter(name="Live_01", source=TagProvider.Source.IGNITION_PROVIDER).exists())
-        self.assertEqual(SimDevice.objects.get(provider__name="Live_01", name="RTU_01").source_detail, "ServerClient")
-        self.assertEqual(SimDeviceTag.objects.get(provider__name="Live_01", source_path="Area/Standalone").device.name, "PLC_01")
+        self.assertEqual(DeviceConfig.objects.get(source_provider__name="Live_01", base_device__name="RTU_01").source_detail, "ServerClient")
+        self.assertEqual(TagConfig.objects.get(base_tag__provider="Live_01", source_path="Area/Standalone").device.name, "PLC_01")
 
     def test_import_live_tag_catalog_command_uses_fluxy_without_live_ignition(self):
         fx = fake_fluxy()
@@ -225,7 +222,7 @@ class LiveTagDataIngestTests(TestCase):
             call_command("import_live_tag_catalog", "default", "--provider", "Live_01", "--base-url", "http://gateway/flux", "--token", "secret")
 
         fluxy_class.assert_called_once_with(base_url="http://gateway/flux", token="secret", tag_provider="default")
-        self.assertEqual(SimDeviceTag.objects.filter(provider__name="Live_01").count(), 3)
+        self.assertEqual(TagConfig.objects.filter(base_tag__provider="Live_01").count(), 3)
 
 
 class catalog_files:

@@ -6,6 +6,7 @@
 <section class="feature-hero">
   <div class="feature-hero-title">
     <h1>Flux.build</h1>
+    {% include "flux/partials/display_pulse_bar.html" %}
   </div>
   <div class="service-summary service-summary-{{ platform_status.state }}">
     <span class="eyebrow">Platform</span>
@@ -23,5 +24,177 @@
     <span class="status-pill">planned</span>
   </div>
   <p class="muted">Flux.build will turn mined SCADA primitives into Flux.cell process objects and operational structures.</p>
+  <div class="actions">
+    <form method="post" action="{% url 'build:seed_hmi_demo' %}" class="inline-form">
+      {% csrf_token %}
+      <button class="button" type="submit"{% if not sample_hmi_demo_available %} disabled{% endif %}>Seed HMI Demo</button>
+    </form>
+    <span class="muted">Verified SQLite source: {{ sample_hmi_demo_path }}</span>
+  </div>
+</section>
+
+{% if latest_hmi_run %}
+<section class="stage-grid" aria-label="Flux.build recovered source summary">
+  <article class="stage-card">
+    <span>Mine Run</span>
+    <h2>{{ latest_hmi_run.id }}</h2>
+    <p>{{ latest_hmi_run.label|default:latest_hmi_run.source_path }}</p>
+  </article>
+  <article class="stage-card">
+    <span>Screens</span>
+    <h2>{{ latest_hmi_run.summary.screen_count|default:latest_hmi_run.hmi_screens.count }}</h2>
+    <p>Recovered display surfaces ready for map generation.</p>
+  </article>
+  <article class="stage-card">
+    <span>Components</span>
+    <h2>{{ latest_hmi_run.summary.component_count|default:latest_hmi_run.hmi_components.count }}</h2>
+    <p>HMI objects classified into symbolic map primitives.</p>
+  </article>
+  <article class="stage-card">
+    <span>Tag References</span>
+    <h2>{{ latest_hmi_run.summary.tag_reference_count|default:latest_hmi_run.hmi_tag_references.count }}</h2>
+    <p>Read/write-like references are source facts only.</p>
+  </article>
+</section>
+
+<section class="panel comp-card" data-comp-card data-comp-card-mode="detail">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">Flux.build.sample</p>
+      <h2>Recovered HMI demo HMI Shape</h2>
+    </div>
+    <span class="status-pill">sample data</span>
+  </div>
+  <div class="build-sample-grid">
+    <div>
+      <h3>Screen Slice</h3>
+      <div class="build-screen-list">
+        {% for screen in screen_summaries %}
+          <div class="build-screen-row">
+            <strong>{{ screen.name }}</strong>
+            <small>{{ screen.component_count }} components · {{ screen.tag_reference_count }} tag refs · {{ screen.width|floatformat:0 }}x{{ screen.height|floatformat:0 }}</small>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div>
+      <h3>Component Types</h3>
+      <div class="build-type-list">
+        {% for row in component_type_rows %}
+          <div class="build-type-row"><span>{{ row.component_type }}</span><strong>{{ row.count }}</strong></div>
+        {% endfor %}
+      </div>
+    </div>
+    <div>
+      <h3>Reference Sources</h3>
+      <div class="build-type-list">
+        {% for row in tag_source_rows %}
+          <div class="build-type-row"><span>{{ row.source_kind }}</span><strong>{{ row.count }}</strong></div>
+        {% empty %}
+          <p class="muted">No tag references found in this sample slice.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+
+{% if latest_build_run %}
+<section class="panel comp-card" data-comp-card data-comp-card-mode="detail">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">Flux.build.artifacts</p>
+      <h2>Latest Symbolic Map Build</h2>
+    </div>
+    <span class="status-pill">{{ latest_build_run.status }}</span>
+  </div>
+  <p class="muted">Output: {{ latest_build_run.output_path }}</p>
+  <div class="build-type-list">
+    {% for artifact in latest_artifacts %}
+      <div class="build-type-row"><span>{{ artifact.kind }}</span><strong>{{ artifact.size_bytes }} bytes</strong></div>
+    {% empty %}
+      <p class="muted">No artifacts recorded yet.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endif %}
+
+<section class="panel comp-card" data-comp-card data-comp-card-mode="configure">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">Flux.build.hmi-map</p>
+      <h2>Symbolic HMI Map Selection</h2>
+    </div>
+    <span class="status-pill">webform</span>
+  </div>
+  {% if latest_hmi_run %}
+    <form method="post" action="{% url 'build:build_hmi_map' %}" class="form-stack">
+      {% csrf_token %}
+      <input type="hidden" name="mine_run_id" value="{{ latest_hmi_run.id }}">
+      <label for="hmi-map-output-dir">Artifact output directory</label>
+      <input id="hmi-map-output-dir" name="output_dir" type="text" value="{{ default_hmi_map_output_dir }}">
+      <div class="stage-grid">
+        <label>Cell bundle key <input name="cell_bundle_key" type="text" value="{{ default_cell_bundle_key }}"></label>
+        <label>Cell bundle name <input name="cell_bundle_name" type="text" value="HMI Run {{ latest_hmi_run.id }}"></label>
+        <label>Cell slug <input name="cell_slug" type="text" value="selected-hmi-cell"></label>
+        <label>Cell name <input name="cell_name" type="text" value="{{ default_cell_name }}"></label>
+        <label>Cell group <input name="cell_group" type="text" placeholder="Area or process group"></label>
+        <label>Cell kind <input name="cell_kind" type="text" value="Recovered"></label>
+      </div>
+      <p class="muted">Source run {{ latest_hmi_run.id }} · {{ latest_hmi_run.source_path }}. Components without tag associations are hidden here; buttons and inputs are source facts only, not active controls.</p>
+      <section class="build-map-selector" data-build-map-selector aria-label="Tagged HMI component map selector">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Physical Screen Map</p>
+            <h3>Click Symbols To Select Objects</h3>
+          </div>
+          <span class="status-pill"><span data-build-selected-count>{{ hmi_components|length }}</span> / {{ tagged_component_count }} tagged</span>
+        </div>
+        <div class="build-map-grid">
+          {% for map_screen in map_screens %}
+            <article class="build-screen-map" data-build-screen-map>
+              <header>
+                <strong>{{ map_screen.screen.name }}</strong>
+                <small>{{ map_screen.nodes|length }} tagged objects · {{ map_screen.width|floatformat:0 }}x{{ map_screen.height|floatformat:0 }}</small>
+              </header>
+              <div class="build-map-canvas" style="aspect-ratio: {{ map_screen.width|floatformat:0 }} / {{ map_screen.height|floatformat:0 }};" role="group" aria-label="Tagged component positions for {{ map_screen.screen.name }}">
+                {% for node in map_screen.nodes %}
+                  <button type="button" class="build-map-node is-selected" data-build-map-node="{{ node.component.id }}" aria-pressed="true" title="{{ node.component.name }} · {{ node.component.component_type }}" style="left: {{ node.left_pct }}%; top: {{ node.top_pct }}%; width: {{ node.width_pct }}%; height: {{ node.height_pct }}%;">
+                    <span>{{ node.symbol }}</span>
+                  </button>
+                {% endfor %}
+              </div>
+            </article>
+          {% empty %}
+            <p class="muted">No tagged HMI components found for this source.</p>
+          {% endfor %}
+        </div>
+      </section>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Select</th><th>Symbol</th><th>Component</th><th>Screen</th><th>Tags</th></tr></thead>
+          <tbody>
+            {% for component in hmi_components %}
+              <tr class="build-component-row is-selected" data-build-component-row="{{ component.id }}">
+                <td><input type="checkbox" name="component_id" value="{{ component.id }}" checked aria-label="Select {{ component.name }}" data-build-component-checkbox></td>
+                <td><code>{{ component.map_symbol }}</code></td>
+                <td><strong>{{ component.name }}</strong><br><small>{{ component.component_type }}</small></td>
+                <td>{{ component.screen.name }}</td>
+                <td>{% for reference in component.tag_references.all|slice:":4" %}<code>{{ reference.original }}</code>{% if not forloop.last %}<br>{% endif %}{% endfor %}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="5"><span class="muted">No tag-associated HMI components available.</span></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="actions">
+        <button class="button button-secondary" type="submit" name="action" value="generate_map">Generate Symbolic Map</button>
+        <button class="button" type="submit" name="action" value="create_cell_draft">Create Cell Draft</button>
+      </div>
+    </form>
+  {% else %}
+    <p class="muted">Import a FactoryTalk source through Flux.mine before generating a symbolic HMI map.</p>
+  {% endif %}
 </section>
 {% endblock %}

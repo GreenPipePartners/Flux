@@ -1,4 +1,5 @@
 import csv
+import json
 import sys
 import tempfile
 from io import StringIO
@@ -9,9 +10,10 @@ from unittest.mock import patch
 from django.core.management import call_command
 from django.test import TestCase
 
-from flux.base.models import FieldDevice, FieldEndpoint, FieldTag
+from flux.sim.models import FieldEndpoint
 from flux.base.runtime import LatestTagValue, RuntimeTag, TagSample
-from flux.live.models import LiveScope
+from flux.plane.models import Sample
+from flux.spot.models import LiveScope
 from flux.sim.fluxolot_fishtank import (
     FLUXOLOT_LIVE_SCOPE,
     FLUXOLOT_TAG_FOLDER,
@@ -24,10 +26,28 @@ from flux.sim.fluxolot_fishtank import (
     write_fluxolot_trace_csv,
     write_fluxolot_trace_scope_csv,
 )
-from flux.trace.models import TraceCachePoint, TraceProfile
+from flux.sim.models import DeviceConfig, TagConfig
+from flux.trace.models import TraceProfile
+
+
+FLUXOLOT_PROVIDER_EXPORT_FIXTURE = Path(__file__).resolve().parent / "fixtures" / "fluxolot_provider_export.json"
 
 
 class FluxolotFishtankTests(TestCase):
+    def test_fluxolot_provider_export_fixture_matches_fishtank_model(self):
+        payload = json.loads(FLUXOLOT_PROVIDER_EXPORT_FIXTURE.read_text(encoding="utf-8"))
+        atomic_tags = list(iter_atomic_tags(payload))
+
+        self.assertEqual(payload["tagType"], "Provider")
+        self.assertEqual(len(atomic_tags), len(FLUXOLOT_TAGS) * len(FLUXOLOT_TANKS))
+        self.assertEqual({tag["opcServer"] for _path, tag in atomic_tags}, {"FluxolotOPC"})
+        expected_item_paths = {
+            f"ns=2;s={tank.device_name}.{spec.name}"
+            for tank in FLUXOLOT_TANKS
+            for spec in FLUXOLOT_TAGS
+        }
+        self.assertEqual({tag["opcItemPath"] for _path, tag in atomic_tags}, expected_item_paths)
+
     def test_ensure_fluxolot_fishtank_creates_persistent_fixture(self):
         result = ensure_fluxolot_fishtank(history_days=2, history_interval_minutes=720)
 
@@ -37,8 +57,8 @@ class FluxolotFishtankTests(TestCase):
         self.assertEqual(len(result.runtime_tags), len(FLUXOLOT_TAGS) * len(FLUXOLOT_TANKS))
         endpoint_names = [tank.endpoint_name for tank in FLUXOLOT_TANKS]
         self.assertEqual(FieldEndpoint.objects.filter(name__in=endpoint_names).count(), 2)
-        self.assertEqual(FieldDevice.objects.filter(endpoint__name__in=endpoint_names).count(), 2)
-        self.assertEqual(FieldTag.objects.filter(device__endpoint__name__in=endpoint_names).count(), 26)
+        self.assertEqual(DeviceConfig.objects.filter(endpoint__name__in=endpoint_names).count(), 2)
+        self.assertEqual(TagConfig.objects.filter(sim_device__endpoint__name__in=endpoint_names).count(), 26)
         self.assertEqual(RuntimeTag.objects.filter(path__startswith="FluxolotFishtank/").count(), 26)
         self.assertEqual(LatestTagValue.objects.count(), 26)
         self.assertEqual(TagSample.objects.count(), result.sample_count)
@@ -51,8 +71,8 @@ class FluxolotFishtankTests(TestCase):
 
         endpoint_names = [tank.endpoint_name for tank in FLUXOLOT_TANKS]
         self.assertEqual(FieldEndpoint.objects.filter(name__in=endpoint_names).count(), 2)
-        self.assertEqual(FieldDevice.objects.filter(endpoint__name__in=endpoint_names).count(), 2)
-        self.assertEqual(FieldTag.objects.filter(device__endpoint__name__in=endpoint_names).count(), len(FLUXOLOT_TAGS) * len(FLUXOLOT_TANKS))
+        self.assertEqual(DeviceConfig.objects.filter(endpoint__name__in=endpoint_names).count(), 2)
+        self.assertEqual(TagConfig.objects.filter(sim_device__endpoint__name__in=endpoint_names).count(), len(FLUXOLOT_TAGS) * len(FLUXOLOT_TANKS))
         self.assertEqual(RuntimeTag.objects.filter(path__startswith="FluxolotFishtank/").count(), len(FLUXOLOT_TAGS) * len(FLUXOLOT_TANKS))
         self.assertEqual(TagSample.objects.count(), second.sample_count)
         self.assertEqual(first.sample_count, second.sample_count)
@@ -65,8 +85,8 @@ class FluxolotFishtankTests(TestCase):
         self.assertTrue(LiveScope.objects.filter(slug="fluxolot").exists())
         self.assertTrue(TraceProfile.objects.filter(key="fluxolot-sir").exists())
         self.assertTrue(TraceProfile.objects.filter(key="fluxolot-missus").exists())
-        self.assertTrue(TraceCachePoint.objects.filter(signal__profile__key="fluxolot-sir").exists())
-        self.assertTrue(TraceCachePoint.objects.filter(signal__profile__key="fluxolot-missus").exists())
+        self.assertTrue(Sample.objects.filter(series__chart_signals__profile__key="fluxolot-sir").exists())
+        self.assertTrue(Sample.objects.filter(series__chart_signals__profile__key="fluxolot-missus").exists())
 
     def test_install_fluxolot_fishtank_can_seed_year_long_trace_proof_dataset(self):
         call_command(
@@ -75,7 +95,7 @@ class FluxolotFishtankTests(TestCase):
             "1",
             "--history-interval-minutes",
             "1440",
-            "--trace-cache-all",
+            "--plane-samples-all",
         )
 
         oldest = TagSample.objects.filter(tag__path__startswith="FluxolotFishtank/").order_by("read_at").first()
@@ -84,8 +104,8 @@ class FluxolotFishtankTests(TestCase):
         self.assertIsNotNone(newest)
         self.assertGreaterEqual((newest.read_at.date() - oldest.read_at.date()).days, 365)
         self.assertEqual(TraceProfile.objects.get(key="fluxolot-sir").cache_window_minutes, 365 * 1440)
-        self.assertGreaterEqual(TraceCachePoint.objects.filter(signal__profile__key="fluxolot-sir").count(), 8 * 365)
-        self.assertGreaterEqual(TraceCachePoint.objects.filter(signal__profile__key="fluxolot-missus").count(), 8 * 365)
+        self.assertGreaterEqual(Sample.objects.filter(series__chart_signals__profile__key="fluxolot-sir").count(), 8 * 365)
+        self.assertGreaterEqual(Sample.objects.filter(series__chart_signals__profile__key="fluxolot-missus").count(), 8 * 365)
 
     def test_configure_fluxolot_fishtank_ignition_uses_fluxy_standard_apis(self):
         fx = FakeFluxy()
@@ -220,3 +240,12 @@ class FakeTagNamespace:
     def delete_tags(self, tag_paths):
         self.deleted.append(tag_paths)
         return []
+
+
+def iter_atomic_tags(node, path=""):
+    name = node.get("name") or ""
+    node_path = f"{path}/{name}" if path and name else name or path
+    if node.get("tagType") == "AtomicTag":
+        yield node_path, node
+    for child in node.get("tags") or []:
+        yield from iter_atomic_tags(child, node_path)

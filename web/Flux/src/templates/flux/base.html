@@ -14,7 +14,7 @@
     }
   </script>
   <link rel="stylesheet" href="{% static 'flux/site.css' %}">
-  <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+  <script src="{% static 'flux/vendor/htmx/htmx.min.js' %}?v=2.0.4" defer></script>
   <script src="{% static 'flux/site.js' %}" defer></script>
 </head>
 <body{% if embed_mode %} class="embed-mode"{% endif %}>
@@ -25,11 +25,12 @@
     </a>
     <nav>
       <a href="{% url 'dashboard:home' %}">Dashboard</a>
-      <a href="{% url 'live:index' %}">Live</a>
-      <a href="{% url 'trace:index' %}">Trace</a>
+      <a href="{% url 'mine:index' %}">Mine</a>
+      <a href="{% url 'build:index' %}">Build</a>
+      <a href="{% url 'spot:index' %}">Spot</a>
+      <a href="{% url 'chart:index' %}">Chart</a>
       <a href="{% url 'sim:index' %}">Sim</a>
       <a href="{% url 'serve:index' %}">Serve</a>
-      <a href="{% url 'admin:index' %}">Admin</a>
     </nav>
     <div class="theme-picker" aria-label="Primary color theme" data-theme-picker>
       <button type="button" class="theme-swatch theme-current" data-theme-toggle aria-label="Choose color theme" aria-expanded="false">█</button>
@@ -45,12 +46,26 @@
     </div>
   </header>{% endif %}
   <main class="page">
-    {% if messages %}
-      <section class="messages">
-        {% for message in messages %}<p>{{ message }}</p>{% endfor %}
-      </section>
-    {% endif %}
-    {% block content %}{% endblock %}
+    <section
+      id="flux-page-content"
+      {% if flux_web_pulse.enabled and not embed_mode %}
+        data-flux-web-pulse
+        data-flux-web-pulse-seconds="{{ flux_web_pulse.refresh_seconds }}"
+        hx-get="{{ request.get_full_path }}"
+        hx-trigger="every {{ flux_web_pulse.refresh_seconds }}s [fluxDisplayPulseCanRun()]"
+        hx-target="this"
+        hx-select="#flux-page-content"
+        hx-swap="outerHTML show:none"
+        hx-push-url="false"
+      {% endif %}
+    >
+      {% if messages %}
+        <section class="messages">
+          {% for message in messages %}<p>{{ message }}</p>{% endfor %}
+        </section>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </section>
   </main>
 </body>
 </html>

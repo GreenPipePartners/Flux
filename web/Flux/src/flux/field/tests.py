@@ -1,13 +1,17 @@
 import json
 from io import StringIO
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.core.management import call_command
 from django.test import SimpleTestCase, TestCase
 
 from flux.base.field_config import endpoint_config, ignition_tag_config
-from flux.base.models import FieldDevice, FieldEndpoint, FieldNode, FieldTag
+from flux.base.models import Tag
+from flux.sim.models import FieldEndpoint
 from flux.field.ignition import configure_field_agent_ignition, configure_field_device_ignition
+from flux.sim.models import DeviceConfig, TagConfig
+from flux.sim.testing import create_device_config, create_tag_config
 
 
 class FieldSmokeTests(TestCase):
@@ -34,43 +38,39 @@ class FieldSmokeTests(TestCase):
 
     @patch("flux.field.management.commands.configure_field_ignition.fluxy.Fluxy")
     def test_configure_field_ignition_command_uses_fluxy_helper(self, fluxy_class):
-        fluxy_class.return_value = FakeFluxy()
+        fake = FakeFluxy()
+        fluxy_class.return_value = fake
+        endpoint = FieldEndpoint.objects.create(name="supervised-field")
+        device = create_device_config(endpoint=endpoint, name="Device01")
+        create_tag_config(device=device, name="PV", data_type=Tag.DataType.FLOAT, materialized=True)
         output = StringIO()
 
-        call_command("configure_field_ignition", stdout=output)
+        call_command(
+            "configure_field_ignition",
+            "--field-agent-host",
+            "127.0.0.1",
+            "--supervised-base-port",
+            "4900",
+            stdout=output,
+        )
 
         fluxy_class.assert_called_once()
         self.assertIn("Configured", output.getvalue())
         self.assertIn("[default]FieldAgent", output.getvalue())
-
-    def test_field_node_can_map_custom_device_tag(self):
-        endpoint = FieldEndpoint.objects.create(name="custom-field")
-        device = FieldDevice.objects.create(endpoint=endpoint, name="CustomLogix")
-        tag = FieldTag.objects.create(
-            device=device,
-            name="CustomFloat",
-            data_type=FieldTag.DataType.FLOAT,
-            simulation_type=FieldTag.SimulationType.WAVE,
-            update_rate_ms=250,
+        self.assertIn(
+            "opc.tcp://127.0.0.1:%s/flux/sim/supervised-field" % (4900 + endpoint.id),
+            [connection["endpoint_url"] for connection in fake.opcua.added],
         )
-
-        node = FieldNode.objects.create(
-            endpoint=endpoint,
-            field_tag=tag,
-            node_id=tag.node_id,
-            browse_name="CustomFloat",
-        )
-
-        self.assertEqual(node.label, "CustomFloat")
 
     def test_field_tag_derives_opc_paths(self):
         endpoint = FieldEndpoint.objects.create(name="path-field")
-        device = FieldDevice.objects.create(endpoint=endpoint, name="PathLogix")
-        tag = FieldTag.objects.create(
+        device = create_device_config(endpoint=endpoint, name="PathLogix")
+        tag = create_tag_config(
             device=device,
             name="Speed",
-            data_type=FieldTag.DataType.INT,
+            data_type=Tag.DataType.INT,
             update_rate_ms=500,
+            materialized=True,
         )
 
         self.assertEqual(tag.opc_item_path, "PathLogix/Speed")
@@ -84,16 +84,17 @@ class FieldSmokeTests(TestCase):
     def test_endpoint_config_exports_multiple_devices_from_database(self):
         endpoint = FieldEndpoint.objects.create(name="multi-field")
         for index in range(3):
-            device = FieldDevice.objects.create(
+            device = create_device_config(
                 endpoint=endpoint,
                 name="FluxLogix%03d" % (index + 1),
                 device_type="ControlLogix",
             )
-            FieldTag.objects.create(
+            create_tag_config(
                 device=device,
                 name="Value",
-                data_type=FieldTag.DataType.INT,
+                data_type=Tag.DataType.INT,
                 update_rate_ms=500,
+                materialized=True,
             )
 
         config = endpoint_config(endpoint)
@@ -107,12 +108,13 @@ class FieldSmokeTests(TestCase):
 
     def test_ignition_tag_config_uses_field_tag_mapping(self):
         endpoint = FieldEndpoint.objects.create(name="ignition-map-field")
-        device = FieldDevice.objects.create(endpoint=endpoint, name="MapLogix")
-        tag = FieldTag.objects.create(
+        device = create_device_config(endpoint=endpoint, name="MapLogix")
+        tag = create_tag_config(
             device=device,
             name="Temperature",
-            data_type=FieldTag.DataType.FLOAT,
+            data_type=Tag.DataType.FLOAT,
             update_rate_ms=1000,
+            materialized=True,
         )
 
         config = ignition_tag_config(tag, "Flux Field", tag_name="MapLogix_Temperature")
@@ -127,10 +129,10 @@ class FieldIgnitionServiceTests(SimpleTestCase):
             name="device-field",
             endpoint_url="opc.tcp://127.0.0.1:54840/flux/field/device",
         )
-        device = FakeFieldDevice(
+        device = FakeDeviceConfig(
             endpoint=endpoint,
             name="Device A",
-            tags=[FakeFieldTag(device_name="Device A", name="Temperature", data_type="float")],
+            tags=[FakeTagConfig(device_name="Device A", name="Temperature", data_type="float")],
         )
         fx = FakeFluxy()
 
@@ -205,13 +207,17 @@ class FakeFieldEndpoint:
         self.security_policy = "None"
 
 
-class FakeFieldDevice:
+class FakeDeviceConfig:
     def __init__(self, endpoint, name, tags):
         self.endpoint = endpoint
+        self.base_device = SimpleNamespace(name=name, device_type="ControlLogix")
         self.name = name
-        self.device_type = "ControlLogix"
         self.browse_path = "Devices"
+        self.mode = DeviceConfig.Mode.STANDARD
+        self.response_delay_ms = 0
         self.config = {}
+        for tag in tags:
+            tag.sim_device = self
         self.tags = FakeTagRelation(tags)
 
 
@@ -220,28 +226,46 @@ class FakeTagRelation:
         self.tags = tags
 
     def filter(self, **kwargs):
-        if kwargs == {"enabled": True}:
+        if kwargs == {"enabled": True} or kwargs == {"materialized": True, "enabled": True}:
             return self
         raise AssertionError("unexpected filter: %r" % kwargs)
 
+    def select_related(self, *fields):
+        if fields != ("base_tag",):
+            raise AssertionError("unexpected select_related: %r" % (fields,))
+        return self
+
     def order_by(self, field):
-        if field != "name":
+        if field not in {"name", "tag_name"}:
             raise AssertionError("unexpected order_by: %r" % field)
         return sorted(self.tags, key=lambda tag: tag.name)
 
 
-class FakeFieldTag:
+class FakeTagConfig:
     def __init__(self, device_name, name, data_type):
         self.device_name = device_name
-        self.name = name
-        self.data_type = data_type
-        self.update_rate_ms = 1000
-        self.simulation_type = "ramp"
+        self.tag_name = name
+        self.base_tag = SimpleNamespace(name=name, data_type=data_type, update_rate_ms=1000)
+        self.simulation_type = TagConfig.SimulationType.RAMP
         self.min_value = None
         self.max_value = None
         self.variance = 0.0
         self.initial_value = ""
+        self.behavior = TagConfig.Behavior.IMMEDIATE
+        self.mode_config = None
         self.config = {}
+
+    @property
+    def name(self):
+        return self.tag_name
+
+    @property
+    def data_type(self):
+        return self.base_tag.data_type
+
+    @property
+    def update_rate_ms(self):
+        return self.base_tag.update_rate_ms
 
     @property
     def node_id(self):

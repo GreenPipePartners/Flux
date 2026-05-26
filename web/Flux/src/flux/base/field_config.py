@@ -2,16 +2,16 @@ from __future__ import annotations
 
 from typing import Any
 
-from .models import FieldDevice, FieldEndpoint, FieldTag
+from flux.sim.models import FieldEndpoint
 
 
 def enabled_endpoint_configs() -> list[dict[str, Any]]:
-    endpoints = FieldEndpoint.objects.filter(enabled=True).prefetch_related("devices__tags")
+    endpoints = FieldEndpoint.objects.filter(enabled=True)
     return [endpoint_config(endpoint) for endpoint in endpoints]
 
 
 def endpoint_config(endpoint: FieldEndpoint, *, endpoint_url: str | None = None) -> dict[str, Any]:
-    devices = FieldDevice.objects.filter(endpoint=endpoint, enabled=True).prefetch_related("tags")
+    sim_devices = endpoint_sim_device_configs(endpoint)
     return {
         "name": endpoint.name,
         "endpoint_url": endpoint_url or endpoint.endpoint_url,
@@ -19,11 +19,11 @@ def endpoint_config(endpoint: FieldEndpoint, *, endpoint_url: str | None = None)
         "product_uri": endpoint.product_uri,
         "namespace_uri": endpoint.namespace_uri,
         "security_policy": endpoint.security_policy,
-        "devices": [device_config(device) for device in devices],
+        "devices": [sim_device_config(device) for device in sim_devices],
     }
 
 
-def single_device_endpoint_config(device: FieldDevice, *, endpoint_url: str | None = None) -> dict[str, Any]:
+def single_device_endpoint_config(device: Any, *, endpoint_url: str | None = None) -> dict[str, Any]:
     endpoint = device.endpoint
     return {
         "name": endpoint.name,
@@ -32,71 +32,102 @@ def single_device_endpoint_config(device: FieldDevice, *, endpoint_url: str | No
         "product_uri": endpoint.product_uri,
         "namespace_uri": endpoint.namespace_uri,
         "security_policy": endpoint.security_policy,
-        "devices": [device_config(device)],
+        "devices": [sim_device_config(device)],
     }
 
 
-def device_config(device: FieldDevice) -> dict[str, Any]:
-    tags = device.tags.filter(enabled=True).order_by("name")
-    config = {
-        "name": device.name,
-        "device_type": device.device_type,
-        "browse_path": device.browse_path,
-        "tags": [tag_config(tag) for tag in tags],
-    }
-    config.update(device_behavior_config(device))
+def device_config(device: Any) -> dict[str, Any]:
+    return sim_device_config(device)
+
+
+def device_behavior_config(device: Any) -> dict[str, Any]:
+    config = sim_device_behavior_config(device)
     return config
 
 
-def device_behavior_config(device: FieldDevice) -> dict[str, Any]:
-    metadata = getattr(device, "config", None) or {}
-    if not metadata:
-        return {}
+def endpoint_sim_device_configs(endpoint: FieldEndpoint) -> list[Any]:
+    from flux.sim.models import DeviceConfig
 
-    # Device mode describes server/request-level behavior. Tag mode remains
-    # per-tag write behavior and is intentionally not serialized here.
-    config: dict[str, Any] = {"metadata": metadata}
-    mode = metadata.get("mode")
+    return list(
+        DeviceConfig.objects.filter(endpoint=endpoint, enabled=True)
+        .select_related("base_device")
+        .prefetch_related("tags__base_tag")
+        .order_by("base_device__namespace", "base_device__name")
+    )
+
+
+def sim_device_config(device: Any) -> dict[str, Any]:
+    base_device = device.base_device
+    tags = list(
+        device.tags.filter(materialized=True, enabled=True)
+        .select_related("base_tag")
+        .order_by("tag_name")
+    )
+    config = {
+        "name": base_device.name,
+        "device_type": base_device.device_type,
+        "browse_path": device.browse_path,
+        "tags": [sim_tag_config(tag) for tag in tags],
+    }
+    config.update(sim_device_behavior_config(device))
+    return config
+
+
+def sim_device_behavior_config(device: Any) -> dict[str, Any]:
+    metadata = device.config or {}
+    config: dict[str, Any] = {"metadata": metadata} if metadata else {}
+    mode = metadata.get("mode") or (device.mode if device.mode != "standard" else "")
     if mode:
         config["mode"] = mode
-    if "response_delay_ms" in metadata:
-        config["response_delay_ms"] = metadata["response_delay_ms"]
+    if device.response_delay_ms or "response_delay_ms" in metadata:
+        config["response_delay_ms"] = device.response_delay_ms or metadata.get("response_delay_ms", 0)
     return config
 
 
-def tag_config(tag: FieldTag) -> dict[str, Any]:
+def sim_tag_config(tag: Any) -> dict[str, Any]:
+    base_tag = tag.base_tag
+    device_name = tag.sim_device.base_device.name
+    tag_name = tag.tag_name or base_tag.name
     config = {
-        "name": tag.name,
-        "node_id": tag.node_id,
-        "browse_name": tag.browse_name,
-        "opc_item_path": tag.opc_item_path,
-        "data_type": tag.data_type,
-        "update_rate_ms": tag.update_rate_ms,
+        "name": tag_name,
+        "node_id": f"ns=2;s={device_name}.{tag_name}",
+        "browse_name": tag_name,
+        "opc_item_path": f"{device_name}/{tag_name}",
+        "data_type": base_tag.data_type,
+        "update_rate_ms": base_tag.update_rate_ms,
         "simulation_type": tag.simulation_type,
         "min_value": tag.min_value,
         "max_value": tag.max_value,
         "variance": tag.variance,
         "initial_value": tag.initial_value,
     }
-    config.update(tag_behavior_config(tag))
+    config.update(sim_tag_behavior_config(tag))
     return config
 
 
-def tag_behavior_config(tag: FieldTag) -> dict[str, Any]:
-    metadata = getattr(tag, "config", None) or {}
-    if not metadata:
-        return {}
-
-    config: dict[str, Any] = {"metadata": metadata}
-    behavior = metadata.get("behavior")
+def sim_tag_behavior_config(tag: Any) -> dict[str, Any]:
+    config: dict[str, Any] = {}
+    metadata = tag.config or {}
+    if metadata:
+        config["metadata"] = metadata
+    behavior = metadata.get("behavior") or (tag.behavior if tag.behavior != "immediate" else "")
     if behavior:
         config["behavior"] = behavior
-    if "mode_config" in metadata:
-        config["mode_config"] = metadata["mode_config"]
+    mode_config = metadata.get("mode_config") or tag.mode_config
+    if mode_config:
+        config["mode_config"] = mode_config
     return config
 
 
-def ignition_tag_config(tag: FieldTag, opc_server: str, tag_name: str | None = None) -> dict[str, Any]:
+def tag_config(tag: Any) -> dict[str, Any]:
+    return sim_tag_config(tag)
+
+
+def tag_behavior_config(tag: Any) -> dict[str, Any]:
+    return sim_tag_behavior_config(tag)
+
+
+def ignition_tag_config(tag: Any, opc_server: str, tag_name: str | None = None) -> dict[str, Any]:
     return {
         "name": tag_name or tag.name,
         "tagType": "AtomicTag",
@@ -107,7 +138,7 @@ def ignition_tag_config(tag: FieldTag, opc_server: str, tag_name: str | None = N
     }
 
 
-def ignition_folder_config(folder_name: str, tags: list[FieldTag], opc_server: str) -> dict[str, Any]:
+def ignition_folder_config(folder_name: str, tags: list[Any], opc_server: str) -> dict[str, Any]:
     return {
         "name": folder_name,
         "tagType": "Folder",

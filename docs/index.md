@@ -8,15 +8,15 @@ The docs are organized around how Flux is used:
 - **Architecture**: system boundaries and ownership.
 - **Apps**: dashboard, Live, Trace, Serve, Sim, and Opt behavior.
 - **Runbooks**: repeatable workflows for local operation and recovery.
-- **Reference**: durable formats such as Live card context payloads.
+- **Reference**: durable formats such as Spot card context payloads.
 
 ## Local URLs
 
 ```text
 Flux web UI:      http://localhost:8000/
 Docs server:      http://localhost:8001/
-Live view:        http://localhost:8000/live/
-Trace:            http://localhost:8000/trace/
+Spot view:        http://localhost:8000/spot/
+Chart view:       http://localhost:8000/chart/
 Ignition Gateway: http://localhost:8088/web/home
 Fluxy bridge:     http://localhost:8088/system/webdev/flux
 ```

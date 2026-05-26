@@ -1,20 +1,21 @@
 {% extends "flux/base.html" %}
-{% block title %}Flux Live {{ scope.name|default:scope_slug }}{% endblock %}
+{% block title %}Flux Spot {{ scope.name|default:scope_slug }}{% endblock %}
 
 {% block content %}
 {% if request.GET.card == "live-scope" %}{% firstof request.GET.mode "summary" as live_scope_mode %}{% else %}{% firstof "summary" as live_scope_mode %}{% endif %}
 <section id="live-scope-comp-card" class="panel comp-card" data-comp-card data-comp-card-mode="{{ live_scope_mode }}">
-  {% include "flux/partials/link_copy.html" with link=live_page_link label="Live Scope" %}
+  {% include "flux/partials/link_copy.html" with link=live_page_link label="Spot Scope" %}
   <div class="panel-header">
     <div>
-      <p class="eyebrow">flux.live</p>
+      <p class="eyebrow">flux.spot</p>
       <h1>{{ scope.name|default:scope_slug }}</h1>
     </div>
+    {% include "flux/partials/display_pulse_bar.html" %}
     <span class="status-pill">{{ scope_slug }}</span>
   </div>
   {% if scope.description %}<p>{{ scope.description }}</p>{% endif %}
   {% if live_scope_mode == "detail" %}
-    <p class="muted">Use the group tabs below to adjust filters for this live scope.</p>
+    <p class="muted">Use the group tabs below to adjust filters for this spot scope.</p>
   {% endif %}
   {% include "flux/partials/comp_card_controls.html" with card_id="live-scope" current_mode=live_scope_mode show_detail=True %}
 </section>

@@ -7,8 +7,11 @@ from typing import Any
 
 from django.db import transaction
 
-from flux.base.models import SimDevice, SimDeviceTag, SimDriver, SimServer, TagNode, TagProvider
+from flux.base.models import Tag
+from flux.sim.models import SimDriver, SimServer, TagNode, TagProvider
 from flux.base.services import import_provider_payload
+from flux.sim.kernel_sync import disable_sim_catalog_tags, simulation_type_for_data_type, tag_full_path, upsert_device_config
+from flux.sim.models import DeviceConfig, TagConfig
 from flux_sim.tag_data import DeviceInventoryEntry, DeviceTagBinding, parse_device_inventory, tag_data_catalog_from_payload
 
 
@@ -91,25 +94,30 @@ def ingest_tag_data_catalog_payload(
         bindings = catalog.device_tag_bindings()
         import_result.provider.sim_server = infer_sim_server(bindings)
         import_result.provider.save(update_fields=["sim_server"])
-        devices_by_name: dict[str, SimDevice] = {}
+        devices_by_name: dict[str, DeviceConfig] = {}
         for device in catalog.devices.values():
             driver = upsert_driver(device.driver, device.strategy_key)
-            sim_device, _created = SimDevice.objects.update_or_create(
-                provider=import_result.provider,
+            sim_device = upsert_device_config(
+                namespace=f"provider:{import_result.provider.name}",
                 name=device.name,
-                defaults={
-                    "driver": driver,
-                    "source_status": device.status,
-                    "source_detail": device.detail,
-                    "config": {"source_driver": device.driver, "strategy_key": device.strategy_key},
-                    "enabled": True,
-                },
+                device_type=driver.label,
+                source_provider=import_result.provider,
+                sim_server=import_result.provider.sim_server,
+                driver=driver,
+                browse_path=import_result.provider.name,
+                source_status=device.status,
+                source_detail=device.detail,
+                enabled=True,
+                description=device.detail,
+                config={"source_driver": device.driver, "strategy_key": device.strategy_key},
             )
             devices_by_name[device.name] = sim_device
 
         source_paths = bulk_upsert_device_tags(import_result.provider, devices_by_name, bindings)
 
-        delete_stale_device_tags(import_result.provider, source_paths)
+        stale_source_paths = delete_stale_device_tags(import_result.provider, source_paths)
+        for batch in chunked(stale_source_paths, INGEST_BATCH_SIZE):
+            disable_sim_catalog_tags(import_result.provider.name, batch)
 
     return TagDataIngestResult(
         provider=import_result.provider,
@@ -214,7 +222,7 @@ def upsert_driver(driver_name: str, strategy_key: str) -> SimDriver:
 
 def bulk_upsert_device_tags(
     provider: TagProvider,
-    devices_by_name: dict[str, SimDevice],
+    devices_by_name: dict[str, DeviceConfig],
     bindings: list[DeviceTagBinding],
 ) -> list[str]:
     source_paths = [binding.source_path for binding in bindings]
@@ -224,63 +232,153 @@ def bulk_upsert_device_tags(
         for node in TagNode.objects.filter(provider=provider, path__in=batch)
     }
     for batch in chunked(bindings, INGEST_BATCH_SIZE):
-        SimDeviceTag.objects.bulk_create(
-            [device_tag(provider, devices_by_name, tag_nodes, binding) for binding in batch],
-            update_conflicts=True,
-            unique_fields=["provider", "source_path"],
-            update_fields=[
-                "device",
-                "tag_node",
-                "tag_name",
-                "data_type",
-                "value_source",
-                "opc_server",
-                "opc_item_path",
-                "address_strategy",
-                "address",
-                "enabled",
-            ],
-        )
+        bulk_upsert_tag_config_batch(provider, devices_by_name, tag_nodes, batch)
     return source_paths
 
 
-def delete_stale_device_tags(provider: TagProvider, source_paths: list[str]) -> None:
-    if not source_paths:
-        SimDeviceTag.objects.filter(provider=provider).delete()
+def bulk_upsert_tag_config_batch(
+    provider: TagProvider,
+    devices_by_name: dict[str, DeviceConfig],
+    tag_nodes: dict[str, TagNode],
+    bindings: list[DeviceTagBinding],
+) -> None:
+    if not bindings:
         return
+    Tag.objects.bulk_create(
+        [base_tag_row(provider, devices_by_name, binding) for binding in bindings],
+        update_conflicts=True,
+        unique_fields=["provider", "tagpath"],
+        update_fields=["device", "full_path", "name", "data_type", "update_rate_ms", "enabled", "description"],
+        batch_size=INGEST_BATCH_SIZE,
+    )
+    tagpaths = [binding.source_path for binding in bindings]
+    base_tags = {
+        tag.tagpath: tag
+        for tag in Tag.objects.filter(provider=provider.name, tagpath__in=tagpaths).only("id", "provider", "tagpath")
+    }
+    sim_device_ids = {devices_by_name[binding.device_name].id for binding in bindings}
+    base_tag_ids = {tag.id for tag in base_tags.values()}
+    existing_configs = {
+        (config.sim_device_id, config.base_tag_id): config
+        for config in TagConfig.objects.filter(sim_device_id__in=sim_device_ids, base_tag_id__in=base_tag_ids)
+    }
+    creates: list[TagConfig] = []
+    materialized_updates: list[TagConfig] = []
+    catalog_updates: list[TagConfig] = []
+    for binding in bindings:
+        device = devices_by_name[binding.device_name]
+        base_tag = base_tags[binding.source_path]
+        config = existing_configs.get((device.id, base_tag.id))
+        source_tag_node = tag_nodes.get(binding.source_path)
+        metadata = binding_metadata(binding)
+        if config is None:
+            creates.append(tag_config_row(device, base_tag, source_tag_node, binding, metadata))
+            continue
+        config.source_tag_node = source_tag_node
+        config.source_path = binding.source_path
+        config.address_strategy = binding.strategy_key or "generic"
+        config.address = binding.address or {}
+        if config.materialized:
+            materialized_updates.append(config)
+            continue
+        config.tag_name = binding.tag_name
+        config.simulation_type = simulation_type_for_data_type(binding.data_type)
+        config.behavior = TagConfig.Behavior.IMMEDIATE
+        config.mode_config = None
+        config.enabled = True
+        config.config = metadata
+        catalog_updates.append(config)
+    if creates:
+        TagConfig.objects.bulk_create(creates, ignore_conflicts=True, batch_size=INGEST_BATCH_SIZE)
+    if materialized_updates:
+        TagConfig.objects.bulk_update(
+            materialized_updates,
+            ["source_tag_node", "source_path", "address_strategy", "address"],
+            batch_size=INGEST_BATCH_SIZE,
+        )
+    if catalog_updates:
+        TagConfig.objects.bulk_update(
+            catalog_updates,
+            [
+                "source_tag_node",
+                "source_path",
+                "tag_name",
+                "simulation_type",
+                "behavior",
+                "address_strategy",
+                "address",
+                "mode_config",
+                "enabled",
+                "config",
+            ],
+            batch_size=INGEST_BATCH_SIZE,
+        )
+
+
+def base_tag_row(provider: TagProvider, devices_by_name: dict[str, DeviceConfig], binding: DeviceTagBinding) -> Tag:
+    device = devices_by_name[binding.device_name]
+    return Tag(
+        provider=provider.name,
+        tagpath=binding.source_path,
+        device_id=device.base_device_id,
+        full_path=tag_full_path(provider.name, binding.source_path),
+        name=binding.tag_name,
+        data_type=binding.data_type,
+        update_rate_ms=1000,
+        enabled=True,
+        description=binding.source_path,
+    )
+
+
+def tag_config_row(
+    device: DeviceConfig,
+    base_tag: Tag,
+    source_tag_node: TagNode | None,
+    binding: DeviceTagBinding,
+    metadata: dict[str, Any],
+) -> TagConfig:
+    return TagConfig(
+        sim_device=device,
+        base_tag=base_tag,
+        source_tag_node=source_tag_node,
+        source_path=binding.source_path,
+        tag_name=binding.tag_name,
+        simulation_type=simulation_type_for_data_type(binding.data_type),
+        behavior=TagConfig.Behavior.IMMEDIATE,
+        address_strategy=binding.strategy_key or "generic",
+        address=binding.address or {},
+        enabled=True,
+        materialized=False,
+        config=metadata,
+    )
+
+
+def binding_metadata(binding: DeviceTagBinding) -> dict[str, Any]:
+    return {
+        "value_source": binding.value_source,
+        "opc_server": binding.opc_server,
+        "opc_item_path": binding.opc_item_path,
+    }
+
+
+def delete_stale_device_tags(provider: TagProvider, source_paths: list[str]) -> list[str]:
+    if not source_paths:
+        return list(
+            TagConfig.objects.filter(sim_device__source_provider=provider, materialized=False).values_list(
+                "base_tag__tagpath", flat=True
+            )
+        )
 
     current_source_paths = set(source_paths)
-    stale_ids = [
-        device_tag_id
-        for device_tag_id, source_path in SimDeviceTag.objects.filter(provider=provider).values_list(
-            "id", "source_path"
-        )
+    stale_rows = [
+        (tag_config_id, source_path)
+        for tag_config_id, source_path in TagConfig.objects.filter(
+            sim_device__source_provider=provider,
+            materialized=False,
+        ).values_list("id", "base_tag__tagpath")
         if source_path not in current_source_paths
     ]
-    for batch in chunked(stale_ids, INGEST_BATCH_SIZE):
-        SimDeviceTag.objects.filter(id__in=batch).delete()
-
-
-def device_tag(
-    provider: TagProvider,
-    devices_by_name: dict[str, SimDevice],
-    tag_nodes: dict[str, TagNode],
-    binding: DeviceTagBinding,
-) -> SimDeviceTag:
-    return SimDeviceTag(
-        provider=provider,
-        source_path=binding.source_path,
-        device=devices_by_name[binding.device_name],
-        tag_node=tag_nodes.get(binding.source_path),
-        tag_name=binding.tag_name,
-        data_type=binding.data_type,
-        value_source=binding.value_source,
-        opc_server=binding.opc_server,
-        opc_item_path=binding.opc_item_path,
-        address_strategy=binding.strategy_key,
-        address=binding.address,
-        enabled=True,
-    )
+    return [source_path for _tag_config_id, source_path in stale_rows]
 
 
 def chunked[T](items: list[T], size: int) -> list[list[T]]:

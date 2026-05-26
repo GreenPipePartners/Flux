@@ -1,0 +1,66 @@
+<section class="cell-phone-simulator" data-cell-phone-simulator aria-label="Phone process swipe simulation">
+  <div class="cell-phone-shell">
+    <div class="cell-phone-device" data-cell-phone-frame tabindex="0" role="region" aria-label="Swipe process phone preview">
+      <div class="cell-phone-speaker" aria-hidden="true"></div>
+      <div class="cell-phone-screen">
+        <div class="cell-phone-card-stack" data-cell-phone-stack>
+          {% for card in cell_cards %}
+            <article class="cell-phone-card{% if forloop.first %} is-active{% endif %}" data-cell-phone-card data-cell-index="{{ forloop.counter0 }}" data-cell-target-id="cell-{{ card.cell.bundle.key }}-{{ card.cell.slug }}" data-cell-name="{{ card.cell.name }}"{% if not forloop.first %} hidden aria-hidden="true"{% endif %}>
+              <header class="cell-phone-card-header">
+                <div class="cell-phone-card-topline">
+                  <a class="cell-phone-home-link" href="{% url 'dashboard:home' %}" aria-label="Return to Flux home">Flux Home</a>
+                  <span class="status-pill">{{ card.cell.kind }}</span>
+                </div>
+                <h3>{{ card.cell.name }}</h3>
+              </header>
+              <section class="cell-phone-live" aria-label="Phone live values for {{ card.cell.name }}">
+                {% for point in card.live_points|slice:":3" %}
+                  <div class="cell-phone-live-row cell-phone-live-row-{{ point.state }}">
+                    <span>{{ point.label }}</span>
+                    <strong>{{ point.display_value }}{% if point.units %} <small>{{ point.units }}</small>{% endif %}</strong>
+                  </div>
+                {% empty %}
+                  <div class="cell-phone-live-row"><span>No live signals</span><strong>--</strong></div>
+                {% endfor %}
+              </section>
+              <section class="cell-phone-diagram" aria-label="Phone process relationship preview">
+                <span>{% if card.prev_area %}{{ card.prev_area.name }}{% else %}Previous{% endif %}</span>
+                <strong>{{ card.cell.kind|slice:":1"|upper }}</strong>
+                <span>{% if card.next_area %}{{ card.next_area.name }}{% else %}Next{% endif %}</span>
+              </section>
+              <section class="cell-phone-trace" aria-label="Phone trace preview">
+                <div class="cell-phone-chart-heading">
+                  <span>Trace Chart</span>
+                  <strong>{{ card.chart_points|length }} signals</strong>
+                </div>
+                <div class="cell-phone-chart-window" data-cell-phone-chart>
+                  <svg class="cell-phone-chart-svg" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Cached trend sparkline">
+                    <line class="cell-phone-chart-gridline" x1="0" y1="25" x2="100" y2="25"></line>
+                    <line class="cell-phone-chart-gridline" x1="0" y1="50" x2="100" y2="50"></line>
+                    <line class="cell-phone-chart-gridline" x1="0" y1="75" x2="100" y2="75"></line>
+                    {% for point in card.chart_points|slice:":2" %}
+                      {% if point.sparkline_points %}
+                        <polyline class="cell-phone-chart-series cell-phone-chart-series-{{ forloop.counter }}" points="{{ point.sparkline_points }}"></polyline>
+                      {% endif %}
+                    {% endfor %}
+                  </svg>
+                </div>
+                <div class="cell-phone-chart-legend">
+                  {% for point in card.chart_points|slice:":2" %}
+                    <small><span class="cell-phone-chart-key cell-phone-chart-key-{{ forloop.counter }}"></span>{{ point.label }} · {{ point.sample_count }} samples · {{ point.source_label }}{% if point.latest_value != "--" %} · {{ point.latest_value }}{% endif %}</small>
+                  {% empty %}
+                    <small>No Plane samples configured.</small>
+                  {% endfor %}
+                </div>
+              </section>
+            </article>
+          {% endfor %}
+        </div>
+        <div class="cell-phone-footer">
+          <button type="button" data-cell-phone-nav="prev" aria-label="Show previous process">Left: Previous</button>
+          <button type="button" data-cell-phone-nav="next" aria-label="Show next process">Right: Next</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

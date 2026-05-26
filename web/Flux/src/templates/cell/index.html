@@ -1,0 +1,137 @@
+{% extends "flux/base.html" %}
+
+{% block title %}Flux Cell{% endblock %}
+
+{% block content %}
+<section class="feature-hero">
+  <div class="feature-hero-title">
+    <h1>Flux.cell</h1>
+    {% include "flux/partials/display_pulse_bar.html" %}
+  </div>
+  <div class="service-summary service-summary-ok">
+    <span class="eyebrow">Draft Cells</span>
+    <strong>{{ cell_count }}</strong>
+    <small>{{ bundle_count }} bundles</small>
+  </div>
+</section>
+
+<section id="cell-bundles-panel" class="panel comp-card" data-comp-card data-comp-card-mode="detail">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">Flux.cell</p>
+      <h2>Process Collections</h2>
+    </div>
+    <span class="status-pill">csv api</span>
+  </div>
+  <p class="muted">Flux.cell stores spreadsheet-friendly draft process cells and exports Live/Trace-compatible CSV views.</p>
+  <form method="post" action="{% url 'cell:seed_demo' %}" class="form-inline">
+    {% csrf_token %}
+    <button class="button" type="submit">Seed Demo Cell</button>
+    <span class="muted">Creates Demo Pad with cached runtime and trace samples.</span>
+  </form>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Bundle</th><th>Cells</th><th>CSV</th></tr></thead>
+      <tbody>
+        {% for bundle in bundles %}
+          <tr>
+            <td><strong>{{ bundle.name }}</strong><br><small>{{ bundle.key }}</small></td>
+            <td>{{ bundle.cells.count }}</td>
+            <td><a href="{% url 'cell:cells_csv' bundle.key %}">Cells</a> · <a href="{% url 'cell:points_csv' bundle.key %}">Points</a> · <a href="{% url 'cell:relationships_csv' bundle.key %}">Relationships</a> · <a href="{% url 'cell:visuals_csv' bundle.key %}">Visuals</a> · <a href="{% url 'cell:sources_csv' bundle.key %}">Sources</a> · <a href="{% url 'cell:live_scope_csv' bundle.key %}">Live</a> · <a href="{% url 'cell:trace_scopes_csv' bundle.key %}">Trace</a></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3"><span class="muted">No cell bundles imported yet.</span></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% include "flux/partials/pagination_controls.html" with page_obj=bundles_page page_param="bundles_page" target_id="cell-bundles-panel" select_id="cell-bundles-panel" label="Cell bundle pages" item_label="bundles" %}
+  </div>
+</section>
+
+<section class="cell-card-grid" aria-label="Flux.cell process cards">
+  {% for card in cell_cards %}
+    <article class="flux-cell-card" id="cell-{{ card.cell.bundle.key }}-{{ card.cell.slug }}" data-flux-cell-card>
+      <header class="flux-cell-header">
+        <div>
+          <p class="eyebrow">{{ card.cell.bundle.key }} · {{ card.cell.slug }}</p>
+          <h2>{{ card.cell.name }}</h2>
+        </div>
+        <span class="status-pill">{{ card.cell.kind }}</span>
+      </header>
+      <section class="flux-cell-signals" aria-label="Live signal fields">
+        {% for point in card.live_points %}
+          <div class="flux-cell-signal flux-cell-signal-{{ point.state }}">
+            <span>{{ point.label }}{% if point.units %} <small>{{ point.units }}</small>{% endif %}</span>
+            <strong>{{ point.display_value }}</strong>
+            <small>{{ point.quality }}{% if point.read_at %} · {{ point.read_at|timesince }} ago{% endif %}</small>
+          </div>
+        {% empty %}
+          <div class="flux-cell-signal"><span>No live signals</span><strong>--</strong></div>
+        {% endfor %}
+      </section>
+      <section class="flux-cell-body">
+        <aside class="flux-cell-parent">
+          <span>Parent</span>
+          <strong>{% if card.parent %}{{ card.parent.name }}{% else %}<{% endif %}</strong>
+        </aside>
+        <div class="flux-cell-visual">
+          {% if card.visual %}
+            <span>{{ card.visual.visual_type }}</span>
+            <strong>{{ card.visual.source_item_key|default:card.cell.kind|truncatechars:18 }}</strong>
+          {% else %}
+            <span>Cell Image</span>
+            <strong>{{ card.cell.kind|slice:":1"|upper }}</strong>
+          {% endif %}
+          <small>{{ card.source_count }} sources</small>
+        </div>
+        <aside class="flux-cell-children">
+          <span>Children</span>
+          {% for child in card.children %}<strong>{{ child.name }}</strong>{% empty %}<strong>></strong><strong>></strong><strong>></strong>{% endfor %}
+        </aside>
+      </section>
+      <section class="flux-cell-chart" aria-label="Trace signals">
+        <div class="flux-cell-chart-title">Cell Chart · {{ card.chart_points|length }} signals</div>
+        <div class="flux-cell-chart-lines">
+          {% for point in card.chart_points %}<span style="--line-index: {{ forloop.counter }}" title="{{ point.label }} · {{ point.sample_count }} samples · latest {{ point.latest_value }}"></span>{% empty %}<span></span>{% endfor %}
+        </div>
+        <div class="flux-cell-chart-legend">
+          {% for point in card.chart_points %}<small>{{ point.label }}: {{ point.sample_count }} samples · {{ point.source_label }}{% if point.latest_value != "--" %} · {{ point.latest_value }}{% endif %}</small>{% endfor %}
+        </div>
+      </section>
+      <section class="flux-cell-comment">
+        <strong>Latest Comment</strong>
+        <p>{% if card.latest_comment %}{{ card.latest_comment.body }}{% else %}Click to add context for operators and engineers.{% endif %}</p>
+        <form method="post" action="{% url 'cell:add_comment' card.cell.bundle.key card.cell.slug %}" class="flux-cell-comment-form">
+          {% csrf_token %}
+          <input name="body" type="text" placeholder="Add comment">
+          <button type="submit" aria-label="Add comment to {{ card.cell.name }}">+</button>
+        </form>
+      </section>
+      <footer class="flux-cell-nav">
+        <span>{% if card.prev_area %}{{ card.prev_area.name }}{% else %}Prev Area{% endif %}</span>
+        <span>{% if card.next_area %}{{ card.next_area.name }}{% else %}Next Area{% endif %}</span>
+      </footer>
+    </article>
+  {% empty %}
+    <section class="empty-state"><p>No Flux.cell drafts available yet. Import a CSV bundle, seed the demo, or create drafts from Flux.build selections.</p></section>
+  {% endfor %}
+</section>
+
+<section class="panel comp-card" data-comp-card data-comp-card-mode="configure">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">Flux.cell.import</p>
+      <h2>Import Spreadsheet Bundle</h2>
+    </div>
+    <span class="status-pill">CSV ZIP</span>
+  </div>
+  <form method="post" action="{% url 'cell:import_bundle' %}" enctype="multipart/form-data" class="form-stack">
+    {% csrf_token %}
+    <label for="cell-bundle-zip">Cell CSV bundle</label>
+    <input id="cell-bundle-zip" name="bundle_zip" type="file" accept=".zip,application/zip" required>
+    <label class="checkbox-row"><input name="replace" type="checkbox"> Replace matching bundles before import</label>
+    <p class="muted">ZIP must contain `cells.csv` and `points.csv`; optional files are `relationships.csv`, `visuals.csv`, and `sources.csv`.</p>
+    <div class="actions"><button class="button" type="submit">Import Cell Bundle</button></div>
+  </form>
+</section>
+{% endblock %}

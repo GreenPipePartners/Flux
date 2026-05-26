@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
+import shlex
 import subprocess
 import sys
 import tomllib
@@ -24,6 +26,66 @@ REQUIRED_SUITE_FIELDS = {
     "cleanup_expectations",
     "destructive_scope",
 }
+
+PROFILE_SUITES = {
+    "fast": (
+        "django-check",
+        "unit-root",
+        "unit-mine",
+        "unit-build",
+        "unit-sim",
+        "unit-fluxy",
+    ),
+    "web": (
+        "django-check",
+        "unit-web",
+        "fluxolot-fishtank",
+        "live-csv",
+        "trace-csv",
+        "sampling",
+        "unit-cell",
+    ),
+    "e2e": ("e2e-mine-build",),
+    "live": (
+        "integration-fluxy",
+        "integration-fluxy-postgres",
+        "integration-sim",
+        "integration-web",
+        "closed-loop",
+    ),
+    "audit": (
+        "django-check",
+        "unit-root",
+        "unit-mine",
+        "unit-build",
+        "unit-sim",
+        "unit-fluxy",
+        "unit-web",
+        "fluxolot-fishtank",
+        "live-csv",
+        "trace-csv",
+        "sampling",
+        "unit-cell",
+        "e2e-mine-build",
+        "integration-fluxy",
+        "integration-fluxy-postgres",
+        "integration-sim",
+        "integration-web",
+        "closed-loop",
+    ),
+}
+
+LIVE_AUDIT_DEFAULTS = {
+    "FLUXY_BASE_URL": "http://localhost:8088/system/webdev/flux",
+    "FLUX_PLAYWRIGHT": "1",
+    "FLUX_FULL_INTEGRATION": "1",
+    "FLUX_SIM_IGNITION_INTEGRATION": "1",
+    "FLUX_FIELD_INTEGRATION": "1",
+    "FLUX_FIELD_SUPERVISOR_INTEGRATION": "1",
+    "FLUX_LIVE_EXTRACTION_INTEGRATION": "1",
+    "FLUX_LIVE_CLOSED_LOOP_OPC": "1",
+}
+LIVE_AUDIT_ENV_FILES = (Path(".env"), Path("web/Flux/.env"))
 
 
 class ManifestError(ValueError):
@@ -90,6 +152,80 @@ class Manifest:
         if missing:
             raise ManifestError("Unknown suite(s): %s" % ", ".join(missing))
         return tuple(by_name[name] for name in names)
+
+
+def suite_names_for_profiles(profile_names: list[str] | None) -> list[str]:
+    names: list[str] = []
+    for profile_name in profile_names or []:
+        names.extend(PROFILE_SUITES[profile_name])
+    return dedupe(names)
+
+
+def dedupe(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for value in values:
+        if value in seen:
+            continue
+        seen.add(value)
+        result.append(value)
+    return result
+
+
+def load_env_file(path: Path, *, environ: dict[str, str] | None = None) -> dict[str, str]:
+    target = os.environ if environ is None else environ
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        raise ManifestError("Could not read env file %s: %s" % (path, exc)) from exc
+
+    for line_number, raw_line in enumerate(lines, start=1):
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[7:].strip()
+        if "=" not in line:
+            raise ManifestError("Invalid env line in %s:%s" % (path, line_number))
+        key, raw_value = line.split("=", 1)
+        key = key.strip()
+        if not key.isidentifier():
+            raise ManifestError("Invalid env key in %s:%s" % (path, line_number))
+        raw_value = raw_value.strip()
+        if raw_value.startswith(("'", '"')):
+            try:
+                value_parts = shlex.split(raw_value, comments=False, posix=True)
+            except ValueError as exc:
+                raise ManifestError("Invalid env value in %s:%s: %s" % (path, line_number, exc)) from exc
+            if len(value_parts) > 1:
+                raise ManifestError("Invalid env value in %s:%s" % (path, line_number))
+            target[key] = value_parts[0] if value_parts else ""
+        else:
+            target[key] = raw_value.split(" #", 1)[0].strip()
+    return target
+
+
+def apply_env_pairs(pairs: list[str] | None, *, environ: dict[str, str] | None = None) -> dict[str, str]:
+    target = os.environ if environ is None else environ
+    for pair in pairs or []:
+        if "=" not in pair:
+            raise ManifestError("--env values must use KEY=VALUE form: %s" % pair)
+        key, value = pair.split("=", 1)
+        if not key.isidentifier():
+            raise ManifestError("Invalid --env key: %s" % key)
+        target[key] = value
+    return target
+
+
+def apply_live_audit_env(root: Path, *, environ: dict[str, str] | None = None) -> dict[str, str]:
+    target = os.environ if environ is None else environ
+    for relative_path in LIVE_AUDIT_ENV_FILES:
+        env_path = root / relative_path
+        if env_path.is_file():
+            load_env_file(env_path, environ=target)
+    for key, value in LIVE_AUDIT_DEFAULTS.items():
+        target.setdefault(key, value)
+    return target
 
 
 def load_manifest(path: Path) -> Manifest:
@@ -177,6 +313,7 @@ def build_report(
     root: Path,
     *,
     execute: bool = False,
+    profiles: list[str] | None = None,
 ) -> dict[str, Any]:
     return {
         "workspace": {
@@ -184,6 +321,7 @@ def build_report(
             "version": manifest.version,
             "description": manifest.description,
         },
+        "profiles": profiles or [],
         "report_only": not execute,
         "suite_count": len(suites),
         "suites": [suite.report(root, report_only=not execute) for suite in suites],
@@ -253,6 +391,12 @@ def execute_report(report: dict[str, Any], *, stream: bool = True) -> bool:
         execution["duration_seconds"] = round(monotonic() - started, 3)
         execution["output"] = "".join(output_lines)
         if returncode == 0:
+            empty_success_reason = successful_output_without_executed_tests(execution["output"])
+            if empty_success_reason:
+                execution["output"] += "Flux.test treated this as failed: %s.\n" % empty_success_reason
+                returncode = 1
+                execution["returncode"] = returncode
+        if returncode == 0:
             execution["status"] = "passed"
             suite["status"] = "passed"
         else:
@@ -262,10 +406,24 @@ def execute_report(report: dict[str, Any], *, stream: bool = True) -> bool:
     return passed
 
 
+def successful_output_without_executed_tests(output: str) -> str:
+    if "NO TESTS RAN" in output or re.search(r"\bRan 0 tests\b", output):
+        return "test command reported zero executed tests"
+    if re.search(r"\bcollected 0 items\b", output):
+        return "pytest collected zero tests"
+    if re.search(r"=+\s+\d+ skipped(?:, \d+ deselected)? in ", output) and not re.search(
+        r"\b\d+ passed\b|\b\d+ failed\b|\b\d+ error", output
+    ):
+        return "pytest skipped every selected test"
+    return ""
+
+
 def print_text_report(report: dict[str, Any]) -> None:
     workspace = report["workspace"]
     print("%s v%s" % (workspace["name"], workspace["version"]))
     print(workspace["description"])
+    if report["profiles"]:
+        print("Profiles: %s" % ", ".join(report["profiles"]))
     if report["report_only"]:
         print("Report-only: commands are described, not executed.")
     else:
@@ -295,23 +453,58 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Report or execute Flux.test suite manifest definitions.")
     parser.add_argument("suite", nargs="*", help="Suite name(s) to report or execute. Defaults to all suites.")
     parser.add_argument(
+        "--profile",
+        action="append",
+        choices=sorted(PROFILE_SUITES),
+        help="Named suite bundle for tester shortcuts. May be used multiple times.",
+    )
+    parser.add_argument("--list-profiles", action="store_true", help="List available suite profiles and exit.")
+    parser.add_argument(
         "--manifest",
         type=Path,
         default=Path(__file__).with_name("manifest.toml"),
         help="Path to Flux.test manifest TOML.",
     )
+    parser.add_argument(
+        "--env-file",
+        action="append",
+        type=Path,
+        help="Load KEY=VALUE pairs before checking suite env gates. Does not execute shell syntax.",
+    )
+    parser.add_argument(
+        "--env",
+        action="append",
+        metavar="KEY=VALUE",
+        help="Set one environment value before checking suite env gates.",
+    )
+    parser.add_argument(
+        "--live-audit-env",
+        action="store_true",
+        help="Load .env files when present and set live audit gates for e2e/live profiles.",
+    )
     parser.add_argument("--execute", action="store_true", help="Execute selected suites. Default is report-only.")
     parser.add_argument("--json", action="store_true", help="Emit structured JSON instead of text.")
     args = parser.parse_args(argv)
 
+    if args.list_profiles:
+        for profile_name in sorted(PROFILE_SUITES):
+            print("%s: %s" % (profile_name, ", ".join(PROFILE_SUITES[profile_name])))
+        return 0
+
     try:
+        if args.live_audit_env:
+            apply_live_audit_env(root)
+        for env_file in args.env_file or []:
+            load_env_file((root / env_file).resolve() if not env_file.is_absolute() else env_file)
+        apply_env_pairs(args.env)
         manifest = load_manifest(args.manifest)
-        suites = manifest.select(args.suite)
+        selected_names = dedupe([*suite_names_for_profiles(args.profile), *args.suite])
+        suites = manifest.select(selected_names)
     except ManifestError as exc:
         print("Flux.test manifest error: %s" % exc, file=sys.stderr)
         return 2
 
-    report = build_report(manifest, suites, root, execute=args.execute)
+    report = build_report(manifest, suites, root, execute=args.execute, profiles=args.profile)
     passed = True
     if args.execute:
         passed = execute_report(report, stream=not args.json)

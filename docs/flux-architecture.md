@@ -5,16 +5,22 @@ Flux is the application boundary around Ignition-facing tooling, runtime data ca
 ## System Shape
 
 ```text
-Ignition Production -> WebDev -> fluxy -> Flux.serve -> Flux.opt -> Flux.live / Flux.trace / Flux.web
+Ignition Production -> WebDev -> fluxy -> Flux.serve -> Flux.opt -> Flux.spot / Flux.chart / Flux.web
 Ignition Development -> WebDev -> fluxy -> Flux.sim -> Flux.base -> Flux.serve -> FieldAgent processes
 Flux.web -> Configurator -> Flux.sim / Flux.base / Flux.serve
+Flux.Deep -> OpenPLC runtime artifacts
 ```
 
 ## Boundaries
 
+- Flux is Linux-exclusive runtime software. Supported operation assumes Linux,
+  bash, systemd/user-systemd service ownership, Gunicorn for Django serving, and
+  Linux-compatible OpenPLC/FieldAgent/QuestDB process control. Windows, PowerShell,
+  `.cmd` launchers, Windows Services, and Waitress are intentionally unsupported.
 - `fluxy/`: Python-for-Ignition client, WebDev deployment tooling, and Ignition expression/tag export utilities.
 - `field/`: FieldAgent OPC UA adapter executable. It is not a Flux domain owner; `Flux.serve` starts one FieldAgent adapter process for each materialized runtime device.
 - `sim/`: standalone `Flux.sim` core for importing Ignition tag exports, reconstructing provider models, flattening OPC requests, and generating simulation/FieldAgent configuration.
+- `deep/`: isolated `Flux.Deep` core for OpenPLC-backed PLC emulation experiments. It starts with Logix L5X source intent and OpenPLC IEC 61131-3 runtime targets.
 - `web/Flux/`: Django/HTMX UX, admin, status, configuration, and worker-control surface. It should adapt core packages, not own their core logic.
 - `scripts/flux`: operator CLI for local service control, health checks, and managed Ignition dev-cell commands.
 
@@ -22,14 +28,28 @@ Flux.web -> Configurator -> Flux.sim / Flux.base / Flux.serve
 
 Django is the UX and configurator layer:
 
-- `flux.live`: lightweight DB-backed visualization.
-- `flux.trace`: power-user charting, historical exploration, and live trace trials over recorded runtime samples.
+- `flux.spot`: lightweight DB-backed current-state visualization.
+- `flux.chart`: power-user charting, historical exploration, and live trace trials over recorded runtime samples.
+- `flux.trace`: chart/history persistence models backing Flux.chart until a planned schema migration.
 - `flux.opt`: tag browse optimizer and runtime read planning.
 - `flux.serve`: worker/service orchestration UX and adapters.
 - `flux.base`: persistent datastore, including simulation catalog rows, materialized runtime device/tag config, and FieldAgent endpoint config.
 - `flux.sim`: simulation UX and adapters over root `sim/`.
 
 Core import, flattening, expression, server generation, and OPC UA simulation logic should stay outside Django.
+
+## Flux.Deep Path
+
+Flux.Deep is intentionally isolated from the Ignition-facing simulation path:
+
+1. Keep Logix L5X or related PLC source artifacts as source intent.
+2. Translate or target OpenPLC-compatible IEC 61131-3 artifacts for execution.
+3. Use OpenPLC as the backend runtime for PLC emulation trials.
+4. Add bridges back into Flux.web or Flux.serve only after the runtime adapter contract is proven.
+
+The seed workspace is `deep/examples/hello_world/`. It includes a Logix ladder L5X
+file and an OpenPLC Structured Text target that alternates `DisplayText` between
+`hello` and `world` on one second cycles.
 
 ## Simulation Path
 
@@ -50,15 +70,49 @@ The production path is:
 1. `Flux.serve` runs worker servicing against production Ignition through `fluxy` and WebDev.
 2. `Flux.opt` controls browse/read planning and reduces inefficient tag IO.
 3. Runtime values are persisted into Flux runtime storage.
-4. `Flux.live`, `Flux.trace`, and `Flux.web` render from Flux storage instead of causing browser-driven Ignition tag IO.
+4. `Flux.spot`, `Flux.chart`, and `Flux.web` render from Flux storage instead of causing browser-driven Ignition tag IO.
 
-`Flux.trace` reads `runtime.TagSample` and renders uPlot charts from stored samples. The historical trace supports pinned chart markers, a copied Markdown marker-value table, and prompt-based annotations. The live trace polls new samples and only follows the newest right edge when the user is already viewing that edge; panning back preserves the inspected viewport while new samples continue to merge. Trace JavaScript architecture is documented in `docs/trace-architecture.md`.
+`Flux.chart` reads `runtime.TagSample` and renders uPlot charts from stored samples. The historical chart supports pinned chart markers, a copied Markdown marker-value table, and prompt-based annotations. The streaming chart polls new samples and only follows the newest right edge when the user is already viewing that edge; panning back preserves the inspected viewport while new samples continue to merge. Chart JavaScript architecture is documented in `docs/charts-architecture.md`.
 
 Live-to-sim extraction is documented in `docs/live-extraction.md`. The current trial stays at the Fluxy public API boundary for tag/config/history reads and writes. Raw historian deletion is intentionally deferred to database-specific cleanup adapters because Ignition does not expose a public delete-data-points API.
 
+## Runtime Health Contract
+
+Flux runtime health is a cached-state contract, not a browser read loop.
+
+```text
+Flux.serve worker -> Flux.opt block read -> LatestTagValue / TagSample -> Flux.spot / Dashboard
+```
+
+Ownership:
+
+- `Flux.serve` supervises long-running samplers and writes heartbeats/snapshots.
+- `Flux.opt` chooses due tags, honors active demand, performs block reads, and writes runtime samples.
+- `Flux.spot` defines freshness and current-state presentation.
+- `Flux.web` renders cached state and may poll small cached fragments.
+
+Current gap: the dashboard can refresh selected stale tags from a request path, and the Fluxolot sampler is explicitly started by `flux start`, but the general interface-health sampler should be promoted to a required service when interface runtime tags exist.
+
+Target contract: page reloads or HTMX polls may update what the user sees, but they must not be the mechanism that makes runtime health fresh.
+
+## OPC Runtime Truth Contract
+
+FieldAgent endpoint rows need composed evidence before the UI claims they are running.
+
+Minimum evidence:
+
+- desired endpoint state from `FieldEndpoint`
+- fresh `FieldAgentHeartbeat`
+- `process_id`
+- endpoint URL and derived/listening port
+- fresh `ServeServiceSnapshot`
+- optional OS/TCP probe from the service layer
+
+`FieldEndpoint.status == running` alone means “last persisted endpoint state,” not proven current process truth. If heartbeat or snapshot evidence is stale, UI surfaces should say `stale` or `last reported running` and show the reason.
+
 ## Local Service Boundary
 
-Local development runtime is owned by a user systemd service:
+Local development runtime is owned by a Linux user systemd service:
 
 ```text
 flux-stack.service -> scripts/flux-start.sh -> Django + FieldAgent + Fluxolot sampler

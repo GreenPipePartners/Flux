@@ -64,7 +64,33 @@ class OptimizationLease(models.Model):
     completed_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
+        indexes = [
+            models.Index(
+                fields=["work_type", "target_path"],
+                name="opt_open_lease_work_target_idx",
+                condition=models.Q(completed_at__isnull=True),
+            )
+        ]
         ordering = ["expires_at", "work_type", "target_path"]
 
     def __str__(self) -> str:
         return f"{self.work_type}: {self.target_path}"
+
+
+class RuntimeDemand(models.Model):
+    source_key = models.CharField(max_length=180)
+    target_path = models.CharField(max_length=1124)
+    claimed_by = models.CharField(max_length=120, default="flux-demand-ui")
+    touched_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField(db_index=True)
+    metadata = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["source_key", "target_path"], name="unique_runtime_demand_source_path")
+        ]
+        indexes = [models.Index(fields=["expires_at", "target_path"], name="runtime_demand_active_idx")]
+        ordering = ["expires_at", "source_key", "target_path"]
+
+    def __str__(self) -> str:
+        return f"{self.source_key}: {self.target_path}"

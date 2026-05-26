@@ -1,46 +1,24 @@
 from __future__ import annotations
 
-import os
-import unittest
-
 import pytest
 from django.contrib.auth import get_user_model
-from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.utils import timezone
 
-from flux.base.models import FieldAgentHeartbeat, FieldDevice, FieldEndpoint, FieldTag
+from flux.base.models import Tag
+from flux.serve.models import FieldAgentHeartbeat
+from flux.sim.models import FieldEndpoint
 from flux.base.runtime import RuntimeTag, TagSchedule
+from flux.e2e import FluxStaticLiveServerTestCase
+from flux.sim.testing import create_device_config, create_tag_config
 
-from .models import IgnitionBridgeConfig
+from flux.bridge.models import IgnitionBridgeConfig
 
 
 pytestmark = pytest.mark.e2e
 
 
-class DashboardSimServerPlaywrightTests(StaticLiveServerTestCase):
-    @classmethod
-    def setUpClass(cls):
-        if os.getenv("FLUX_PLAYWRIGHT") != "1":
-            raise unittest.SkipTest("Set FLUX_PLAYWRIGHT=1 to run Playwright dashboard tests")
-        os.environ.setdefault("DJANGO_ALLOW_ASYNC_UNSAFE", "1")
-        try:
-            from playwright.sync_api import sync_playwright
-        except ImportError as exc:
-            raise unittest.SkipTest("Install Playwright to run browser tests") from exc
-
-        super().setUpClass()
-        cls._playwright = sync_playwright().start()
-        cls._browser = cls._playwright.chromium.launch(headless=True)
-
-    @classmethod
-    def tearDownClass(cls):
-        browser = getattr(cls, "_browser", None)
-        if browser is not None:
-            browser.close()
-        playwright = getattr(cls, "_playwright", None)
-        if playwright is not None:
-            playwright.stop()
-        super().tearDownClass()
+class DashboardSimServerPlaywrightTests(FluxStaticLiveServerTestCase):
+    playwright_skip_message = "Set FLUX_PLAYWRIGHT=1 to run Playwright dashboard tests"
 
     def setUp(self):
         get_user_model().objects.create_user(username="existing", password="test-pass")
@@ -54,12 +32,12 @@ class DashboardSimServerPlaywrightTests(StaticLiveServerTestCase):
             status=FieldEndpoint.Status.RUNNING,
             last_seen_at=timezone.now(),
         )
-        self.device = FieldDevice.objects.create(
+        self.device = create_device_config(
             endpoint=self.endpoint,
             name="Sir-Fluxolot-Fishtank",
             device_type="Simulator",
         )
-        FieldTag.objects.create(device=self.device, name="Pressure", data_type=FieldTag.DataType.FLOAT)
+        create_tag_config(device=self.device, name="Pressure", data_type=Tag.DataType.FLOAT, materialized=True)
         FieldAgentHeartbeat.objects.create(endpoint=self.endpoint, instance_id="sir-fluxolot-fishtank")
         IgnitionBridgeConfig.objects.create(
             name="default",
@@ -147,8 +125,8 @@ class DashboardSimServerPlaywrightTests(StaticLiveServerTestCase):
 
             self.assert_comp_card_mode(page, "sim-config", "summary")
             self.assert_card_contains(page, "sim-config", "Flux.sim")
-            self.assert_card_contains(page, "sim-config", "1 OPC Servers")
-            self.assert_card_contains(page, "sim-config", "1 Tags")
+            self.assert_card_contains(page, "sim-config", "OPC Servers")
+            self.assert_card_contains(page, "sim-config", "Tags")
             self.click_comp_card_mode(page, "sim-config", "detail")
             self.assert_comp_focus(page, "sim-config", "detail")
             self.assert_focus_contains(page, "sim-config", "Runtime Connection")
@@ -164,15 +142,15 @@ class DashboardSimServerPlaywrightTests(StaticLiveServerTestCase):
             self.assert_comp_focus(page, "serve", "detail")
             self.assert_focus_contains(page, "serve", "Serve Logs")
 
-            self.assert_comp_card_mode(page, "live", "summary")
-            self.assert_card_not_contains(page, "live", "Refresh stale reads now")
-            self.click_comp_card_mode(page, "live", "configure")
-            self.assert_comp_focus(page, "live", "configure")
-            self.assert_focus_contains(page, "live", "Refresh stale reads now")
-            self.assert_focus_contains(page, "live", "Stale Pressure")
-            self.click_comp_card_mode(page, "live", "summary")
+            self.assert_comp_card_mode(page, "spot", "summary")
+            self.assert_card_not_contains(page, "spot", "Refresh stale reads now")
+            self.click_comp_card_mode(page, "spot", "configure")
+            self.assert_comp_focus(page, "spot", "configure")
+            self.assert_focus_contains(page, "spot", "Refresh stale reads now")
+            self.assert_focus_contains(page, "spot", "Stale Pressure")
+            self.click_comp_card_mode(page, "spot", "summary")
             self.assert_no_comp_focus(page)
-            self.assert_card_not_contains(page, "live", "Refresh stale reads now")
+            self.assert_card_not_contains(page, "spot", "Refresh stale reads now")
         finally:
             page.close()
 

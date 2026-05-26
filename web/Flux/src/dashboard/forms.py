@@ -2,15 +2,18 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import UserCreationForm
 
-from .models import IgnitionBridgeConfig
+from flux.bridge.models import IgnitionBridgeConfig
 
 
 class IgnitionBridgeConfigForm(forms.Form):
     bridge_id = forms.IntegerField(required=False, widget=forms.HiddenInput)
     name = forms.CharField(max_length=64)
     role = forms.ChoiceField(choices=IgnitionBridgeConfig.Role.choices)
-    base_url = forms.URLField()
-    token = forms.CharField(required=False, widget=forms.PasswordInput(render_value=False))
+    base_url = forms.URLField(widget=forms.URLInput(attrs={"autocomplete": "off"}))
+    token = forms.CharField(
+        required=False,
+        widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}, render_value=False),
+    )
     clear_token = forms.BooleanField(required=False)
 
     def clean_name(self):

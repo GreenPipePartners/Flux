@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from django.utils import timezone
 
-from flux.base.models import FieldEndpoint
+from flux.sim.models import FieldEndpoint
 
 from .models import ServeCommand
 

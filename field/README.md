@@ -8,7 +8,7 @@ Boundary:
 field/
 - C# OPC UA simulation server runtime
 - .NET Worker Service implementation
-- Windows Service and systemd compatible executable
+- Linux systemd-compatible executable
 
 web/Flux/src/flux/sim/
 - Django simulation selection/configuration UI

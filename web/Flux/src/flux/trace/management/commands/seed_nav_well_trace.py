@@ -2,7 +2,7 @@ import os
 
 from django.core.management.base import BaseCommand, CommandError
 
-from trace.providers.nav_wells import clear_nav_well_cache, configure_nav_well_ignition_tags, inject_nav_well_history, seed_nav_well_trace_config, sync_nav_well_trace_cache, update_nav_well_live_values
+from flux.chart.providers.nav_wells import clear_nav_well_plane_samples, configure_nav_well_ignition_tags, inject_nav_well_history, seed_nav_well_trace_config, sync_nav_well_plane_samples, update_nav_well_live_values
 
 
 class Command(BaseCommand):
@@ -37,10 +37,10 @@ class Command(BaseCommand):
         if options["configure_ignition"]:
             self.stdout.write("Configured %s Ignition tags" % configure_nav_well_ignition_tags(fx, limit=options["limit"]))
         if options["inject_history"]:
-            self.stdout.write("Cleared %s local cached points before Ignition historian sync" % clear_nav_well_cache(limit=options["limit"]))
+            self.stdout.write("Cleared %s local Plane sample points before Ignition historian sync" % clear_nav_well_plane_samples(limit=options["limit"]))
             self.stdout.write("Injected %s historian points" % inject_nav_well_history(fx, limit=options["limit"], window_minutes=options["window_minutes"]))
         if options["update_live"]:
             self.stdout.write("Updated %s live Ignition tag values" % update_nav_well_live_values(fx, limit=options["limit"]))
         if options["sync_cache"] or options["inject_history"] or options["update_live"]:
-            result = sync_nav_well_trace_cache(fx, limit=options["limit"])
-            self.stdout.write("Synced cache profiles=%s signals=%s points=%s" % (result.profile_count, result.signal_count, result.point_count))
+            result = sync_nav_well_plane_samples(fx, limit=options["limit"])
+            self.stdout.write("Synced Plane samples profiles=%s signals=%s points=%s" % (result.profile_count, result.signal_count, result.point_count))

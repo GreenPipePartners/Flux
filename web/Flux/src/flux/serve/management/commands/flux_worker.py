@@ -18,7 +18,7 @@ class Command(BaseCommand):
         parser.add_argument("--service-name", default="flux-worker")
         parser.add_argument("--interval", type=float, default=5.0)
         parser.add_argument("--once", action="store_true")
-        parser.add_argument("--trace-cache", action="store_true")
+        parser.add_argument("--plane-samples", action="store_true")
         parser.add_argument("--nav-well-live", action="store_true")
         parser.add_argument("--nav-well-limit", type=int, default=None)
         parser.add_argument("--trace-profile-key", default="")
@@ -28,7 +28,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         job = None
         job_name = "heartbeat"
-        if options["trace_cache"] or options["nav_well_live"]:
+        if options["plane_samples"] or options["nav_well_live"]:
             try:
                 import fluxy
             except ImportError as exc:
@@ -38,22 +38,22 @@ class Command(BaseCommand):
             profile_key = options["trace_profile_key"] or None
 
             if options["nav_well_live"]:
-                from trace.providers.nav_wells import sync_nav_well_trace_cache, update_nav_well_live_values
+                from flux.chart.providers.nav_wells import sync_nav_well_plane_samples, update_nav_well_live_values
 
                 def job():
                     updated = update_nav_well_live_values(fx, limit=options["nav_well_limit"])
-                    result = sync_nav_well_trace_cache(fx, limit=options["nav_well_limit"], force=True)
+                    result = sync_nav_well_plane_samples(fx, limit=options["nav_well_limit"], force=True)
                     return "updated=%s profiles=%s signals=%s points=%s" % (updated, result.profile_count, result.signal_count, result.point_count)
 
                 job_name = "nav_well_live"
             else:
-                from trace.cache import sync_trace_cache
+                from flux.chart.cache import sync_plane_samples
 
                 def job():
-                    result = sync_trace_cache(fx, profile_key=profile_key)
+                    result = sync_plane_samples(fx, profile_key=profile_key)
                     return "profiles=%s signals=%s points=%s" % (result.profile_count, result.signal_count, result.point_count)
 
-                job_name = "trace_cache"
+                job_name = "plane_samples"
 
         run_worker_heartbeat(
             service_name=options["service_name"],

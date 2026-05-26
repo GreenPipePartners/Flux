@@ -35,14 +35,21 @@ nav:
   - Home: index.md
   - Operator Guide: operator-guide.md
   - Architecture:
+      - Master Design: Master Design.md
       - System Boundaries: flux-architecture.md
       - Live Extraction: live-extraction.md
       - Trace Architecture: trace-architecture.md
+      - Charts Architecture: charts-architecture.md
       - Ignition Dev Cell: ignition-dev-cell.md
+      - Flux.Deep OpenPLC: deep-openplc.md
   - Apps:
       - Overview: apps/index.md
       - Dashboard: apps/dashboard.md
-      - Live: apps/live.md
+      - Spot: apps/spot.md
+      - Chart: apps/chart.md
+      - Cell: apps/cell.md
+      - Live Compatibility: apps/live.md
+      - Charts Compatibility: apps/charts.md
       - Trace: apps/trace.md
       - Serve: apps/serve.md
       - Sim: apps/sim.md
@@ -53,4 +60,5 @@ nav:
       - Local Service: runbooks/local-service.md
       - Fluxolot Fishtank: runbooks/fluxolot-fishtank.md
   - Reference:
-      - Live Card Context: live-card-context.md
+      - Spot Card Context: spot-card-context.md
+      - Live Card Context Compatibility: live-card-context.md

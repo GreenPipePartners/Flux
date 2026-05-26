@@ -4,7 +4,19 @@ import hashlib
 import re
 from pathlib import Path
 
-from flux_mine.plc.models import PlcController, PlcDataType, PlcMember, PlcProgram, PlcProject, PlcTag, parse_dimensions
+from flux_mine.plc.models import (
+    PlcController,
+    PlcDataType,
+    PlcMember,
+    PlcProgram,
+    PlcProject,
+    PlcRoutine,
+    PlcRung,
+    PlcTask,
+    PlcTag,
+    parse_dimensions,
+    parse_rll_instructions,
+)
 
 
 IDENTIFIER = r"[A-Za-z_][A-Za-z0-9_]*"
@@ -14,6 +26,10 @@ CONTROLLER_RE = re.compile(rf"^CONTROLLER\s+(?P<name>{IDENTIFIER})\b(?P<tail>.*)
 DATATYPE_RE = re.compile(rf"^DATATYPE\s+(?P<name>{IDENTIFIER})\b(?P<tail>.*)")
 AOI_RE = re.compile(rf"^ADD_ON_INSTRUCTION_DEFINITION\s+(?P<name>{IDENTIFIER})\b(?P<tail>.*)")
 PROGRAM_RE = re.compile(rf"^PROGRAM\s+(?P<name>{IDENTIFIER})\b(?P<tail>.*)")
+TASK_RE = re.compile(rf"^TASK\s+(?P<name>{IDENTIFIER})\b(?P<tail>.*)")
+ROUTINE_RE = re.compile(rf"^ROUTINE\s+(?P<name>{IDENTIFIER})\b(?P<tail>.*)")
+RUNG_RE = re.compile(r"^(?P<type>[A-Za-z]+)\s*:\s*(?P<text>.*)$")
+SCHEDULED_PROGRAM_RE = re.compile(rf"^(?P<name>{IDENTIFIER})\s*;?$")
 ALIAS_RE = re.compile(rf"^(?P<name>{IDENTIFIER})\s+OF\s+(?P<base>[^\s(;]+)(?P<tail>.*)$")
 COLON_DECL_RE = re.compile(
     rf"^(?P<name>{IDENTIFIER})\s*:\s*(?P<data_type>{DATA_TYPE})(?P<array>\[[\d,\s]+\])?(?P<tail>.*)$"
@@ -56,6 +72,7 @@ class L5KTextParser:
         self.data_types: list[PlcDataType] = []
         self.global_tags: list[PlcTag] = []
         self.programs: list[PlcProgram] = []
+        self.tasks: list[PlcTask] = []
 
         self.state = "global"
         self.current_type_name = ""
@@ -64,8 +81,17 @@ class L5KTextParser:
         self.current_type_raw: dict[str, str] = {}
         self.current_members: list[PlcMember] = []
         self.current_program_name = ""
+        self.current_program_main_routine_name = ""
         self.current_program_raw: dict[str, str] = {}
         self.current_program_tags: list[PlcTag] = []
+        self.current_program_routines: list[PlcRoutine] = []
+        self.current_routine_name = ""
+        self.current_routine_type = ""
+        self.current_routine_raw: dict[str, str] = {}
+        self.current_rungs: list[PlcRung] = []
+        self.current_task_name = ""
+        self.current_task_raw: dict[str, str] = {}
+        self.current_task_scheduled_programs: list[str] = []
         self.current_tag_scope = "Global"
 
     def parse(self, text: str) -> PlcController:
@@ -78,6 +104,8 @@ class L5KTextParser:
             self.close_data_type()
         if self.state == "program" or self.current_program_name:
             self.close_program()
+        if self.state == "task" or self.current_task_name:
+            self.close_task()
         if self.controller_name == "Unknown":
             raise ValueError("L5K file does not contain a CONTROLLER definition")
         return PlcController(
@@ -88,6 +116,7 @@ class L5KTextParser:
             data_types=tuple(self.data_types),
             tags=tuple(self.global_tags),
             programs=tuple(self.programs),
+            tasks=tuple(self.tasks),
             source_path=self.source_path,
             raw=self.controller_raw,
         )
@@ -103,6 +132,10 @@ class L5KTextParser:
             self.consume_aoi(line)
         elif self.state == "program":
             self.consume_program(line)
+        elif self.state == "routine":
+            self.consume_routine(line)
+        elif self.state == "task":
+            self.consume_task(line)
         elif self.state == "tags":
             self.consume_tags(line)
 
@@ -130,10 +163,21 @@ class L5KTextParser:
 
         program_match = PROGRAM_RE.match(line)
         if program_match is not None:
+            properties = parse_properties(program_match.group("tail"))
             self.current_program_name = program_match.group("name")
-            self.current_program_raw = parse_properties(program_match.group("tail"))
+            self.current_program_main_routine_name = properties.get("MAIN", properties.get("MainRoutineName", ""))
+            self.current_program_raw = properties
             self.current_program_tags = []
+            self.current_program_routines = []
             self.state = "program"
+            return
+
+        task_match = TASK_RE.match(line)
+        if task_match is not None:
+            self.current_task_name = task_match.group("name")
+            self.current_task_raw = parse_properties(task_match.group("tail"))
+            self.current_task_scheduled_programs = []
+            self.state = "task"
             return
 
         if keyword(line) == "TAG":
@@ -172,6 +216,37 @@ class L5KTextParser:
         if keyword(line) == "TAG":
             self.current_tag_scope = self.current_program_name
             self.state = "tags"
+            return
+        if keyword(line) in {"CHILD_PROGRAMS", "END_CHILD_PROGRAMS"}:
+            return
+        routine_match = ROUTINE_RE.match(line)
+        if routine_match is not None:
+            self.current_routine_name = routine_match.group("name")
+            self.current_routine_type = "RLL"
+            self.current_routine_raw = parse_properties(routine_match.group("tail"))
+            self.current_rungs = []
+            self.state = "routine"
+            return
+        self.current_program_raw.update(parse_properties(line))
+
+    def consume_routine(self, line: str) -> None:
+        if keyword(line) == "END_ROUTINE":
+            self.close_routine()
+            self.state = "program"
+            return
+        rung = parse_rung(line, number=len(self.current_rungs))
+        if rung is not None:
+            self.current_rungs.append(rung)
+
+    def consume_task(self, line: str) -> None:
+        if keyword(line) == "END_TASK":
+            self.close_task()
+            self.state = "controller"
+            return
+        self.current_task_raw.update(parse_properties(line))
+        scheduled_match = SCHEDULED_PROGRAM_RE.match(strip_declaration(line))
+        if scheduled_match is not None:
+            self.current_task_scheduled_programs.append(scheduled_match.group("name"))
 
     def consume_tags(self, line: str) -> None:
         if keyword(line) == "END_TAG":
@@ -237,13 +312,66 @@ class L5KTextParser:
         self.programs.append(
             PlcProgram(
                 name=self.current_program_name,
+                main_routine_name=self.current_program_main_routine_name,
                 tags=tuple(self.current_program_tags),
+                routines=tuple(self.current_program_routines),
                 raw=self.current_program_raw,
             )
         )
         self.current_program_name = ""
+        self.current_program_main_routine_name = ""
         self.current_program_raw = {}
         self.current_program_tags = []
+        self.current_program_routines = []
+
+    def close_routine(self) -> None:
+        if not self.current_routine_name:
+            return
+        self.current_program_routines.append(
+            PlcRoutine(
+                name=self.current_routine_name,
+                routine_type=self.current_routine_type,
+                rungs=tuple(self.current_rungs),
+                raw=self.current_routine_raw,
+            )
+        )
+        self.current_routine_name = ""
+        self.current_routine_type = ""
+        self.current_routine_raw = {}
+        self.current_rungs = []
+
+    def close_task(self) -> None:
+        if not self.current_task_name:
+            return
+        self.tasks.append(
+            PlcTask(
+                name=self.current_task_name,
+                task_type=self.current_task_raw.get("Type", ""),
+                priority=int_or_none(self.current_task_raw.get("Priority")),
+                rate=int_or_none(self.current_task_raw.get("Rate")),
+                watchdog=int_or_none(self.current_task_raw.get("Watchdog")),
+                disable_update_outputs=optional_bool_property(self.current_task_raw.get("DisableUpdateOutputs")),
+                inhibit_task=optional_bool_property(self.current_task_raw.get("InhibitTask")),
+                scheduled_programs=tuple(self.current_task_scheduled_programs),
+                raw=self.current_task_raw,
+            )
+        )
+        self.current_task_name = ""
+        self.current_task_raw = {}
+        self.current_task_scheduled_programs = []
+
+
+def parse_rung(line: str, *, number: int) -> PlcRung | None:
+    match = RUNG_RE.match(strip_declaration(line))
+    if match is None:
+        return None
+    return PlcRung(
+        number=number,
+        rung_type=match.group("type"),
+        text=match.group("text").strip(),
+        instructions=parse_rll_instructions(match.group("text")),
+        raw={"source": line},
+    )
 
 
 def parse_member(line: str) -> PlcMember | None:

@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
 
-from flux_sim.addressing import parse_address
+from flux_sim.addressing import AddressFields, parse_address
 
 
 @dataclass(frozen=True)
@@ -46,7 +46,7 @@ class DeviceTagBinding:
     value_source: str
     opc_server: str
     opc_item_path: str
-    address: dict[str, str]
+    address: AddressFields
 
 
 @dataclass(frozen=True)

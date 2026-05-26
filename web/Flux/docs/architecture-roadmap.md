@@ -30,12 +30,11 @@ postgres://flux:flux@localhost:5432/flux
 
 Useful local pages:
 
-- `http://localhost:8000/live/`
-- `http://localhost:8000/live/pad-overview/`
-- `http://localhost:8000/trace/`
-- `http://localhost:8000/trace/live/`
+- `http://localhost:8000/spot/`
+- `http://localhost:8000/spot/pad-overview/`
+- `http://localhost:8000/chart/`
+- `http://localhost:8000/chart/stream/`
 - `http://localhost:8000/nav/`
-- `http://localhost:8000/admin/`
 
 ## Field Demo
 
@@ -70,9 +69,9 @@ uv run python manage.py run_sim_demo --configure-ignition --once
 
 Then restart FieldAgent and the continuous demo reader.
 
-## Live UI
+## Spot UI
 
-`flux.live` currently has a Pad Overview demo with:
+`flux.spot` currently has a Pad Overview demo backed by the historical `flux.live` Django app label with:
 
 - Equipment tabs: `Well`, `Meter`, `Tank`.
 - Cards grouped by runtime tag `asset_name`.
@@ -90,25 +89,27 @@ Important templates:
 - `src/templates/live/partials/pad_overview_content.html`
 - `src/templates/live/partials/pad_overview_cards.html`
 
-Live selector logic is in:
+Spot selector logic is in:
 
 ```text
-src/flux/live/selectors.py
+src/flux/spot/selectors.py
 ```
 
-## Trace Trial UI
+## Chart Trial UI
 
-`flux.trace` has two uPlot-backed pages over `runtime.TagSample`:
+`flux.chart` has two uPlot-backed pages over `runtime.TagSample`:
 
-- `http://localhost:8000/trace/`: historical sample trace.
-- `http://localhost:8000/trace/live/`: polling live trace trial.
+- `http://localhost:8000/chart/`: historical sample chart.
+- `http://localhost:8000/chart/stream/`: polling streaming chart trial.
+
+`/trace/` and `/charts/` remain compatibility redirects to `/chart/`.
 
 The old trial URLs remain as redirects only:
 
 - `http://localhost:8000/trace-clone/`: historical trace compatibility route.
-- `http://localhost:8000/trace-clone/live/`: polling live trace compatibility route.
+- `http://localhost:8000/trace-clone/live/`: compatibility redirect to the polling streaming chart route.
 
-Historical trace trial features:
+Historical chart trial features:
 
 - Numeric `TagSample` streams are rendered as uPlot series.
 - Wheel zoom and drag pan are handled by local uPlot plugins.
@@ -121,15 +122,15 @@ Historical trace trial features:
 - Each pinned marker row can add a prompt-based chart annotation at the selected point.
 - Clear removes pinned markers, annotations, and the marker-value table state.
 
-Live trace trial features:
+Streaming chart trial features:
 
-- `/trace/live/` starts with the latest numeric samples and polls `/trace/live/samples/` every five seconds.
+- `/chart/stream/` starts with the latest numeric samples and polls `/chart/stream/samples/` every five seconds.
 - Samples are merged by runtime tag id to avoid rebuilding trace identity on each poll.
 - The visible x-range follows the newest right edge only while the user is already viewing the newest edge.
 - If the user pans or zooms back, new samples are merged without dragging the viewport forward.
 - A pause/resume button controls polling.
 
-uPlot trace features:
+uPlot chart features:
 
 - Numeric `TagSample` streams are aligned client-side into uPlot's shared x-axis data shape.
 - Wheel zoom, side-scroll pan, and drag pan are implemented as small uPlot plugins.
@@ -137,21 +138,23 @@ uPlot trace features:
 - Marker tables can be copied as Markdown, and prompt annotations are drawn as chart overlays.
 - Live trace preserves right-edge follow behavior while allowing the user to pan or zoom away from the latest edge.
 
-Important trace files:
+Important chart files:
 
 ```text
-src/flux/trace/selectors.py
-src/flux/trace/views.py
-src/static/flux/trace/
+src/flux/chart/selectors.py
+src/flux/chart/views.py
+src/flux/chart/control.py
+src/flux/chart/routes.py
+src/static/flux/chart/
 src/templates/trace/index.html
 src/templates/trace/live.html
 ```
 
-Current trace trial caveats:
+Current chart trial caveats:
 
-- Pinned markers and annotations are browser-session state only.
-- Saved trace sessions, persisted annotations, and server-side trace configuration models have not been introduced yet.
-- The live trace page is a trial polling surface, not the final service-supervised live historian UX.
+- Pinned markers are browser-session state.
+- Chart annotations are locally persisted, with Ignition historian sync isolated behind `flux.chart.annotation_bridge`.
+- The streaming chart page is a trial polling surface, not the final service-supervised historian UX.
 
 ## Runtime Storage
 
@@ -228,7 +231,7 @@ Important distinction:
 - Display profile controls which dropdowns are visible for the page.
 - Action profile is chosen from the last changed/cleared dropdown and controls filter behavior.
 
-For the Live Pad Overview, the display profile remains `well`, so route/subroute/site/well stay visible. Selecting/clearing `site` only changes the active/action profile and indicator; it should not hide dropdowns.
+For the Spot Pad Overview, the display profile remains `well`, so route/subroute/site/well stay visible. Selecting/clearing `site` only changes the active/action profile and indicator; it should not hide dropdowns.
 
 ### Reference Navigation DB
 
@@ -332,7 +335,7 @@ Expected current counts:
 
 - `flux.nav` still needs hand-crafted action matrices for exact parity with the Ignition `Filter/code.py` behavior.
 - Navigation placement is modeled but not fully used to auto-inject nav by view key.
-- Live Pad Overview nav is present but does not yet filter the card set by selected site/well.
+- Spot Pad Overview nav is present but does not yet filter the card set by selected site/well.
 - Demand-aware hot/warm/cold scheduling is not fully implemented yet.
 - `run_sim_demo` is still a manual process; proper service supervision is still needed.
 - Postgres test DB creation fails for user `flux`, so tests are currently run with `DATABASE_URL=` to use SQLite unless Postgres privileges are adjusted.
@@ -343,8 +346,8 @@ Expected current counts:
 - `src/flux/nav/context.py`
 - `src/flux/nav/registry.py`
 - `src/templates/nav/partials/navigation_panel.html`
-- `src/flux/live/views.py`
-- `src/flux/live/selectors.py`
+- `src/flux/spot/views.py`
+- `src/flux/spot/selectors.py`
 - `src/templates/live/partials/pad_overview_tab_panel.html`
 - `src/templates/live/partials/pad_overview_content.html`
 - `src/templates/live/partials/pad_overview_cards.html`

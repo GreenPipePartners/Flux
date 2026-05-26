@@ -1,23 +1,23 @@
 {% extends "flux/base.html" %}
 {% load static nav_extras %}
 
-{% block title %}Flux Live Trace{% endblock %}
+{% block title %}Flux Chart Stream{% endblock %}
 
 {% block content %}
 {% if request.GET.card == "live-trace-page" %}{% firstof request.GET.mode "detail" as live_trace_page_mode %}{% else %}{% firstof "detail" as live_trace_page_mode %}{% endif %}
 <section id="live-trace-page-comp-card" class="panel comp-card" data-comp-card data-comp-card-mode="{{ live_trace_page_mode }}">
-  {% include "flux/partials/link_copy.html" with link=trace_page_link label="Live Trace" %}
+  {% include "flux/partials/link_copy.html" with link=trace_page_link label="Streaming Charts" %}
   <div class="panel-header">
     <div>
-      <p class="eyebrow">flux.trace.live</p>
-      <h1>Live Tag Trace</h1>
+      <p class="eyebrow">flux.chart.stream</p>
+      <h1>Streaming Tag Charts</h1>
     </div>
     <span class="status-pill">right-edge follow</span>
   </div>
-  <p>Live Trace appends fresh runtime samples with uPlot. It follows the newest edge only while you are already viewing the newest edge.</p>
+  <p>Streaming Charts appends fresh runtime samples with uPlot. It follows the newest edge only while you are already viewing the newest edge.</p>
   {% if live_trace_page_mode == "detail" %}
   <div class="trace-actions">
-    <a class="button button-secondary" href="{% url 'trace:index' %}">Historical Trace</a>
+    <a class="button button-secondary" href="{% url 'chart:index' %}">Historical Charts</a>
     <button class="button button-secondary" type="button" data-live-trace-toggle>Pause</button>
     <button class="button button-secondary" type="button" data-reset-trace-range>Reset Range</button>
     <p class="form-help" data-live-trace-status>Polling every {{ poll_seconds }}s. Wheel zooms; side-scroll pans; drag pans.</p>
@@ -43,15 +43,15 @@
       data-trace-live-chart
       data-poll-seconds="{{ poll_seconds }}"
       data-window-minutes="{{ window_minutes }}"
-      data-samples-url="{% url 'trace:live-samples' %}"
+      data-samples-url="{% url 'chart:stream-samples' %}"
       role="img"
       aria-label="uPlot live sample tag trend chart"
     ></div>
     {{ trace_chart|json_script:"trace-live-data" }}
     <script src="{% static 'flux/vendor/uplot/uPlot.iife.min.js' %}?v=trace-shared-x-2"></script>
-    <script type="module" src="{% static 'flux/trace/live-page.js' %}?v=trace-shared-x-2"></script>
+    <script type="module" src="{% static 'flux/chart/live-page.js' %}?v=trace-shared-x-2"></script>
   {% else %}
-    <p>No numeric tag samples available for live trace yet.</p>
+    <p>No numeric tag samples available for streaming charts yet.</p>
   {% endif %}
   {% include "flux/partials/comp_card_controls.html" with card_id="live-trace-chart" current_mode=live_trace_chart_mode show_detail=True %}
 </section>

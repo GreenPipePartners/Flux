@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from flux.spot import views
 
 
 app_name = "live"

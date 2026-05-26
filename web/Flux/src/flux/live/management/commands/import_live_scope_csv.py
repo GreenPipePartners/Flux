@@ -3,12 +3,13 @@ import csv
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from flux.live.models import LiveCardDefinition, LiveCardPointDefinition, LiveScope
-from flux.live.selectors import parse_full_tag_path
+from flux.plane.services import ensure_series_for_full_path
+from flux.spot.models import LiveCardDefinition, LiveCardPointDefinition, LiveScope
+from flux.spot.selectors import parse_full_tag_path
 
 
 class Command(BaseCommand):
-    help = "Import Flux Live scope/card/point definitions from a CSV file."
+    help = "Import Flux Spot scope/card/point definitions from a CSV file."
 
     def add_arguments(self, parser):
         parser.add_argument("csv_path")
@@ -30,7 +31,7 @@ class Command(BaseCommand):
         imported = import_live_scope_rows(rows, default_scope=default_scope, replace=options["replace"])
         self.stdout.write(
             self.style.SUCCESS(
-                "Imported %(scopes)s live scopes, %(cards)s cards, and %(points)s points"
+                "Imported %(scopes)s spot scopes, %(cards)s cards, and %(points)s points"
                 % imported
             )
         )
@@ -69,10 +70,11 @@ def import_live_scope_rows(rows, *, default_scope=None, replace=False):
                 )
                 cards[card_key] = card
 
+            series = ensure_series_for_full_path(row["full_path"])
             LiveCardPointDefinition.objects.update_or_create(
                 card=card,
                 label=row["point"],
-                defaults={"full_path": row["full_path"], "sort_order": row["point_order"]},
+                defaults={"full_path": row["full_path"], "series": series, "sort_order": row["point_order"]},
             )
             point_count += 1
 
@@ -100,7 +102,7 @@ def expand_row(row, *, default_scope=None):
 
 
 def normalize_row(row, *, default_scope=None):
-    scope = value_from(row, "scope", "scope_slug", "live_scope") or default_scope
+    scope = value_from(row, "scope", "scope_slug", "spot_scope", "live_scope") or default_scope
     card = value_from(row, "card", "card_title", "title", "name")
     kind = value_from(row, "kind")
     point = value_from(row, "point", "point_label", "label")
