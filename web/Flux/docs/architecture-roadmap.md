@@ -10,7 +10,7 @@ Flux is being shaped into an on-prem Django/HTMX companion UI for Ignition runti
 - Ignition reads those OPC UA tags through Fluxy-configured tags.
 - `run_sim_demo` reads Ignition values through Fluxy and writes snapshots to Flux base runtime tables.
 - `flux.live` renders DB-backed live values with HTMX, avoiding direct browser/Perspective tag bindings.
-- `flux.nav` provides configurable navigation/filter behavior based on the prior Ignition `DropdownNav`, `Filter`, and `Navigation` pattern.
+- Chart, Spot, and Dashboard render server-side Django/HTMX views from local Flux storage; retired advanced navigation tables remain only in migration history.
 
 ## Running Local Stack
 
@@ -34,7 +34,6 @@ Useful local pages:
 - `http://localhost:8000/spot/pad-overview/`
 - `http://localhost:8000/chart/`
 - `http://localhost:8000/chart/stream/`
-- `http://localhost:8000/nav/`
 
 ## Field Demo
 
@@ -212,105 +211,18 @@ Target behavior:
 - A cold staggered lane is implemented by the warm loop using `balancer_code` buckets.
 - Client demand should be lease-based, because browser/client disconnects are not perfectly reliable.
 
-## Navigation
+## Retired Navigation
 
-`flux.nav` was added to preserve the structure of the Ignition `DropdownNav`, `Filter`, and `Navigation` pattern while making it DB-configurable.
+The advanced `flux.nav` navigation/filter surface and `navigation.db` reference file were retired. `flux.nav` may remain in `INSTALLED_APPS` temporarily as a migration-history shell so Django can apply the table-drop migration.
 
-Current concepts:
-
-- `NavigationDimension`: field/route/subroute/site/facility/lease/well dimension definition.
-- `NavigationProfile`: page/action profile such as route/site/well/facility/lease.
-- `NavigationProfileOrder`: visible/cascade order for a profile.
-- `NavigationProfileNavOrder`: previous/next traversal order.
-- `NavigationProfileAction`: configurable action matrix equivalent to the old `Action(...)` structure.
-- `NavigationPlacement`: intended view placement configuration.
-- `NavigationStaticOption`: static fallback options.
-
-Important distinction:
-
-- Display profile controls which dropdowns are visible for the page.
-- Action profile is chosen from the last changed/cleared dropdown and controls filter behavior.
-
-For the Spot Pad Overview, the display profile remains `well`, so route/subroute/site/well stay visible. Selecting/clearing `site` only changes the active/action profile and indicator; it should not hide dropdowns.
-
-### Reference Navigation DB
-
-The populated reference DB is lowercase:
-
-```text
-navigation.db
-```
-
-The uppercase file is empty:
-
-```text
-Navigation.db
-```
-
-`navigation.db` contains:
-
-- `routes`
-- `sites`
-- `wells`
-- `leases`
-- `facilities`
-- `cdps`
-
-Current `NavigationDimension.query_key` values point to SQLite-backed providers:
-
-- `sqlite.route`
-- `sqlite.subroute`
-- `sqlite.site`
-- `sqlite.facility`
-- `sqlite.lease`
-- `sqlite.well`
-- `static.field`
-
-The registry is in:
-
-```text
-src/flux/nav/registry.py
-```
-
-The state machine is in:
-
-```text
-src/flux/nav/filter.py
-```
-
-Reusable nav context is in:
-
-```text
-src/flux/nav/context.py
-```
-
-Nav template:
-
-```text
-src/templates/nav/partials/navigation_panel.html
-```
-
-## Navigation UI Decisions
-
-- Native `datalist` is used for now.
-- Datalist displays strings, not IDs.
-- Server resolves labels back to IDs.
-- Browser autocomplete/history was disabled with `autocomplete="off"` and `spellcheck="false"`.
-- The old `-- clear --` datalist option was removed.
-- Each field has a small `clear` button beside the label.
-- A general `Clear All` button clears all fields while preserving the display profile.
-- A small grey/primary indicator marks the last changed/cleared field.
-
-Known caveat:
-
-- Native datalist has limited styling and behavior control. If it fights the UX again, move to a small custom combobox while keeping the same server-side state machine.
+Current UI navigation should be explicit Django/HTMX page state owned by the consuming app, such as Spot tabs, Chart pagination, and Dashboard Comp Surface mode controls.
 
 ## Verification Commands
 
 Focused tests:
 
 ```bash
-env DATABASE_URL= uv run pytest src/flux/nav/tests.py src/flux/live/tests.py src/runtime/tests.py
+env DATABASE_URL= uv run pytest src/flux/live/tests.py src/runtime/tests.py
 ```
 
 Django check:
@@ -333,19 +245,12 @@ Expected current counts:
 
 ## Current Known Issues / Next Work
 
-- `flux.nav` still needs hand-crafted action matrices for exact parity with the Ignition `Filter/code.py` behavior.
-- Navigation placement is modeled but not fully used to auto-inject nav by view key.
-- Spot Pad Overview nav is present but does not yet filter the card set by selected site/well.
 - Demand-aware hot/warm/cold scheduling is not fully implemented yet.
 - `run_sim_demo` is still a manual process; proper service supervision is still needed.
 - Postgres test DB creation fails for user `flux`, so tests are currently run with `DATABASE_URL=` to use SQLite unless Postgres privileges are adjusted.
 
 ## Files Most Likely To Continue From
 
-- `src/flux/nav/filter.py`
-- `src/flux/nav/context.py`
-- `src/flux/nav/registry.py`
-- `src/templates/nav/partials/navigation_panel.html`
 - `src/flux/spot/views.py`
 - `src/flux/spot/selectors.py`
 - `src/templates/live/partials/pad_overview_tab_panel.html`

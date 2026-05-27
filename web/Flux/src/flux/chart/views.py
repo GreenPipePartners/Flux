@@ -15,10 +15,6 @@ from flux.chart.control import (
     fluxolot_context,
     fluxolot_payload_json,
     fluxolot_source_options,
-    nav_well_chart,
-    nav_well_context,
-    nav_well_payload_json,
-    nav_well_source_options,
     profile_payload_json,
     profile_trace_chart,
     touch_trace_profile_demand,
@@ -27,7 +23,6 @@ from flux.chart.control import (
     trace_window_max_minutes,
     trace_window_minutes,
 )
-from flux.chart.providers.nav_wells import WELL_TRACE_PROFILE_PREFIX
 from flux.links import flux_link
 from flux.pagination import TABLE_PAGE_SIZE, table_page
 from flux.plane.samples import recent_sample_queryset
@@ -77,12 +72,6 @@ def trace_path_index() -> list[dict[str, str | int]]:
             "detail": "Built-in",
         },
         {
-            "label": "Navigation Well Charts",
-            "path": reverse("chart:nav-well-trace"),
-            "description": "Rotating multi-well cached trace surface.",
-            "detail": "Built-in",
-        },
-        {
             "label": "Fluxolot Fishtank Charts",
             "path": reverse("chart:fluxolot-trace"),
             "description": "Fluxolot proof surface cycling Sir and Missus tanks.",
@@ -106,8 +95,6 @@ def trace_path_index() -> list[dict[str, str | int]]:
 
 
 def trace_profile_path(profile: TraceProfile) -> str:
-    if profile.key.startswith(f"{WELL_TRACE_PROFILE_PREFIX}-"):
-        return reverse("chart:nav-well-trace")
     if profile.key in {fluxolot_trace_profile_key(tank) for tank in FLUXOLOT_TANKS}:
         return reverse("chart:fluxolot-trace")
     if profile.key in RESERVED_CHART_PROFILE_PATHS:
@@ -177,8 +164,6 @@ def trace_platform_status(trace_chart: dict, trace_paths: list[dict[str, str | i
 
 
 def consolidated_trace_profile(profile_key: str) -> bool:
-    if profile_key.startswith(f"{WELL_TRACE_PROFILE_PREFIX}-"):
-        return True
     return profile_key in {fluxolot_trace_profile_key(tank) for tank in FLUXOLOT_TANKS}
 
 
@@ -289,60 +274,6 @@ def fluxolot_trace_payload(request):
             "traceError": "" if profile else "No Fluxolot trace profiles seeded yet.",
         }
     )
-
-
-@ensure_csrf_cookie
-def nav_well_trace(request):
-    profile, well, well_count, set_index = nav_well_context(request)
-    window_minutes = trace_window_minutes(request, profile)
-    step_minutes = trace_step_minutes(request, window_minutes)
-    trace_chart = nav_well_chart(profile, well=well, set_index=set_index, window_minutes=window_minutes, step_minutes=step_minutes)
-    embed = trace_embed_mode(request)
-    return render(
-        request,
-        "trace/index.html",
-        {
-            "samples": [],
-            "sample_groups": [],
-            "trace_chart": trace_chart,
-            "trace_error": "" if profile else "No navigation well trace profiles seeded yet.",
-            "trace_title": "Navigation Well Charts",
-            "trace_subtitle": "One generic Charts page cycling through navigation wells. Each well swaps to its own 8 local cached chart signals.",
-            "trace_badge": trace_chart.get("setLabel") or "nav wells",
-            "trace_cycle_url": "/chart/wells/payload/",
-            "trace_set_count": well_count,
-            "trace_cycle_label": "Well",
-            "trace_source_options": nav_well_source_options(),
-            "trace_window_minutes": window_minutes,
-            "trace_window_max_minutes": trace_window_max_minutes(profile),
-            "trace_step_minutes": step_minutes,
-            "trace_live_refresh_seconds": 60,
-            "trace_embed": embed,
-            "embed_mode": embed,
-            "trace_help": "Click inside the chart to pin a vertical trace cursor. Drag selects an x-range to zoom. Shift-drag pans. Wheel zooms; side-scroll pans. Use Previous/Next Well or left/right arrow keys to cycle wells.",
-            **trace_link_context(request, trace_chart, title="Navigation Well Charts"),
-        },
-    )
-
-
-def nav_well_trace_payload(request):
-    profile, well, _well_count, set_index = nav_well_context(request)
-    window_minutes = trace_window_minutes(request, profile)
-    step_minutes = trace_step_minutes(request, window_minutes)
-    payload_json = nav_well_payload_json(profile, well=well, set_index=set_index, window_minutes=window_minutes, step_minutes=step_minutes)
-    if payload_json is not None:
-        return HttpResponse(payload_json, content_type="application/json")
-    return trace_json_response(
-        {
-            "traceChart": nav_well_chart(profile, well=well, set_index=set_index, window_minutes=window_minutes, step_minutes=step_minutes),
-            "traceError": "" if profile else "No navigation well trace profiles seeded yet.",
-        }
-    )
-
-
-@ensure_csrf_cookie
-def nav_well_trace_embed(request):
-    return nav_well_trace(request)
 
 
 def trace_json_response(payload: dict) -> HttpResponse:

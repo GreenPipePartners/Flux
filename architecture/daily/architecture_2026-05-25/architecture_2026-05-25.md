@@ -1095,3 +1095,173 @@
   - `uv run python web/Flux/manage.py test flux.mine flux.build flux.cell dashboard --noinput` passed: 98 tests, 4 skipped.
   - `uv run pytest build/tests` passed: 4 tests.
 - Next Build action: Either add L5K serializer parity for hello_world or move into Deep.plc functional testing using the persisted instruction/reference model and bounded scan/time assertions.
+
+## Session: Flux.build L5K parity implementation
+
+- Intent: Complete the generated-source Build loop for hello_world by adding L5K parity alongside the L5X parity path.
+- Scope changed:
+  - `build/src/flux_build/targets/logix_l5k.py`
+  - `web/Flux/src/flux/build/models.py`
+  - `web/Flux/src/flux/build/services.py`
+  - `web/Flux/src/flux/build/tests.py`
+  - `web/Flux/src/flux/build/management/commands/flux_build_logix_l5k.py`
+  - `web/Flux/src/flux/build/migrations/0004_buildrun_logix_l5k_target.py`
+  - `architecture/mine/flux_mine_exploration.md`
+  - `architecture/core_area_files.md`
+  - `architecture/daily/architecture_2026-05-25/architecture_2026-05-25.md`
+- Result:
+  - Added minimal generated L5K serializer in `flux_build.targets.logix_l5k`.
+  - Added `BuildRun.Target.LOGIX_L5K` and command `flux_build_logix_l5k`.
+  - Added `build_logix_l5k_from_mine_run()` with generated L5K parse-back through Flux.mine before artifact completion.
+  - Hello_world Build test mines the L5X source, emits generated L5K, parses generated L5K back through Mine, and verifies canonical graph/reference counts.
+- Boundaries preserved:
+  - No Deep.plc execution/emulation was added.
+  - No byte-perfect Rockwell export guarantee was made.
+  - No full L5K grammar/formatting support was claimed.
+- Verification:
+  - `uv run ruff check build/src/flux_build/targets/logix_l5k.py web/Flux/src/flux/build/models.py web/Flux/src/flux/build/services.py web/Flux/src/flux/build/tests.py web/Flux/src/flux/build/management/commands/flux_build_logix_l5k.py web/Flux/src/flux/build/migrations/0004_buildrun_logix_l5k_target.py` passed.
+  - `uv run python web/Flux/manage.py makemigrations build --check --dry-run` passed.
+  - `uv run python web/Flux/manage.py test flux.build --noinput` passed: 9 tests, 1 skipped.
+  - `uv run python web/Flux/manage.py migrate build --noinput` applied `build.0004_buildrun_logix_l5k_target` locally.
+  - `uv run python web/Flux/manage.py showmigrations build` showed all Build migrations applied through `0004`.
+  - `uv run python web/Flux/manage.py migrate --check` passed.
+  - `uv run python web/Flux/manage.py makemigrations --check --dry-run` passed.
+  - `uv run python web/Flux/manage.py check` passed.
+  - `uv run python web/Flux/manage.py test flux.mine flux.build flux.cell dashboard --noinput` passed: 99 tests, 4 skipped.
+  - `uv run pytest build/tests` passed: 4 tests.
+- Next Build action: Move to Deep.plc functional testing using the persisted instruction/reference model with finite scan/time assertions.
+
+## Session: Deep.plc bounded runtime implementation
+
+- Intent: Prove the hello_world recovered instruction/reference model can drive deterministic Deep.plc functional checks before OpenPLC integration.
+- Scope changed:
+  - `deep/src/flux_deep/rll.py`
+  - `deep/tests/test_hello_world.py`
+  - `deep/README.md`
+  - `docs/deep-openplc.md`
+  - `web/Flux/src/flux/mine/test_deep_runtime.py`
+  - `pyproject.toml`
+  - `uv.lock`
+  - `architecture/mine/flux_mine_exploration.md`
+  - `architecture/core_area_files.md`
+  - `architecture/daily/architecture_2026-05-25/architecture_2026-05-25.md`
+- Result:
+  - Added `flux_deep.rll`, a bounded internal scan executor for `XIO`, `XIC`, `TON`, `OTL`, `OTU`, and `COP`.
+  - Added finite scan tests proving hello_world copies `hello`, then `world`, then `hello` again as timer/latch state changes.
+  - Added a Django integration test that mines the L5X sample, reads persisted `PlcRungFact`/`PlcInstructionFact`/`PlcTagFact` rows, and feeds them into the isolated Deep runtime.
+  - Added editable `flux-deep` to the root project dependency set so root Django tests can import the isolated Deep package.
+- Boundaries preserved:
+  - No OpenPLC process management was added.
+  - No broad Logix runtime was claimed.
+  - No production Django runtime service owns PLC execution; the Django bridge is test-only.
+- Verification:
+  - `uv lock` updated the root lockfile and added `flux-deep v0.1.0`.
+  - `uv run ruff check deep/src/flux_deep/rll.py deep/tests/test_hello_world.py web/Flux/src/flux/mine/test_deep_runtime.py pyproject.toml` passed.
+  - `uv run --project deep pytest deep/tests` passed: 8 tests.
+  - `uv run python web/Flux/manage.py test flux.mine.test_deep_runtime --noinput` passed: 1 test.
+  - `uv run python web/Flux/manage.py check` passed.
+  - `uv run python web/Flux/manage.py test flux.mine flux.build flux.cell dashboard --noinput` passed: 100 tests, 4 skipped.
+  - `uv run pytest build/tests` passed: 4 tests.
+  - `uv run python web/Flux/manage.py makemigrations --check --dry-run` passed.
+  - `uv run python web/Flux/manage.py migrate --check` passed.
+- Next Build action: Either grow Deep toward an OpenPLC ST translator for the same persisted RLL subset or strengthen Mine/Build canonical comparisons beyond counts.
+
+## Session: Direct OpenPLC compiler integration
+
+- Intent: Validate Flux.Deep output against OpenPLC without Docker by using a direct local OpenPLC toolchain.
+- Scope changed:
+  - `deep/src/flux_deep/openplc.py`
+  - `deep/tests/test_openplc_integration.py`
+  - `deep/README.md`
+  - `docs/deep-openplc.md`
+  - `architecture/mine/flux_mine_exploration.md`
+  - `architecture/core_area_files.md`
+  - `architecture/daily/architecture_2026-05-25/architecture_2026-05-25.md`
+- Runtime/toolchain work:
+  - Confirmed Docker is available but unused for this path.
+  - Confirmed no local `openplc`, `iec2c`, or `st_optimizer` commands were initially installed.
+  - Cloned OpenPLC v3 into `/tmp/opencode/OpenPLC_v3`.
+  - Built MatIEC locally under `/tmp/opencode/OpenPLC_v3/utils/matiec_src` using existing system build tools.
+  - No sudo and no OpenPLC service install were used.
+- Result:
+  - Added `OpenPlcV3Toolchain`, gated by `FLUX_DEEP_OPENPLC_ROOT`.
+  - Adapter invokes OpenPLC v3 MatIEC `iec2c` in an isolated output directory and validates generated C artifacts.
+  - `deep/examples/hello_world/openplc/hello_world.st` compiles through the OpenPLC compiler; generated `POUS.c` contains `HELLO_WORLD_body__`.
+  - Integration test skips cleanly without `FLUX_DEEP_OPENPLC_ROOT` and passes when pointed at the local OpenPLC checkout.
+- Boundaries preserved:
+  - This is compiler/toolchain validation, not a running OpenPLC PLC runtime loop.
+  - No Django runtime service owns OpenPLC process management.
+  - No Docker dependency was introduced.
+- Verification:
+  - `uv run ruff check deep/src/flux_deep/openplc.py deep/tests/test_openplc_integration.py deep/README.md docs/deep-openplc.md` passed.
+  - `uv run --project deep pytest deep/tests/test_openplc_integration.py` skipped without env as intended.
+  - `FLUX_DEEP_OPENPLC_ROOT=/tmp/opencode/OpenPLC_v3 uv run --project deep pytest deep/tests/test_openplc_integration.py` passed: 1 test.
+  - `uv run --project deep pytest deep/tests` passed without env: 8 passed, 1 skipped.
+  - `FLUX_DEEP_OPENPLC_ROOT=/tmp/opencode/OpenPLC_v3 uv run --project deep pytest deep/tests` passed: 9 tests.
+  - `uv run python web/Flux/manage.py check` passed.
+- Next Build action: Generate OpenPLC ST from persisted Mine instruction rows and validate that generated ST through the direct OpenPLC compiler adapter.
+
+## Session: OpenPLC harness variable inspection
+
+- Intent: Validate the actual inspectable `hello_world` program variable through OpenPLC-generated artifacts, not only ST compilation.
+- Scope changed:
+  - `deep/src/flux_deep/hello_world.py`
+  - `deep/src/flux_deep/openplc.py`
+  - `deep/tests/test_hello_world.py`
+  - `deep/tests/test_openplc_integration.py`
+  - `deep/examples/hello_world/openplc/hello_world.st`
+  - `deep/examples/hello_world/manifest.json`
+  - `deep/examples/hello_world/README.md`
+  - `deep/README.md`
+  - `docs/deep-openplc.md`
+  - `architecture/mine/flux_mine_exploration.md`
+  - `architecture/core_area_files.md`
+  - `architecture/daily/architecture_2026-05-25/architecture_2026-05-25.md`
+- Result:
+  - Reworked the Deep OpenPLC ST target to expose `hello_world` directly, with `hello`, `world`, `world_latch`, `hello_TON`, and `world_TON` matching the mined sample's intent.
+  - Added `compile_and_run_harness()` to the OpenPLC adapter.
+  - The harness compiles OpenPLC MatIEC generated C, advances `__CURRENT_TIME` in 100 ms scans, calls `config_run__()`, and inspects `RES0__MAININSTANCE.HELLO_WORLD` directly.
+  - Validation assertions now prove tick 0 is `hello`, tick 10 is `world`, and tick 20 is `hello`.
+- Boundaries preserved:
+  - No OpenPLC service was installed or started.
+  - No Docker path was used.
+  - This validates generated OpenPLC execution artifacts in-process; service auth/upload/runtime supervision remains a later adapter.
+- Verification:
+  - `uv run ruff check deep/src/flux_deep/openplc.py deep/src/flux_deep/hello_world.py deep/tests/test_openplc_integration.py deep/tests/test_hello_world.py deep/examples/hello_world/manifest.json deep/README.md docs/deep-openplc.md` passed.
+  - `FLUX_DEEP_OPENPLC_ROOT=/tmp/opencode/OpenPLC_v3 uv run --project deep pytest deep/tests/test_openplc_integration.py` passed: 2 tests.
+  - `uv run --project deep pytest deep/tests` passed without env: 8 passed, 2 skipped.
+  - `FLUX_DEEP_OPENPLC_ROOT=/tmp/opencode/OpenPLC_v3 uv run --project deep pytest deep/tests` passed: 10 tests.
+  - `uv run python web/Flux/manage.py check` passed.
+  - `uv run python web/Flux/manage.py test flux.mine.test_deep_runtime --noinput` passed: 1 test.
+  - `uv run python web/Flux/manage.py makemigrations --check --dry-run` passed.
+- Next Build action: Generate the OpenPLC ST from persisted Mine instruction rows and run the same OpenPLC harness validation against generated ST.
+
+## Session: Advanced navigation/nav-well retirement
+
+- Intent: Complete the selected retirement of advanced navigation and nav-well stress/demo surfaces while preserving generic Chart/Plane data ownership.
+- Scope changed:
+  - `web/Flux/src/templates/trace/index.html`
+  - `docs/charts-architecture.md`
+  - `docs/apps/chart.md`
+  - `docs/apps/charts.md`
+  - `docs/apps/dashboard.md`
+  - `docs/operator-guide.md`
+  - `web/Flux/README.md`
+  - `web/Flux/docs/architecture-roadmap.md`
+  - `architecture/core_area_files.md`
+  - `architecture/agent_notices.md`
+  - `web/Flux/src/flux/nav/migrations/0004_drop_navigation_tables.py`
+- Result:
+  - Active source greps are clean for nav-well commands/providers/routes and `flux.nav` imports; only historical migrations/logs/snapshots retain references.
+  - Operator docs now describe generic Chart pagination and `plane.sample`/QuestDB export instead of `/chart/wells*` restoration.
+  - `nav.0004_drop_navigation_tables` was applied locally and removed all seven old `nav_*` tables.
+  - `flux.nav` remains installed only as a migration-history shell until a future squash/removal decision.
+- Verification:
+  - `uv run python manage.py check` passed.
+  - After Schematics migration files were completed, `uv run python manage.py makemigrations --check --dry-run` passed with no changes detected.
+  - `uv run python manage.py migrate --plan` showed only `nav.0004_drop_navigation_tables` before applying and no planned operations after applying.
+  - Introspection after migration confirmed `nav_navigationdimension`, `nav_navigationplacement`, `nav_navigationprofile`, `nav_navigationprofileaction`, `nav_navigationprofilenavorder`, `nav_navigationprofileorder`, and `nav_navigationstaticoption` are absent.
+  - `uv run python manage.py test flux.base flux.live flux.trace flux.sim flux.field flux.serve dashboard --keepdb` passed: 260 tests, 4 skipped.
+  - `uv run python manage.py test flux.schematics --keepdb` passed: 16 tests.
+  - `uv run pytest tests/test_flux_cli.py` passed: 23 tests.
+- Next architecture action: Decide after release/migration stabilization whether to remove `flux.nav` from `INSTALLED_APPS` or leave it as a historical migration shell until a migration squash.

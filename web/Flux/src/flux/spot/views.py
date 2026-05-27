@@ -9,7 +9,6 @@ from flux.links import flux_link
 from flux.opt.services import touch_runtime_demand
 from flux.pagination import table_page
 from flux.serve.status import runtime_read_status
-from flux.nav.context import navigation_context
 from flux.web_pulse import display_pulse_context, latest_timestamp
 
 from .copy_context import render_card_copy_markdown, render_card_table_markdown
@@ -332,7 +331,6 @@ def pad_overview_context(tab: str, cards, *, request=None):
         "selected_equipment": tab,
     }
     if request is not None:
-        context.update(navigation_context(request, default_profile_key="well"))
         context.update(live_route_context())
         context["flux_web_pulse"] = live_cards_pulse_context(
             cards,
@@ -361,7 +359,6 @@ def scope_context(scope: str, group: str, cards, *, request=None):
         "selected_group": group,
     }
     if request is not None:
-        context.update(navigation_context(request, default_profile_key="well"))
         context.update(live_route_context())
         context["flux_web_pulse"] = live_cards_pulse_context(
             cards,

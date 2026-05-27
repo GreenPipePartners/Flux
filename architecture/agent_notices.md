@@ -64,10 +64,11 @@ Append-only inbox for Coordinator notices to Architect. Coordinator appends noti
 - Highest-severity finding: Medium — the nav-well stress source path is preserved through `navigation.db`, `seed_nav_well_trace_config()`, `TraceProfile`/`TraceSignal`, `RuntimeTag(category=TRACE_STRESS)`, local `plane.sample`, QuestDB export, and `/charts/wells/`; however, the dashboard still risks rendering one `Open` link per enabled profile.
 - Blockers: Did not execute restoration commands; review is code-structure based.
 - Remaining follow-up: Build should preserve stress rows, keep `/charts/wells/` as the single-page cycling surface, and replace dashboard profile-link explosion with aggregate links plus pagination/search.
+- Superseded 2026-05-26: user selected retirement instead of restoration for advanced navigation and nav-well surfaces. Preserve generic chart/Plane data where useful, but remove `/chart/wells*`, nav-well commands/providers, `navigation.db`, and `nav_*` tables.
 
 ## Cleanup implementation note: 2026-05-24-runtime-and-chart-follow-up
 
 - Source: Cleanup
 - Related notices: `2026-05-24-coordinator-005`, `2026-05-24-coordinator-008`
-- Implemented cleanup: dashboard runtime rows now label endpoint state as stored state plus heartbeat evidence, and render PID/port evidence where the existing heartbeat/endpoint metadata provides it. Dashboard Flux.charts detail now keeps aggregate links only (`/charts/` and `/charts/wells/`) instead of rendering one link per `TraceProfile`.
-- Still architecture-owned: define the durable truth contract for whether an endpoint is actually running (OS/TCP/Serve-owned selector versus stored state), and define the restorable single-page stress-load process plus pagination/search contract for large chart sets. No source data deletion/truncation was performed by Cleanup.
+- Implemented cleanup: dashboard runtime rows now label endpoint state as stored state plus heartbeat evidence, and render PID/port evidence where the existing heartbeat/endpoint metadata provides it. Dashboard Flux.chart detail now keeps aggregate links and no longer restores `/chart/wells*`.
+- Still architecture-owned: define the durable truth contract for whether an endpoint is actually running (OS/TCP/Serve-owned selector versus stored state), and keep pagination/search contracts for large chart sets. No source data deletion/truncation was performed by Cleanup.

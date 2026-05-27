@@ -9,6 +9,7 @@ from .models import ComponentTemplate
 from .models import InternalRelationTemplate
 from .models import PotentialLabel
 from .models import PotentialSystem
+from .models import RoleContinuityTemplate
 from .models import RoleTemplate
 from .models import RoleTerminalTemplate
 from .models import TerminalTemplate
@@ -47,6 +48,14 @@ class RoleTerminalSpec:
 
 
 @dataclass(frozen=True)
+class RoleContinuitySpec:
+    from_terminal_key: str
+    to_terminal_key: str
+    condition_key: str = ""
+    continuity_kind: str = "conductive"
+
+
+@dataclass(frozen=True)
 class RoleSpec:
     key: str
     circuit_kind: str
@@ -54,6 +63,7 @@ class RoleSpec:
     potential_system_key: str
     label: str = ""
     terminals: tuple[RoleTerminalSpec, ...] = ()
+    continuities: tuple[RoleContinuitySpec, ...] = ()
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -143,10 +153,11 @@ def disconnect_3pole_spec() -> ComponentTemplateSpec:
                     RoleTerminalSpec("T2", "L2", "load"),
                     RoleTerminalSpec("T3", "L3", "load"),
                 ),
-                metadata={
-                    "continuity_condition": "handle.closed",
-                    "continuity_pairs": [("L1", "T1"), ("L2", "T2"), ("L3", "T3")],
-                },
+                continuities=(
+                    RoleContinuitySpec("L1", "T1", "handle.closed", "switched"),
+                    RoleContinuitySpec("L2", "T2", "handle.closed", "switched"),
+                    RoleContinuitySpec("L3", "T3", "handle.closed", "switched"),
+                ),
             ),
         ),
     )
@@ -173,10 +184,11 @@ def starter_3pole_24vdc_spec() -> ComponentTemplateSpec:
                     RoleTerminalSpec("T2", "L2", "load"),
                     RoleTerminalSpec("T3", "L3", "load"),
                 ),
-                metadata={
-                    "continuity_condition": "coil.energized",
-                    "continuity_pairs": [("L1", "T1"), ("L2", "T2"), ("L3", "T3")],
-                },
+                continuities=(
+                    RoleContinuitySpec("L1", "T1", "coil.energized", "switched"),
+                    RoleContinuitySpec("L2", "T2", "coil.energized", "switched"),
+                    RoleContinuitySpec("L3", "T3", "coil.energized", "switched"),
+                ),
             ),
             RoleSpec(
                 key="coil",
@@ -257,7 +269,7 @@ def power_supply_480_to_24vdc_spec() -> ComponentTemplateSpec:
                     RoleTerminalSpec("output_+24V", "+24V", "positive"),
                     RoleTerminalSpec("output_0V", "0V", "return"),
                 ),
-                metadata={"continuity_condition": "input_power.valid"},
+                metadata={"source_condition": "input_power.valid"},
             ),
         ),
         relations=(
@@ -290,7 +302,7 @@ def button_normally_open_spec() -> ComponentTemplateSpec:
                     RoleTerminalSpec("IN", "+24V", "line"),
                     RoleTerminalSpec("OUT", "+24V", "load"),
                 ),
-                metadata={"continuity_condition": "button.pressed", "continuity_pairs": [("IN", "OUT")]},
+                continuities=(RoleContinuitySpec("IN", "OUT", "button.pressed", "switched"),),
             ),
         ),
     )
@@ -313,7 +325,7 @@ def button_normally_closed_spec() -> ComponentTemplateSpec:
                     RoleTerminalSpec("IN", "+24V", "line"),
                     RoleTerminalSpec("OUT", "+24V", "load"),
                 ),
-                metadata={"continuity_condition": "button.released", "continuity_pairs": [("IN", "OUT")]},
+                continuities=(RoleContinuitySpec("IN", "OUT", "button.released", "switched"),),
             ),
         ),
     )
@@ -395,6 +407,17 @@ def ensure_component_template(spec: ComponentTemplateSpec) -> ComponentTemplate:
                 defaults={
                     "interface_key": role_terminal_spec.interface_key,
                     "usage": role_terminal_spec.usage,
+                    "sort_order": sort_order,
+                },
+            )
+        for sort_order, continuity_spec in enumerate(role_spec.continuities):
+            RoleContinuityTemplate.objects.update_or_create(
+                role_template=role_template,
+                from_terminal_template=terminal_templates[continuity_spec.from_terminal_key],
+                to_terminal_template=terminal_templates[continuity_spec.to_terminal_key],
+                condition_key=continuity_spec.condition_key,
+                defaults={
+                    "continuity_kind": continuity_spec.continuity_kind,
                     "sort_order": sort_order,
                 },
             )

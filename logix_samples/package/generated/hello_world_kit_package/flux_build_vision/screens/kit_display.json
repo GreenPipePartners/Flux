@@ -1,0 +1,45 @@
+{
+  "coordinateContainer": {
+    "height": 360,
+    "width": 640
+  },
+  "name": "hello_world_kit_vision_screen",
+  "note": "Vision binary window/template emission is not implemented; this manifest is the placement contract.",
+  "objects": [
+    {
+      "name": "hello_world_label",
+      "position": {
+        "height": 50,
+        "width": 157,
+        "x": 18,
+        "y": 24
+      },
+      "tagPath": "[hello_plc]hello_world",
+      "template": "hello_world_display"
+    },
+    {
+      "name": "foo_bar_label",
+      "position": {
+        "height": 50,
+        "width": 157,
+        "x": 18,
+        "y": 94
+      },
+      "tagPath": "[hello_plc]foo_bar",
+      "template": "hello_world_display"
+    },
+    {
+      "name": "baz_bob_label",
+      "position": {
+        "height": 50,
+        "width": 157,
+        "x": 18,
+        "y": 164
+      },
+      "tagPath": "[hello_plc]baz_bob",
+      "template": "hello_world_display"
+    }
+  ],
+  "path": "generated/hello_world_kit",
+  "schema": "flux.build.kit.vision_destination.v1"
+}

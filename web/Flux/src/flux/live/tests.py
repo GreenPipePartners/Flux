@@ -1,6 +1,7 @@
 from datetime import timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from django.core.management import call_command
 from django.test import TestCase
@@ -10,6 +11,9 @@ from django.utils import timezone
 from flux.base.runtime import DailyTagExtreme, LatestTagValue, RuntimeTag, TagSample, TagSchedule
 from flux.opt.models import OptimizationLease, RuntimeDemand
 from flux.opt.services import active_demand_full_paths
+from flux.plane.models import Latest
+from flux.plane.questdb_samples import QuestDBWindowStat
+from flux.plane.services import ensure_series_for_full_path
 from flux.sim.fluxolot_fishtank import ensure_fluxolot_fishtank, ensure_fluxolot_live_scope
 
 from .models import LiveCardDefinition, LiveCardPointDefinition, LiveScope
@@ -84,7 +88,7 @@ class LiveSmokeTests(TestCase):
         )
         RuntimeTag.objects.create(
             provider="default",
-            path="FluxTraceNavWells/1/PressureA",
+            path="FluxTraceStress/1/PressureA",
             display_name="Trace Backing Pressure",
             category=RuntimeTag.Category.TRACE_STRESS,
             schedule=schedule,
@@ -307,6 +311,38 @@ class LiveSmokeTests(TestCase):
         self.assertEqual(cards[0].points[0].full_path, "[default]Sites/A/Well_01/TubingPressure")
         self.assertEqual(cards[0].points[0].display_value, "412.123")
         self.assertEqual(cards[0].points[0].units, "psi")
+
+    def test_scope_cards_use_questdb_plane_sample_ranges_for_spot_markers(self):
+        now = timezone.now()
+        series = ensure_series_for_full_path("[default]well/pressure")
+        Latest.objects.create(series=series, value=80.0, quality_code="Good", value_timestamp=now, read_at=now)
+        scope = LiveScope.objects.create(slug="pad-a", name="Pad A")
+        card = LiveCardDefinition.objects.create(scope=scope, title="Well 01", group="Well", kind="Well")
+        LiveCardPointDefinition.objects.create(
+            card=card,
+            label="Pressure",
+            full_path="[default]well/pressure",
+            series=series,
+        )
+
+        with patch(
+            "flux.spot.selectors.questdb_window_stats_by_series",
+            return_value={
+                series.id: {
+                    "today": QuestDBWindowStat("today", min_value=20.0, max_value=100.0, sample_count=4),
+                    "rolling_7d": QuestDBWindowStat("rolling_7d", min_value=0.0, max_value=100.0, sample_count=7),
+                    "rolling_30d": QuestDBWindowStat("rolling_30d", min_value=60.0, max_value=100.0, sample_count=30),
+                }
+            },
+        ) as questdb_stats:
+            cards = scope_cards("pad-a", now=now)
+
+        questdb_stats.assert_called_once_with([series.id], now=now)
+        history = cards[0].points[0].history
+        self.assertEqual([extreme.label for extreme in history], ["24h", "7d", "30d"])
+        self.assertEqual(history[0].marker_percent, 75)
+        self.assertEqual(history[1].marker_percent, 80)
+        self.assertEqual(history[2].marker_percent, 50)
 
     def test_card_copy_context_has_table_and_llm_export(self):
         schedule = TagSchedule.objects.create(name="demo", interval_seconds=2)

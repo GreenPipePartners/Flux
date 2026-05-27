@@ -137,16 +137,16 @@ Flux.chart is now a first-class operating space. Its fast path is configured tag
 
 See `../../docs/charts-architecture.md`.
 
-Seed the first ten navigation wells through the Ignition-backed Chart path:
+Export local Plane samples into QuestDB when testing the high-volume Chart data plane:
 
 ```bash
-uv run python web/Flux/manage.py seed_nav_well_charts --limit 10 --configure-ignition --inject-history --update-live --sync-cache
+uv run python web/Flux/manage.py sync_charts_questdb --replace
 ```
 
-Then open:
+Open the Chart index:
 
 ```text
-http://localhost:8000/chart/wells/
+http://localhost:8000/chart/
 ```
 
 ## Live Extraction Trial

@@ -283,7 +283,7 @@ class CleanupAuditPlaywrightTests(StaticLiveServerTestCase):
             value_timestamp=now,
             read_at=now,
         )
-        stress_tag = RuntimeTag.objects.create(provider="default", path="FluxTraceNavWells/1/PressureA", display_name="Pressure A", asset_name="Well 1", category=RuntimeTag.Category.TRACE_STRESS, schedule=schedule)
+        stress_tag = RuntimeTag.objects.create(provider="default", path="FluxTraceStress/1/PressureA", display_name="Pressure A", asset_name="Well 1", category=RuntimeTag.Category.TRACE_STRESS, schedule=schedule)
 
         sample_tag = RuntimeTag.objects.create(provider="default", path="Cleanup/Sample/Flow", display_name="Sample Flow", asset_name="Cleanup Sample", schedule=schedule)
         TagSample.objects.create(tag=sample_tag, value=42.0, quality_code="Good", value_timestamp=now, read_at=now)

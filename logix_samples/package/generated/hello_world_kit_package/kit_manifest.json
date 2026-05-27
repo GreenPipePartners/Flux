@@ -1,0 +1,96 @@
+{
+  "controller": "hello_world_kit",
+  "destinations": {
+    "perspective": {
+      "height": 360,
+      "name": "hello_world_kit_perspective_screen",
+      "path": "generated/hello_world_kit",
+      "technology": "perspective",
+      "width": 640
+    },
+    "vision": {
+      "height": 360,
+      "name": "hello_world_kit_vision_screen",
+      "path": "generated/hello_world_kit",
+      "technology": "vision",
+      "width": 640
+    }
+  },
+  "instances": [
+    {
+      "devices": {
+        "device_01": "hello_plc"
+      },
+      "displayTagPath": "[hello_plc]hello_world",
+      "lbl": null,
+      "name": "hello_world",
+      "pars": [
+        "hello",
+        "world"
+      ],
+      "routine": "hello_world_cycle",
+      "tags": {
+        "hello": "hello_world"
+      }
+    },
+    {
+      "devices": {
+        "device_01": "hello_plc"
+      },
+      "displayTagPath": "[hello_plc]foo_bar",
+      "lbl": "foo_bar_inline",
+      "name": "foo_bar",
+      "pars": [
+        "foo",
+        "bar"
+      ],
+      "routine": null,
+      "tags": {
+        "hello": "foo_bar"
+      }
+    },
+    {
+      "devices": {
+        "device_01": "hello_plc"
+      },
+      "displayTagPath": "[hello_plc]baz_bob",
+      "lbl": "baz_bob_inline",
+      "name": "baz_bob",
+      "pars": [
+        "baz",
+        "bob"
+      ],
+      "routine": null,
+      "tags": {
+        "hello": "baz_bob"
+      }
+    }
+  ],
+  "kit": "hello_world_display",
+  "mainRoutine": "MainRoutine",
+  "placements": [
+    {
+      "height": 50,
+      "instance": "hello_world",
+      "width": 157,
+      "x": 18,
+      "y": 24
+    },
+    {
+      "height": 50,
+      "instance": "foo_bar",
+      "width": 157,
+      "x": 18,
+      "y": 94
+    },
+    {
+      "height": 50,
+      "instance": "baz_bob",
+      "width": 157,
+      "x": 18,
+      "y": 164
+    }
+  ],
+  "program": "MainProgram",
+  "schema": "flux.build.kit.package.v1"
+}

@@ -1,4 +1,4 @@
-{% load nav_extras %}
+{% load flux_extras %}
 {% if page_obj.paginator.num_pages > 1 %}
   <nav class="table-pagination-controls" aria-label="{{ label|default:'Table pagination' }}">
     <span class="table-pagination-summary">Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ page_obj.paginator.count }} {{ item_label|default:'rows' }}</span>

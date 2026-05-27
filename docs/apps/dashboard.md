@@ -98,7 +98,6 @@ The Flux.chart readiness card summarizes configured `TraceProfile` and `TraceSig
 
 Large chart sets must not turn into thousands of dashboard links. The dashboard detail should prefer aggregate routes:
 
-- `/chart/wells/` for navigation-well stress charts
 - `/chart/fluxolot/` for Fluxolot proof charts
 - `/chart/` for chart paths, samples, and profile discovery
 

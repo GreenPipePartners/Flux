@@ -17,6 +17,7 @@ from flux_deep.hello_world import (
     render_openplc_hello_world_st,
     write_hello_world_workspace,
 )
+from flux_deep.rll import RllInstruction, RllProgram, RllRung, TagSeed, initial_state_from_tags
 
 
 def test_hello_world_l5x_declares_ladder_program_and_tags() -> None:
@@ -46,10 +47,11 @@ def test_hello_world_l5x_declares_ladder_program_and_tags() -> None:
 def test_openplc_st_matches_hello_world_cycle_intent() -> None:
     st = render_openplc_hello_world_st()
 
-    assert "cycle_timer(IN := timer_enable, PT := T#1s);" in st
-    assert "display_text := 'hello';" in st
-    assert "display_text := 'world';" in st
-    assert "PROGRAM MainInstance WITH Main : hello_world;" in st
+    assert "hello_TON(IN := NOT world_latch, PT := T#1s);" in st
+    assert "world_TON(IN := world_latch, PT := T#1s);" in st
+    assert "hello_world := hello;" in st
+    assert "hello_world := world;" in st
+    assert "PROGRAM MainInstance WITH Main : MainProgram;" in st
 
 
 def test_manifest_tracks_source_and_runtime_targets() -> None:
@@ -75,6 +77,73 @@ def test_workspace_writes_expected_files(tmp_path: Path) -> None:
         write_hello_world_workspace(tmp_path)
 
     write_hello_world_workspace(tmp_path, overwrite=True)
+
+
+def test_rll_runtime_executes_bounded_hello_world_pulses() -> None:
+    program = RllProgram(
+        (
+            RllRung.from_text_and_instructions(
+                "XIO(world_latch)TON(hello_TON,?,?);",
+                (
+                    RllInstruction("XIO", ("world_latch",), "XIO(world_latch)"),
+                    RllInstruction("TON", ("hello_TON", "?", "?"), "TON(hello_TON,?,?)"),
+                ),
+            ),
+            RllRung.from_text_and_instructions(
+                "XIC(hello_TON.DN)OTL(world_latch);",
+                (
+                    RllInstruction("XIC", ("hello_TON.DN",), "XIC(hello_TON.DN)"),
+                    RllInstruction("OTL", ("world_latch",), "OTL(world_latch)"),
+                ),
+            ),
+            RllRung.from_text_and_instructions(
+                "XIC(world_latch)TON(world_TON,?,?);",
+                (
+                    RllInstruction("XIC", ("world_latch",), "XIC(world_latch)"),
+                    RllInstruction("TON", ("world_TON", "?", "?"), "TON(world_TON,?,?)"),
+                ),
+            ),
+            RllRung.from_text_and_instructions(
+                "XIC(world_TON.DN)OTU(world_latch);",
+                (
+                    RllInstruction("XIC", ("world_TON.DN",), "XIC(world_TON.DN)"),
+                    RllInstruction("OTU", ("world_latch",), "OTU(world_latch)"),
+                ),
+            ),
+            RllRung.from_text_and_instructions(
+                "[XIO(world_latch) COP(hello,hello_world,1) ,XIC(world_latch) COP(world,hello_world,1) ];",
+                (
+                    RllInstruction("XIO", ("world_latch",), "XIO(world_latch)"),
+                    RllInstruction("COP", ("hello", "hello_world", "1"), "COP(hello,hello_world,1)"),
+                    RllInstruction("XIC", ("world_latch",), "XIC(world_latch)"),
+                    RllInstruction("COP", ("world", "hello_world", "1"), "COP(world,hello_world,1)"),
+                ),
+            ),
+        )
+    )
+    state = initial_state_from_tags(
+        (
+            TagSeed("hello", "STRING", {"data": [{"format": "String", "text": "'hello'"}]}),
+            TagSeed("world", "STRING", {"data": [{"format": "String", "text": "'world'"}]}),
+            TagSeed("hello_world", "STRING", {"data": [{"format": "String", "text": "''"}]}),
+            TagSeed("world_latch", "BOOL", {"data": [{"format": "L5K", "text": "0"}]}),
+            TagSeed("hello_TON", "TIMER", {"data": [{"format": "L5K", "text": "[0,1000,0]"}]}),
+            TagSeed("world_TON", "TIMER", {"data": [{"format": "L5K", "text": "[0,1000,0]"}]}),
+        )
+    )
+
+    program.scan(state, scan_ms=100)
+    assert state.values["hello_world"] == "hello"
+
+    for _ in range(9):
+        program.scan(state, scan_ms=100)
+    assert state.values["world_latch"] is True
+    assert state.values["hello_world"] == "world"
+
+    for _ in range(9):
+        program.scan(state, scan_ms=100)
+    assert state.values["world_latch"] is False
+    assert state.values["hello_world"] == "hello"
 
 
 def test_checked_in_example_matches_generator() -> None:

@@ -6,8 +6,8 @@ Files:
 
 - `hello_world.l5x`: Logix ladder source seed. It runs a one second timer,
   increments `CycleCount`, and copies `hello` or `world` into `DisplayText`.
-- `openplc/hello_world.st`: OpenPLC Structured Text target with the same scan
-  behavior. This is the near-term executable artifact for OpenPLC.
+- `openplc/hello_world.st`: OpenPLC Structured Text target with the same
+  timer/latch/copy behavior and an inspectable `hello_world` variable.
 - `manifest.json`: Flux.Deep workspace metadata for future automation.
 
 Local regeneration:

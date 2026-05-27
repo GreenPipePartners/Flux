@@ -207,6 +207,7 @@ dependencies = [
     { name = "django-environ" },
     { name = "django-htmx" },
     { name = "flux-build" },
+    { name = "flux-deep" },
     { name = "flux-mine" },
     { name = "flux-sim" },
     { name = "fluxy-ign" },
@@ -234,6 +235,7 @@ requires-dist = [
     { name = "django-environ", specifier = ">=0.11" },
     { name = "django-htmx", specifier = ">=1.18" },
     { name = "flux-build", editable = "build" },
+    { name = "flux-deep", editable = "deep" },
     { name = "flux-mine", editable = "mine" },
     { name = "flux-sim", editable = "sim" },
     { name = "fluxy-ign", editable = "fluxy" },
@@ -267,6 +269,19 @@ requires-dist = [{ name = "flux-mine", editable = "mine" }]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8.0" }]
+
+[[package]]
+name = "flux-deep"
+version = "0.1.0"
+source = { editable = "deep" }
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=8.0" },
+    { name = "ruff", specifier = ">=0.6" },
+]
 
 [[package]]
 name = "flux-mine"

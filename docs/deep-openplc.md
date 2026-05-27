@@ -40,3 +40,32 @@ OpenPLC does not execute Rockwell L5X directly. The current pattern is:
 
 That keeps the architecture honest: Flux.Deep owns PLC emulation, while existing
 Ignition and FieldAgent paths stay untouched until there is a concrete bridge.
+
+## Internal RLL Proof
+
+The first functional proof is a bounded internal scan executor in `flux_deep.rll`.
+It executes only the hello_world subset (`XIO`, `XIC`, `TON`, `OTL`, `OTU`, `COP`)
+with explicit scan durations and finite assertions. This proves recovered Mine
+instruction facts can drive behavior checks before Flux.Deep grows an OpenPLC
+translation/runtime adapter.
+
+## Direct OpenPLC Toolchain Validation
+
+Flux.Deep also has a gated direct OpenPLC v3 MatIEC adapter in `flux_deep.openplc`.
+Set `FLUX_DEEP_OPENPLC_ROOT` to a local `OpenPLC_v3` checkout with
+`utils/matiec_src/iec2c` built, then run:
+
+```bash
+FLUX_DEEP_OPENPLC_ROOT=/tmp/opencode/OpenPLC_v3 uv run --project deep pytest deep/tests/test_openplc_integration.py
+```
+
+This validates that the OpenPLC compiler accepts the generated Structured Text and
+emits OpenPLC C artifacts. The integration test also builds a small local harness
+around the generated C, advances scans in 100 ms steps, and inspects the generated
+`hello_world` variable directly. Current assertions verify:
+
+- tick 0: `hello_world = hello`
+- tick 10: `hello_world = world`
+- tick 20: `hello_world = hello`
+
+It intentionally does not install or run the OpenPLC system service.

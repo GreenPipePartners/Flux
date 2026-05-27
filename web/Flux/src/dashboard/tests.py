@@ -755,9 +755,8 @@ class DashboardBridgeTests(TestCase):
         self.assertContains(summary, "1 Charts")
         self.assertContains(detail, 'id="chart-comp-focus"')
         self.assertContains(detail, "Charts")
-        self.assertContains(detail, reverse("chart:nav-well-trace"))
         self.assertContains(detail, reverse("chart:index"))
-        self.assertContains(detail, "Dashboard detail intentionally avoids rendering every chart link")
+        self.assertContains(detail, "Use the chart index for configured chart profiles")
         self.assertNotContains(detail, reverse("chart:scope-profile", args=[profile.key]))
 
     def test_home_trace_configure_imports_trace_scope_csv(self):
@@ -896,7 +895,7 @@ class DashboardReadinessTests(TestCase):
         self.create_tag("Live", read_age_seconds=10)
         RuntimeTag.objects.create(
             provider="default",
-            path="FluxTraceNavWells/1/PressureA",
+            path="FluxTraceStress/1/PressureA",
             display_name="Pressure A",
             category=RuntimeTag.Category.TRACE_STRESS,
             schedule=self.schedule,

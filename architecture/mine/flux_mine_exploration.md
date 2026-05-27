@@ -655,3 +655,232 @@ Next safe Build slice:
 
 - Add L5K serializer parity for hello_world or move to Deep.plc functional testing now that Mine -> Build -> Mine L5X parity is proven.
 - If choosing Deep.plc next, keep the runtime subset bound to the persisted instruction/reference model and finite scan/time assertions.
+
+## Flux.build L5K Parity Implementation Outcome
+
+Date: 2026-05-25
+
+Implemented generated L5K parity from the same persisted Mine model used by the L5X serializer.
+
+Changed files:
+
+- `build/src/flux_build/targets/logix_l5k.py`
+- `web/Flux/src/flux/build/models.py`
+- `web/Flux/src/flux/build/services.py`
+- `web/Flux/src/flux/build/tests.py`
+- `web/Flux/src/flux/build/management/commands/flux_build_logix_l5k.py`
+- `web/Flux/src/flux/build/migrations/0004_buildrun_logix_l5k_target.py`
+- `architecture/mine/flux_mine_exploration.md`
+- `architecture/core_area_files.md`
+- `architecture/daily/architecture_2026-05-25/architecture_2026-05-25.md`
+
+Implementation details:
+
+- Added `flux_build.targets.logix_l5k.build_logix_l5k()`.
+- Added Build target `logix_l5k` and management command: `flux_build_logix_l5k <mine_run_id> --output <path>`.
+- Added `build_logix_l5k_from_mine_run()` service that serializes persisted Mine PLC facts to generated L5K, parses that L5K back through Flux.mine, compares canonical counts, and records a `logix_l5k` Build artifact only if parity holds.
+- Added hello_world L5K parity coverage from an L5X-mined source, proving that Mine's canonical model can emit both generated L5X and generated L5K forms.
+
+Current parity contract:
+
+- Semantic/count parity, not byte-perfect Rockwell export parity.
+- Verifies controller, tags, program, task, scheduled program, routine, rung, instruction, and tag-reference counts for hello_world.
+- Includes L5K tag initializers when L5K payload text is available in Mine tag raw data.
+
+Boundaries preserved:
+
+- No Deep.plc runtime/emulation was added.
+- No full Logix grammar or complex L5K formatting support was claimed.
+- No raw-source exact replay/object storage was added.
+
+Verification:
+
+- `uv run ruff check build/src/flux_build/targets/logix_l5k.py web/Flux/src/flux/build/models.py web/Flux/src/flux/build/services.py web/Flux/src/flux/build/tests.py web/Flux/src/flux/build/management/commands/flux_build_logix_l5k.py web/Flux/src/flux/build/migrations/0004_buildrun_logix_l5k_target.py`: passed.
+- `uv run python web/Flux/manage.py makemigrations build --check --dry-run`: passed.
+- `uv run python web/Flux/manage.py test flux.build --noinput`: passed, 9 tests, 1 skipped.
+- `uv run python web/Flux/manage.py migrate build --noinput`: applied `build.0004_buildrun_logix_l5k_target` locally.
+- `uv run python web/Flux/manage.py showmigrations build`: all Build migrations applied through `0004`.
+- `uv run python web/Flux/manage.py migrate --check`: passed.
+- `uv run python web/Flux/manage.py makemigrations --check --dry-run`: passed.
+- `uv run python web/Flux/manage.py check`: passed.
+- `uv run python web/Flux/manage.py test flux.mine flux.build flux.cell dashboard --noinput`: passed, 99 tests, 4 skipped.
+- `uv run pytest build/tests`: passed, 4 tests.
+
+Next safe Build slice:
+
+- Move to Deep.plc functional testing using Mine's persisted instruction/reference model.
+- Keep the first runtime proof bounded to hello_world with finite scan/time assertions for `XIO`, `XIC`, `TON`, `OTL`, `OTU`, and `COP`.
+
+## Deep.plc Bounded Runtime Implementation Outcome
+
+Date: 2026-05-25
+
+Implemented the first bounded Deep.plc functional runtime proof using the hello_world instruction subset.
+
+Changed files:
+
+- `deep/src/flux_deep/rll.py`
+- `deep/tests/test_hello_world.py`
+- `deep/README.md`
+- `docs/deep-openplc.md`
+- `web/Flux/src/flux/mine/test_deep_runtime.py`
+- `pyproject.toml`
+- `uv.lock`
+- `architecture/mine/flux_mine_exploration.md`
+- `architecture/core_area_files.md`
+- `architecture/daily/architecture_2026-05-25/architecture_2026-05-25.md`
+
+Implementation details:
+
+- Added `flux_deep.rll`, a small deterministic scan executor for the hello_world RLL subset.
+- Supported instructions are intentionally limited to `XIO`, `XIC`, `TON`, `OTL`, `OTU`, and `COP`.
+- Added `TimerValue`, `RllState`, `RllInstruction`, `RllRung`, and `RllProgram` primitives.
+- Added tag initial-state extraction for persisted Mine tag raw payloads for `BOOL`, `STRING`, integer types, and `TIMER`.
+- Added branch splitting that respects commas inside instruction operands, so the hello_world branch rung executes as two networks.
+- Added a Django integration test that mines `logix_samples/hello_world.L5X`, builds a Deep runtime program from persisted `PlcRungFact`/`PlcInstructionFact` rows, initializes state from persisted `PlcTagFact` rows, and runs finite 100 ms scans.
+
+Functional proof:
+
+- After the first bounded scan, `hello_world` contains `hello`.
+- After the hello timer completes, `world_latch` is true and `hello_world` contains `world`.
+- After the world timer completes, `world_latch` is false and `hello_world` returns to `hello`.
+
+Boundaries preserved:
+
+- This is not OpenPLC integration.
+- This is not a full Logix runtime.
+- No Django runtime service owns PLC execution; the Django side is a focused integration test adapter only.
+- The root project now depends on editable `flux-deep` so tests can prove Mine-persisted rows execute through the isolated Deep package.
+
+Verification:
+
+- `uv lock`: updated root lockfile and added `flux-deep v0.1.0`.
+- `uv run ruff check deep/src/flux_deep/rll.py deep/tests/test_hello_world.py web/Flux/src/flux/mine/test_deep_runtime.py pyproject.toml`: passed.
+- `uv run --project deep pytest deep/tests`: passed, 8 tests.
+- `uv run python web/Flux/manage.py test flux.mine.test_deep_runtime --noinput`: passed, 1 test.
+- `uv run python web/Flux/manage.py check`: passed.
+- `uv run python web/Flux/manage.py test flux.mine flux.build flux.cell dashboard --noinput`: passed, 100 tests, 4 skipped.
+- `uv run pytest build/tests`: passed, 4 tests.
+- `uv run python web/Flux/manage.py makemigrations --check --dry-run`: passed.
+- `uv run python web/Flux/manage.py migrate --check`: passed.
+
+Next safe Build slice:
+
+- Decide whether to grow Deep toward an OpenPLC ST translator for the same persisted RLL subset or strengthen Mine/Build canonical comparisons beyond counts.
+
+## Direct OpenPLC Compiler Integration Outcome
+
+Date: 2026-05-25
+
+Implemented and validated a direct, non-Docker OpenPLC compiler integration path.
+
+Changed files:
+
+- `deep/src/flux_deep/openplc.py`
+- `deep/tests/test_openplc_integration.py`
+- `deep/README.md`
+- `docs/deep-openplc.md`
+- `architecture/mine/flux_mine_exploration.md`
+- `architecture/core_area_files.md`
+- `architecture/daily/architecture_2026-05-25/architecture_2026-05-25.md`
+
+Direct setup performed locally:
+
+- Cloned OpenPLC v3 to `/tmp/opencode/OpenPLC_v3`.
+- Built the MatIEC compiler directly under `/tmp/opencode/OpenPLC_v3/utils/matiec_src` with `autoreconf -i`, `./configure`, and `make -j$(nproc)`.
+- Did not use Docker.
+- Did not install or start an OpenPLC system service.
+- Did not use `sudo`.
+
+Implementation details:
+
+- Added `flux_deep.openplc.OpenPlcV3Toolchain`.
+- The adapter is gated by `FLUX_DEEP_OPENPLC_ROOT`.
+- It validates OpenPLC v3 MatIEC availability by checking for `iec2c` and `webserver/lib/ieclib.txt`.
+- It compiles Structured Text in an isolated temporary/output directory by linking OpenPLC's IEC library folder and invoking `iec2c -f -l -p -r -R -a`.
+- It returns generated OpenPLC C artifacts such as `POUS.c`, `POUS.h`, `Config0.c`, `Config0.h`, and `Res0.c`.
+
+Validation result:
+
+- `deep/examples/hello_world/openplc/hello_world.st` compiles successfully through OpenPLC v3 MatIEC.
+- Generated `POUS.c` contains OpenPLC/MatIEC generated symbol `HELLO_WORLD_body__`.
+- Ungated test behavior skips cleanly when `FLUX_DEEP_OPENPLC_ROOT` is not set.
+
+Verification:
+
+- `uv run ruff check deep/src/flux_deep/openplc.py deep/tests/test_openplc_integration.py deep/README.md docs/deep-openplc.md`: passed.
+- `uv run --project deep pytest deep/tests/test_openplc_integration.py`: skipped without `FLUX_DEEP_OPENPLC_ROOT`, as intended.
+- `FLUX_DEEP_OPENPLC_ROOT=/tmp/opencode/OpenPLC_v3 uv run --project deep pytest deep/tests/test_openplc_integration.py`: passed, 1 test.
+- `uv run --project deep pytest deep/tests`: passed without env, 8 passed, 1 skipped.
+- `FLUX_DEEP_OPENPLC_ROOT=/tmp/opencode/OpenPLC_v3 uv run --project deep pytest deep/tests`: passed, 9 tests.
+- `uv run python web/Flux/manage.py check`: passed.
+
+Remaining gap:
+
+- This validates against the OpenPLC compiler/toolchain, not a running OpenPLC PLC runtime loop.
+- Full runtime validation will require either OpenPLC v3 service setup with native dependencies or an OpenPLC v4 runtime/editor-compatible upload package. That should be a separate adapter because service supervision, auth, ports, and real-time privileges are different responsibilities than ST compilation.
+
+Next safe Build slice:
+
+- Generate OpenPLC Structured Text from the persisted Mine instruction model, then validate that generated ST through this direct OpenPLC compiler adapter.
+
+## OpenPLC Harness Variable Inspection Outcome
+
+Date: 2026-05-25
+
+Extended the direct OpenPLC validation from compile-only to direct generated-variable inspection.
+
+Changed files:
+
+- `deep/src/flux_deep/hello_world.py`
+- `deep/src/flux_deep/openplc.py`
+- `deep/tests/test_hello_world.py`
+- `deep/tests/test_openplc_integration.py`
+- `deep/examples/hello_world/openplc/hello_world.st`
+- `deep/examples/hello_world/manifest.json`
+- `deep/examples/hello_world/README.md`
+- `deep/README.md`
+- `docs/deep-openplc.md`
+- `architecture/mine/flux_mine_exploration.md`
+- `architecture/core_area_files.md`
+- `architecture/daily/architecture_2026-05-25/architecture_2026-05-25.md`
+
+Implementation details:
+
+- Updated the Deep OpenPLC ST target to model the mined sample more directly:
+  - program `MainProgram`
+  - string variables `hello`, `world`, and inspectable `hello_world`
+  - BOOL `world_latch`
+  - timers `hello_TON` and `world_TON`
+- Added `OpenPlcV3Toolchain.compile_and_run_harness()`.
+- The harness compiles OpenPLC MatIEC generated `Config0.c` and `Res0.c` with a small C++ test program.
+- The harness defines `__CURRENT_TIME`, advances scans in 100 ms steps, and directly reads `RES0__MAININSTANCE.HELLO_WORLD` and `RES0__MAININSTANCE.WORLD_LATCH` from the generated C program state.
+- Added harmless TCP helper stubs because OpenPLC's standard library references optional communication blocks even when the tested ST program does not use them.
+
+Validation result:
+
+- tick 0: `world_latch = false`, `hello_world = hello`
+- tick 10: `world_latch = true`, `hello_world = world`
+- tick 20: `world_latch = false`, `hello_world = hello`
+
+This is now the requested validation test: OpenPLC accepts the ST, generates C, the generated C executes, and the program variable cycles between `hello` and `world`.
+
+Boundaries preserved:
+
+- This still does not start the OpenPLC system service.
+- It validates OpenPLC-generated execution artifacts directly in-process.
+- It keeps runtime-service supervision, REST upload/auth, and real-time scheduling for a separate adapter.
+
+Verification:
+
+- `uv run ruff check deep/src/flux_deep/openplc.py deep/src/flux_deep/hello_world.py deep/tests/test_openplc_integration.py deep/tests/test_hello_world.py deep/examples/hello_world/manifest.json deep/README.md docs/deep-openplc.md`: passed.
+- `FLUX_DEEP_OPENPLC_ROOT=/tmp/opencode/OpenPLC_v3 uv run --project deep pytest deep/tests/test_openplc_integration.py`: passed, 2 tests.
+- `uv run --project deep pytest deep/tests`: passed without env, 8 passed, 2 skipped.
+- `FLUX_DEEP_OPENPLC_ROOT=/tmp/opencode/OpenPLC_v3 uv run --project deep pytest deep/tests`: passed, 10 tests.
+- `uv run python web/Flux/manage.py check`: passed.
+- `uv run python web/Flux/manage.py test flux.mine.test_deep_runtime --noinput`: passed, 1 test.
+- `uv run python web/Flux/manage.py makemigrations --check --dry-run`: passed.
+
+Next safe Build slice:
+
+- Generate this OpenPLC ST target from persisted Mine instruction rows instead of maintaining it as a checked-in hand-written ST artifact.

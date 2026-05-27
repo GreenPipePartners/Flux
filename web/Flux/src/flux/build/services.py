@@ -11,7 +11,9 @@ from django.utils import timezone
 from flux_build.hmi.models import HmiMapComponent, HmiMapProject, HmiMapScreen, HmiMapTagReference
 from flux_build.hmi.symbolic import build_symbolic_hmi_map
 from flux_build.targets.ignition_tags import build_ignition_provider
+from flux_build.targets.logix_l5k import build_logix_l5k
 from flux_build.targets.logix_l5x import build_logix_l5x
+from flux_mine.plc.l5k import parse_l5k_text
 from flux_mine.plc.models import (
     PlcController,
     PlcDataType,
@@ -159,6 +161,75 @@ def build_logix_l5x_from_mine_run(mine_run_id: int, output_path: str | Path) -> 
             BuildArtifact.objects.create(
                 run=run,
                 kind="logix_l5x",
+                path=str(artifact_path),
+                sha256=digest,
+                size_bytes=len(payload),
+            )
+    except Exception as exc:
+        run.status = BuildRun.Status.FAILED
+        run.error = str(exc)
+        run.completed_at = timezone.now()
+        run.save(update_fields=["status", "error", "completed_at", "updated_at"])
+        raise
+    return run
+
+
+def build_logix_l5k_from_mine_run(mine_run_id: int, output_path: str | Path) -> BuildRun:
+    mine_run = MineRun.objects.get(pk=mine_run_id)
+    run = BuildRun.objects.create(
+        mine_run=mine_run,
+        target=BuildRun.Target.LOGIX_L5K,
+        status=BuildRun.Status.RUNNING,
+        output_path=str(output_path),
+    )
+    try:
+        project = plc_project_from_mine_run(mine_run)
+        if not project.controllers:
+            raise ValueError("Logix L5K builds require a PLC mine run")
+        payload = build_logix_l5k(project)
+        digest = hashlib.sha256(payload).hexdigest()
+        generated_project = parse_l5k_text(
+            payload.decode("utf-8"),
+            source_path=str(output_path),
+            source_sha256=digest,
+        )
+        original_counts = plc_project_counts(project)
+        generated_counts = plc_project_counts(generated_project)
+        if generated_counts != original_counts:
+            raise ValueError(
+                "Generated L5K parse-back counts diverged: original=%s generated=%s"
+                % (original_counts, generated_counts)
+            )
+
+        artifact_path = Path(output_path)
+        artifact_path.parent.mkdir(parents=True, exist_ok=True)
+        artifact_path.write_bytes(payload)
+        with transaction.atomic():
+            run.status = BuildRun.Status.COMPLETE
+            run.output_sha256 = digest
+            run.output_bytes = len(payload)
+            run.summary = {
+                **original_counts,
+                "round_trip": {
+                    "parser": "l5k",
+                    "counts_match": True,
+                    "generated_counts": generated_counts,
+                },
+            }
+            run.completed_at = timezone.now()
+            run.save(
+                update_fields=[
+                    "status",
+                    "output_sha256",
+                    "output_bytes",
+                    "summary",
+                    "completed_at",
+                    "updated_at",
+                ]
+            )
+            BuildArtifact.objects.create(
+                run=run,
+                kind="logix_l5k",
                 path=str(artifact_path),
                 sha256=digest,
                 size_bytes=len(payload),

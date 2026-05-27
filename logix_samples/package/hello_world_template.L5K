@@ -1,0 +1,110 @@
+﻿(*********************************************
+
+  Import-Export
+  Version   := RSLogix 5000 v37.00
+  Owner     := EWS, 
+  Exported  := Tue May 26 17:00:34 2026
+
+  Note:  File encoded in UTF-8.  Only edit file in a program 
+         which supports UTF-8 (like Notepad, not Wordpad).
+
+**********************************************)
+IE_VER := 2.28;
+
+CONTROLLER hello_world (ProcessorType := "1756-L71",
+                        Major := 37,
+                        TimeSlice := 20,
+                        ShareUnusedTimeSlice := 1,
+                        RedundancyEnabled := 0,
+                        KeepTestEditsOnSwitchOver := 0,
+                        DataTablePadPercentage := 50,
+                        SecurityCode := 0,
+                        ChangesToDetect := 16#ffff_ffff_ffff_ffff,
+                        SFCExecutionControl := "CurrentActive",
+                        SFCRestartPosition := "MostRecent",
+                        SFCLastScan := "DontScan",
+                        SerialNumber := 16#0000_0000,
+                        MatchProjectToController := No,
+                        CanUseRPIFromProducer := No,
+                        InhibitAutomaticFirmwareUpdate := 0,
+                        PassThroughConfiguration := EnabledWithAppend,
+                        DownloadProjectDocumentationAndExtendedProperties := Yes,
+                        ReportMinorOverflow := 0,
+                        DataExchangeId := {9B05F4EE-DA05-479C-9B42-70703D6E273C})
+	MODULE Local (Parent := "Local",
+	              ParentModPortId := 1,
+	              CatalogNumber := "1756-L71",
+	              Vendor := 1,
+	              ProductType := 14,
+	              ProductCode := 92,
+	              Major := 37,
+	              Minor := 11,
+	              ChassisSize := 17,
+	              Slot := 0,
+	              Mode := 2#0000_0000_0000_0001,
+	              CompatibleModule := 0,
+	              KeyMask := 2#0000_0000_0001_1111)
+	END_MODULE
+
+	TAG
+	END_TAG
+
+	PROGRAM MainProgram (MAIN := "MainRoutine",
+	                     MODE := 0,
+	                     DisableFlag := 0,
+	                     UseAsFolder := 0)
+		TAG
+			fx_par_0 : STRING  := [5,'hello$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00'
+					];
+			fx_par_0_latch : BOOL (RADIX := Decimal) := 0;
+			fx_par_0_TON : TIMER  := [0,1000,0];
+			fx_par_1 : STRING  := [5,'world$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00'
+					];
+			fx_par_1_TON : TIMER  := [0,1000,0];
+			fx_tag_hello : STRING  := [0,'$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00'
+					];
+		END_TAG
+
+		ROUTINE fx_helloworld 
+				N: XIO(fx_par_0_latch)TON(fx_par_0_TON,?,?);
+				N: XIC(fx_par_0_TON.DN)OTL(fx_par_0_latch);
+				N: XIC(fx_par_0_latch)TON(fx_par_1_TON,?,?);
+				N: XIC(fx_par_1_TON.DN)OTU(fx_par_0_latch);
+				N: [XIO(fx_par_0_latch) COP(fx_par_0,fx_tag_hello,1) ,XIC(fx_par_0_latch) COP(fx_par_1,fx_tag_hello,1) ];
+		END_ROUTINE
+
+		ROUTINE MainRoutine 
+				N: LBL(fx_helloworld)NOP();
+				N: XIO(fx_par_0_latch)TON(fx_par_0_TON,?,?);
+				N: XIC(fx_par_0_TON.DN)OTL(fx_par_0_latch);
+				N: XIC(fx_par_0_latch)TON(fx_par_1_TON,?,?);
+				N: XIC(fx_par_1_TON.DN)OTU(fx_par_0_latch);
+				N: [XIO(fx_par_0_latch) COP(fx_par_0,fx_tag_hello,1) ,XIC(fx_par_0_latch) COP(fx_par_1,fx_tag_hello,1) ];
+				N: JMP(fx_helloworld);
+		END_ROUTINE
+
+		CHILD_PROGRAMS
+		END_CHILD_PROGRAMS
+
+	END_PROGRAM
+
+	TASK MainTask (Type := CONTINUOUS,
+	               Rate := 10,
+	               Priority := 10,
+	               Watchdog := 500,
+	               DisableUpdateOutputs := No,
+	               InhibitTask := No)
+			MainProgram;
+	END_TASK
+
+CONFIG CST(SystemTimeMasterID := 0) END_CONFIG
+
+CONFIG TimeSynchronize(Priority1 := 128,
+	                                 Priority2 := 128,
+	                                 PTPEnable := 0) END_CONFIG
+
+CONFIG WallClockTime(LocalTimeAdjustment := 0,
+	                     TimeZone := 0) END_CONFIG
+
+END_CONTROLLER
+

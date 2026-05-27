@@ -18,7 +18,6 @@ from flux.chart.selectors import axis_key_for_tag, trace_sample_series
 from flux.trace.models import TraceAnnotation, TraceAnnotationTarget, TraceCacheCursor, TraceProfile, TraceSignal
 from flux.chart.cache import plane_sample_payload, sync_plane_samples
 from flux.chart.importer import import_trace_scopes_csv
-from flux.chart.providers.nav_wells import WELL_TRACE_TAGS, seed_nav_well_trace_config
 
 
 def has_adjacent_numeric(values):
@@ -73,8 +72,6 @@ class TraceSmokeTests(TestCase):
     def test_trace_index_lists_current_paths(self):
         profile = TraceProfile.objects.create(key="boilers", label="Boiler traces")
         TraceSignal.objects.create(profile=profile, tag=self._tag("Boiler Temperature"), label="Temperature")
-        nav_profile = TraceProfile.objects.create(key="nav-well-1", label="Nav Well 1")
-        TraceSignal.objects.create(profile=nav_profile, tag=self._tag("Nav Pressure"), label="Pressure")
         fluxolot_profile = TraceProfile.objects.create(key="fluxolot-sir", label="Sir Fluxolot")
         TraceSignal.objects.create(profile=fluxolot_profile, tag=self._tag("Sir Temperature"), label="Temperature")
 
@@ -89,14 +86,11 @@ class TraceSmokeTests(TestCase):
         self.assertContains(response, "comp-card-anchor")
         self.assertContains(response, "Available Flux.chart Paths")
         self.assertContains(response, "/chart/stream/")
-        self.assertContains(response, "/chart/wells/")
         self.assertContains(response, "/chart/fluxolot/")
         self.assertContains(response, "/chart/boilers/")
         self.assertContains(response, "Boiler traces")
         self.assertContains(response, "1 signals")
-        self.assertNotContains(response, "/chart/nav-well-1/")
         self.assertNotContains(response, "/chart/fluxolot-sir/")
-        self.assertNotContains(response, "Nav Well 1")
         self.assertNotContains(response, "Sir Fluxolot")
 
     def test_trace_index_paginates_large_profile_path_sets(self):
@@ -109,15 +103,15 @@ class TraceSmokeTests(TestCase):
             {"card": "trace-paths", "mode": "detail", "paths_page": "2"},
         )
 
-        self.assertContains(first_page, "64 paths")
-        self.assertContains(first_page, "Showing 1-10 of 64 paths")
-        self.assertContains(first_page, "/chart/wells/")
+        self.assertContains(first_page, "63 paths")
+        self.assertContains(first_page, "Showing 1-10 of 63 paths")
         self.assertContains(first_page, "/chart/chart-000/")
-        self.assertNotContains(first_page, "/chart/chart-006/")
+        self.assertContains(first_page, "/chart/chart-006/")
+        self.assertNotContains(first_page, "/chart/chart-007/")
         self.assertContains(first_page, 'hx-target="#chart-comp-surface"')
         self.assertContains(first_page, "paths_page=2")
-        self.assertContains(second_page, "Showing 11-20 of 64 paths")
-        self.assertContains(second_page, "/chart/chart-006/")
+        self.assertContains(second_page, "Showing 11-20 of 63 paths")
+        self.assertContains(second_page, "/chart/chart-007/")
         self.assertContains(second_page, "/chart/chart-015/")
         self.assertContains(second_page, "paths_page=1")
 
@@ -709,70 +703,12 @@ class TraceSmokeTests(TestCase):
         self.assertEqual(payload["x"][-1], int(new_timestamp.timestamp()))
         self.assertEqual(refreshed_series["y"][-1], 123.456)
 
-    def test_nav_well_trace_seed_creates_eight_signals_per_well(self):
-        result = seed_nav_well_trace_config(limit=2)
-
-        self.assertEqual(result["wells"], 2)
-        self.assertEqual(result["signals"], 16)
-        for profile in TraceProfile.objects.filter(key__startswith="nav-well-"):
-            self.assertEqual(profile.signals.count(), len(WELL_TRACE_TAGS))
-            self.assertEqual(profile.signals.filter(series__isnull=False).count(), len(WELL_TRACE_TAGS))
-
-    def test_nav_well_trace_single_page_cycles_chart_sources(self):
-        seed_nav_well_trace_config(limit=2)
-
-        first = self.client.get("/chart/wells/payload/", {"set": "1"}).json()["traceChart"]
-        second = self.client.get("/chart/wells/payload/", {"set": "2"}).json()["traceChart"]
-        page = self.client.get("/chart/wells/")
-
-        self.assertEqual(page.status_code, 200)
-        self.assertContains(page, "Navigation Well Charts")
-        self.assertContains(page, "Previous Well")
-        self.assertContains(page, "Next Well")
-        self.assertContains(page, "Chart source")
-        self.assertContains(page, "Compression")
-        self.assertContains(page, "Send Annotations")
-        self.assertContains(page, 'data-trace-live-refresh-seconds="60"')
-        self.assertContains(page, 'data-trace-annotation-url="/chart/annotations/"')
-        self.assertEqual(len(first["series"]), 8)
-        self.assertEqual(len(second["series"]), 8)
-        self.assertNotEqual(first["profileKey"], second["profileKey"])
-        self.assertNotEqual(first["series"][0]["fullPath"], second["series"][0]["fullPath"])
-
-    def test_nav_well_trace_payload_accepts_stable_source_without_breaking_set_index(self):
-        seed_nav_well_trace_config(limit=2)
-        second = self.client.get("/chart/wells/payload/", {"set": "2"}).json()["traceChart"]
-
-        by_source = self.client.get(
-            "/chart/wells/payload/",
-            {"source": second["wellId"], "set": "1"},
-        ).json()["traceChart"]
-
-        self.assertEqual(by_source["wellId"], second["wellId"])
-        self.assertEqual(by_source["profileKey"], second["profileKey"])
-        self.assertEqual(by_source["setIndex"], 2)
-
-    def test_nav_well_trace_embed_mode_uses_same_chart_without_page_chrome(self):
-        seed_nav_well_trace_config(limit=1)
-
-        route_response = self.client.get("/chart/wells/embed/")
-        query_response = self.client.get("/chart/wells/", {"embed": "1"})
-
-        self.assertEqual(route_response.status_code, 200)
-        self.assertContains(route_response, "trace-data")
-        self.assertContains(route_response, "Sample Tag Trend")
-        self.assertNotContains(route_response, 'class="feature-hero"')
-        self.assertNotContains(route_response, "Ignition Companion")
-        self.assertNotContains(route_response, "No historical samples recorded yet")
-        self.assertEqual(query_response.status_code, 200)
-        self.assertNotContains(query_response, "Ignition Companion")
-
     def test_trace_annotation_endpoint_stores_ignition_historian_annotation(self):
         fake = FakeAnnotationFluxy()
         tag = self._tag("Pressure A", asset_name="Trace Well")
-        tag.path = "FluxTraceNavWells/1/PressureA"
+        tag.path = "TraceAnnotations/PressureA"
         tag.save(update_fields=["path"])
-        profile = TraceProfile.objects.create(key="nav-well-test", label="Test Well")
+        profile = TraceProfile.objects.create(key="annotation-test", label="Test Well")
         signal = TraceSignal.objects.create(profile=profile, tag=tag, label="Pressure A")
         with patch("fluxy.Fluxy", return_value=fake):
             response = self.client.post(
@@ -781,9 +717,9 @@ class TraceSmokeTests(TestCase):
                     {
                         "markerId": 1,
                         "pinnedAt": "2026-05-17T01:00:00+00:00",
-                        "profileKey": "nav-well-test",
+                        "profileKey": "annotation-test",
                         "text": "Pump check",
-                        "paths": ["[default]FluxTraceNavWells/1/PressureA"],
+                        "paths": ["[default]TraceAnnotations/PressureA"],
                     }
                 ),
                 content_type="application/json",
@@ -800,7 +736,7 @@ class TraceSmokeTests(TestCase):
         self.assertEqual(target.signal, signal)
         self.assertEqual(str(target.ignition_storage_id), payload["annotation"]["storageIds"][0])
         call = fake.historian.calls[-1]
-        self.assertEqual(call["paths"], ["[default]FluxTraceNavWells/1/PressureA"])
+        self.assertEqual(call["paths"], ["[default]TraceAnnotations/PressureA"])
         self.assertEqual(call["end_times"], call["start_times"])
         self.assertEqual(call["types"], ["flux.trace.annotation"])
         self.assertEqual(len(call["storage_ids"]), 1)

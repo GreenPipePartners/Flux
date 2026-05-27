@@ -1,12 +1,14 @@
 # Architecture Core Area Files
 
-Last updated: 2026-05-25 during Flux.build L5X parity implementation.
+Last updated: 2026-05-26 during garden/labyrinth pilot scaffold implementation and trials.
 
 ## Architecture-Owned Files
 
 - `architecture/core_area_files.md` - continuous index of architecture review context, high-value boundaries, recurring commands, and report/log paths.
 - `architecture/daily/architecture_YYYY-MM-DD/architecture_YYYY-MM-DD.md` - append-only architecture activity ledger.
 - `architecture/mine/flux_mine_exploration.md` - dedicated Flux.mine PLC recovery/rebuild/emulation exploration notes.
+- `architecture/deep_plickir.md` - Deep.plc PLC IR/plickir namespace scope for deterministic RLL-to-IEC semantics.
+- `architecture/deep_plicker.md` - superseded misspelling retained as historical architecture note; do not use `plicker` for new code/docs.
 - `architecture/schematics_architecture.md` - Deep.schematics work scope for source/circuit/component primitives and the isolated `schematics` schema.
 - `arch_review.md` or requested output-directory `arch_review.md` - architecture review report when explicitly requested or after significant Build work.
 
@@ -19,7 +21,7 @@ Last updated: 2026-05-25 during Flux.build L5X parity implementation.
 - FieldAgent processes expose OPC UA endpoints; Ignition OPC UA connections read them; Fluxy reads Ignition tags in blocks.
 - Dashboard interface health should be a cached-state view over a required Flux.serve/Flux.opt sampler, not a browser/page-refresh-owned sampling mechanism.
 - OPC runtime truth should be composed from Flux.serve evidence: desired endpoint state, fresh FieldAgent heartbeat, PID, endpoint URL/port, optional probe, and service snapshot.
-- Flux.charts stress data is preserved through nav-well `TraceProfile`/`TraceSignal`/`RuntimeTag(TRACE_STRESS)` rows and `/charts/wells/`; dashboard navigation must aggregate or paginate it.
+- Flux.chart large imported data is preserved through `TraceProfile`/`TraceSignal`/Plane rows while retired nav-well and advanced navigation surfaces stay removed; dashboard/chart navigation must aggregate, paginate, or search rather than render one link per profile.
 - Current broad transition spans Mine, Build, Sim, Serve, Live, Charts, dashboard, docs, static assets, and CLI; split into coherent review/commit units before treating the tree as releasable.
 - `flux.trace` is currently a compatibility/model namespace while `flux.charts` owns user-facing chart routes, payloads, workers, and large-set navigation.
 - Bridge connection health should be a Flux.serve-scheduled probe over Flux.bridge behavior; Flux.web should render/request manual refreshes, not own periodic external IO.
@@ -58,6 +60,9 @@ Last updated: 2026-05-25 during Flux.build L5X parity implementation.
 - Implemented endpoint/runtime schema move: `public.base_fieldendpoint` now lives as `sim.endpoint`, and `public.base_fieldagentheartbeat` now lives as `serve.sim_agent_heartbeat`. No `public.base_*` tables should remain after migrations are applied.
 - Public `base_*` table review implementation is complete for the reviewed cluster: provider catalog moved to Flux.sim, endpoint config moved to `sim.endpoint`, and heartbeat evidence moved to `serve.sim_agent_heartbeat`.
 - Flux.mine PLC recovery target: Mine owns deserialization and persisted source facts for L5X/L5K; Build owns regenerated artifacts; Deep.plc owns bounded functional emulation/transpilation. Do not collapse these responsibilities into one parser/build/runtime module.
+- Proposed Flux.build.kit target: Build can own deterministic design-time kit bundles that combine PLC routine/tag generation with Ignition Vision templates and Perspective views/parameters. Treat these as source-artifact generators, not runtime truth or Deep.plc semantic ownership.
+- `logix_samples/package/` contains the first concrete Build.block/package example: `hello_world_variable.L5K` plus an Ignition project resource folder with Vision window/template resources and a Perspective view bound to `[fx_device_01]fx_tag_01`. Use this as source evidence for naming and bundle-shape discussion.
+- `logix_samples/package/hello_world_template.L5K` demonstrates the initial Build.block DSL marker grammar: `fx_*` marks template placeholders, `fx_tag_{ptr}` binds named tag pointers, `fx_par_{n}` and mixed names such as `fx_par_n_{suffix}` bind ordered parameter values into tags, and `fx_*` routine/label names identify PLC code expansion boundaries.
 - Deep.schematics target: model Flux-native schematics as source/circuit/component primitives under an isolated `schematics` PostgreSQL schema; do not begin with source drawing ingestion or live IO.
 - Deep.schematics component templates declare terminals, roles, potential interfaces, and internal relations; circuits/sources/compiler output resolve concrete terminal potential bindings.
 - Deep.schematics cross-circuit devices such as starters and power supplies must use behavioral relations between roles, not direct electrical continuity between 24 VDC and 480 VAC circuits.
@@ -70,6 +75,17 @@ Last updated: 2026-05-25 during Flux.build L5X parity implementation.
 - Implemented PLC graph slice: pure parsers now recover hello_world programs, routines, rungs, tasks, scheduled programs, and L5X tag data payloads; Django Mine persists them under `mine.plc_program`, `mine.plc_task`, `mine.plc_scheduled_program`, `mine.plc_routine`, and `mine.plc_rung`.
 - Implemented bounded RLL reference slice: hello_world instructions `XIO`, `XIC`, `TON`, `OTL`, `OTU`, and `COP` now parse into instruction/tag-reference dataclasses and persist under `mine.plc_instruction` and `mine.plc_tag_reference`.
 - Implemented first Flux.build L5X parity loop: persisted Mine rows serialize to generated L5X, generated L5X parses back through Flux.mine, and canonical hello_world graph/reference counts must match before a `logix_l5x` artifact is marked complete.
+- Implemented Flux.build L5K parity loop: the same persisted Mine model now serializes to generated L5K, parses back through Flux.mine, and must match hello_world canonical graph/reference counts before a `logix_l5k` artifact is marked complete.
+- Implemented first Deep.plc bounded runtime proof: persisted Mine hello_world rung/instruction/tag rows feed `flux_deep.rll`, which executes finite 100 ms scans over `XIO`, `XIC`, `TON`, `OTL`, `OTU`, and `COP` and verifies hello/world pulses.
+- Implemented direct OpenPLC compiler integration: `flux_deep.openplc` validates Structured Text through a local OpenPLC v3 MatIEC checkout when `FLUX_DEEP_OPENPLC_ROOT` is set; no Docker, service install, or sudo is required for this compiler validation path.
+- Implemented OpenPLC generated-C harness validation: the Deep OpenPLC ST target exposes `hello_world`, OpenPLC MatIEC generates C, and a local harness reads `RES0__MAININSTANCE.HELLO_WORLD` across scans to prove `hello -> world -> hello` cycling.
+- New domain target: `deep.plickir` means PLC IR and belongs under Deep.plc. It owns deterministic semantic lifting/normalization/lowering from Mine facts into executable IEC/backends; it is not Flux.mine parsing and not Flux.build source-artifact reconstruction.
+- Implemented first plickir IR slice: `logix_samples/hello_world.L5X` lifts from Mine's parsed PLC project into `flux_deep.plc.plickir` with 1 controller, 1 program, 1 task, 1 routine, 5 rungs, 6 normalized networks, 12 semantic instructions, and 0 diagnostics.
+- OpenPLC ladder artifact finding: OpenPLC Runtime's accepted executable path is `.st` through MatIEC/`iec2c`; graphical Ladder/LD support belongs to OpenPLC Editor/project import, likely PLCopen XML/Beremiz-style, and needs source-level confirmation before implementing `plickir.ld`.
+- Nodes/Paths scaffold critique: `garden` node notes and `labyrinth` path tests can be useful only as a thin observability/scenario layer over canonical Flux module ownership. Do not let scaffold agents become parallel source-of-truth owners for architecture, failing-test interpretation, or cross-node contracts.
+- Garden/labyrinth implementation target: Meta-Architect owns scaffold governance and synthesis; lower-reasoning garden curators maintain node-local notes/test maps; lower-reasoning labyrinth curators maintain bounded cross-node scenario maps. Curators may propose tests/notes but must not modify application source or become canonical owners of Flux module contracts.
+- Implemented pilot scaffold: `scaffold/` now contains low-curator task packets, templates, `flux_plane` garden, `current_state_display__plane__spot__web` labyrinth, trial logs, and accepted scaffold findings. Current task tooling did not expose a real model-level `Low` reasoning switch, so trials used low-curator prompts with read-only scope and fixed schemas.
+- Accepted scaffold findings from pilot: Plane QuestDB `today` currently means rolling 24h while Plane service `today` means local-midnight calendar day; Spot Plane fallback can hide missing Plane linkage/latest during migration.
 
 ## Important Files
 
@@ -100,9 +116,9 @@ Last updated: 2026-05-25 during Flux.build L5X parity implementation.
 - `web/Flux/src/flux/serve/management/commands/flux_serve_monitor.py` - 5-second service monitor loop; intended owner for periodic bridge health checks.
 - `web/Flux/src/dashboard/models.py` - current `IgnitionBridgeConfig` latest bridge health cache fields.
 - `web/Flux/src/flux/serve/field_supervisor.py` - FieldAgent process specs and deterministic endpoint port derivation.
-- `web/Flux/src/flux/charts/providers/nav_wells.py` - preserved nav-well stress chart seeding, live update, cache sync, and source-data path.
-- `web/Flux/src/flux/charts/views.py` - Flux.charts one-page nav-well/Fluxolot/profile chart surfaces and payload routes.
-- `web/Flux/src/flux/charts/urls.py` / `routes.py` - current chart URL namespace; target is singular `flux.chart` with `/charts/` compatibility.
+- `web/Flux/src/flux/chart/views.py` - singular Flux.chart profile/index, Fluxolot, historical, streaming, and payload routes; nav-well views are retired.
+- `web/Flux/src/flux/chart/routes.py` - current chart URL namespace; `/charts/` remains compatibility while `/chart/wells*` is retired.
+- `web/Flux/src/flux/nav/migrations/0004_drop_navigation_tables.py` - migration-history shell for dropping retired advanced navigation tables.
 - `web/Flux/src/flux/sim/jobs.py` - queued Sim provider import/output apply orchestration; watch desired-state versus external Ignition mutation boundary.
 - `web/Flux/src/flux/base/models.py` - active kernel `base.device`/`base.tag`/`base.entity`; legacy Sim/Serve aliases remain for transition only.
 - `web/Flux/src/flux/base/services.py` - compatibility provider import/tree/selection service layer now importing Flux.sim provider catalog models.
@@ -123,11 +139,30 @@ Last updated: 2026-05-25 during Flux.build L5X parity implementation.
 - `web/Flux/src/flux/mine/services.py` - persistence bridge from pure `flux_mine` parsed models into Django Mine facts.
 - `web/Flux/src/flux/build/models.py` / `web/Flux/src/flux/build/services.py` - current Build run/artifact boundary; needs L5X/L5K artifact target types when reconstruction starts.
 - `build/src/flux_build/targets/logix_l5x.py` - minimal generated L5X serializer from the canonical Mine PLC project model.
+- `build/src/flux_build/targets/logix_l5k.py` - minimal generated L5K serializer from the canonical Mine PLC project model.
 - `web/Flux/src/flux/build/management/commands/flux_build_logix_l5x.py` - CLI entrypoint for Mine-run-to-generated-L5X builds.
+- `web/Flux/src/flux/build/management/commands/flux_build_logix_l5k.py` - CLI entrypoint for Mine-run-to-generated-L5K builds.
 - `web/Flux/src/flux/build/migrations/0003_buildrun_logix_l5x_target.py` - Build target choice extension for `logix_l5x`.
+- `web/Flux/src/flux/build/migrations/0004_buildrun_logix_l5k_target.py` - Build target choice extension for `logix_l5k`.
 - `deep/src/flux_deep/hello_world.py` - current isolated Deep hello_world workspace generator; useful precedent but not yet generated from mined Logix facts.
+- `deep/src/flux_deep/rll.py` - bounded internal RLL scan executor for the hello_world functional subset; not a full Logix runtime.
+- `deep/src/flux_deep/openplc.py` - gated direct OpenPLC v3 MatIEC compiler adapter for validating Structured Text to OpenPLC C artifacts.
+- `deep/tests/test_openplc_integration.py` - env-gated OpenPLC compiler/harness integration test; skips unless `FLUX_DEEP_OPENPLC_ROOT` points to a built OpenPLC_v3 checkout.
+- Future `deep/src/flux_deep/plc/plickir/` - target home for canonical PLC IR, Rockwell RLL lifting, IEC lowering, diagnostics, and validation helpers.
+- `deep/src/flux_deep/plc/plickir/ir.py` - current plickir canonical IR dataclasses.
+- `deep/src/flux_deep/plc/plickir/normalize.py` - current simple RLL branch/network normalization.
+- `deep/src/flux_deep/plc/plickir/rockwell.py` - current Mine/Rockwell RLL parsed-project lifter into plickir IR.
+- `tests/test_deep_plickir.py` - root integration test lifting the real hello_world L5X sample into plickir IR.
+- `web/Flux/src/flux/mine/test_deep_runtime.py` - narrow integration test proving persisted Mine rows can feed the isolated Deep RLL executor.
 - `docs/deep-openplc.md` / `deep/README.md` - Deep.plc boundary: OpenPLC target is executable, L5X remains source intent.
 - `architecture/schematics_architecture.md` - Deep.schematics schema/model scope for the first 480 VAC motor starter + 24 VDC control fixture.
+- `scaffold/README.md` - governance rules for gardens, labyrinths, low-curator mode, and Meta-Architect synthesis.
+- `scaffold/agents/garden_curator_low.md` and `scaffold/agents/labyrinth_curator_low.md` - task packets for lower-reasoning/read-only curator runs.
+- `scaffold/gardens/flux_plane/` - pilot garden for Plane ownership, contracts, tests, and findings.
+- `scaffold/labyrinths/current_state_display__plane__spot__web/` - pilot labyrinth for cached Plane-to-Spot/Web current-state display.
+- `scaffold/trials/2026-05-26/` - first three low-curator trial logs.
+- `scaffold/findings/2026-05-26-plane-window-semantics.md` - accepted scaffold finding on `today` window semantic drift.
+- `scaffold/findings/2026-05-26-spot-plane-fallback-visibility.md` - accepted scaffold finding on transition fallback visibility.
 
 ## Recurring Architecture Checks
 
@@ -165,6 +200,11 @@ Last updated: 2026-05-25 during Flux.build L5X parity implementation.
 - Do not reintroduce `flux.field.models`; duplicate legacy `field_*` tables were dropped with `field.0005_drop_legacy_field_models`.
 - For PLC mining, do not treat tag extraction as the whole job. Rebuild/emulation requires controller -> task/program -> routine -> rung structure plus tag data payloads and references.
 - For L5X/L5K round trips, first promise canonical semantic parity: parse original, persist model, serialize generated artifact, parse generated artifact, compare canonical model. Do not promise byte-perfect rebuild without raw source replay/fragment retention.
+- For `Flux.build.kit`, separate kit specification from kit instance. The spec declares parameter schema, generated PLC routine/tags, Vision/Perspective template surfaces, bindings, docs, and validation hooks; the instance supplies concrete names/prefixes/tag paths/container placement. Do not hide dynamic tag discovery inside generated HMI templates.
+- Generated Vision/Perspective kit artifacts should use static, bounded parameters and tag bindings. Avoid circular/dynamic bindings and browser/request-time discovery loops; any runtime data freshness still belongs to Serve/Opt/Plane/Spot, not Build.kit.
+- A Build.kit PLC slice should first compile into primitive `flux_mine.plc` components (`PlcProject`, `PlcController`, `PlcProgram`, `PlcRoutine`, `PlcTag`) and only then serialize to L5X/L5K or lower through Deep.plickir/OpenPLC/future Codesys. Do not make raw text replacement the PLC source of truth.
+- Build.kit DSL expansion should be token-aware, not global string replacement. Match Logix identifiers, tag paths, routine names, label names, and Ignition tag path segments explicitly so `fx_par_0`, `foo_fx_par_0_bar`, and `[fx_device_01]fx_tag_hello` expand deterministically without accidental substring replacements.
+- If `LBL(fx_*)` / `JMP(fx_*)` are used as template delimiters for a label block, generator output must define whether sentinels are stripped, renamed, or intentionally retained. Do not leave an accidental unbounded `JMP` loop in generated Logix output.
 - For Deep.plc tests, use explicit scan/time bounds and a named instruction subset. The hello_world first subset is `XIO`, `XIC`, `TON`, `OTL`, `OTU`, and `COP` over BOOL/TIMER/STRING state.
 - Keep Deep.plc isolated from Django/Ignition/FieldAgent until there is a narrow runtime adapter; OpenPLC does not execute Rockwell L5X directly.
 - For Mine schema migration, move tables as metadata operations rather than copying data. Do not combine schema movement, Python model renames, and new PLC source graph tables in one migration.
@@ -173,9 +213,19 @@ Last updated: 2026-05-25 during Flux.build L5X parity implementation.
 - After `mine.0004`, the remaining source-graph gap is instruction/tag-reference extraction. Keep this as a bounded hello_world subset before attempting broad Logix grammar support.
 - After `mine.0005`, the next Build target is generated L5X parity from persisted Mine rows; do not jump to Deep.plc until generated-source round trip is proven.
 - After `build.0003`, L5X parity is semantic/count-based, not byte-perfect. Do not promise exact Rockwell export reproduction without raw source replay/fragment retention.
+- After `build.0004`, Mine->Build->Mine generated-source parity exists for both L5X and L5K on hello_world. Deep.plc is now the next boundary, but keep it scan/time bounded.
+- Deep.plc's first runtime proof is test-only and bounded. Do not expose it as a long-running Django/OpenPLC service until there is a narrow adapter contract and broader instruction coverage.
+- OpenPLC compiler validation is not OpenPLC runtime validation. Keep compiler checks, service startup, auth/upload APIs, and real-time execution as separate adapter layers.
+- OpenPLC harness validation proves generated artifact behavior without service startup. The next risk is eliminating the hand-maintained ST target by generating ST from Mine rows.
+- Do not let plickir become a generic transpiler junk drawer. Its core truth is a deterministic, provenance-rich PLC semantic IR with bounded instruction support and explicit diagnostics.
+- Current plickir scope is deliberately bounded to the hello_world subset. Unsupported instructions should produce diagnostics before any backend generation is trusted.
+- For OpenPLC, distinguish runtime artifact from editor artifact: Runtime validates generated ST/C; plickir.ld should target IEC Ladder/PLCopen XML directly, not ST-to-Ladder conversion.
 - For Deep.schematics, keep first persistence isolated to `schematics.*`; avoid `base`, `plane`, `sim`, `mine`, `status`, or live Ignition FKs until the source/circuit/component compiler is proven.
 - Component generators should be deterministic and side-effect free: no tag reads, no Ignition access, no PLC execution, and no final potential resolution without a circuit/source context.
 - Schematic renderings are projections; canonical truth is typed topology, terminals, roles, potential systems, and internal relations.
+- If adding `garden/` and `labyrinth/` scaffolding, keep write permissions bounded to notes/tests/transcripts, require generated reports to cite canonical files/tests, and cap scenario scope so path tests do not become slow end-to-end mega-suites that obscure fast module feedback.
+- Starter scaffold rule: every garden/labyrinth artifact must declare canonical Flux owner, source files, contract under observation, bounded command/test, failure handoff owner, and last Meta-Architect synthesis date.
+- Current scaffold expansion rule: do not add more full gardens/labyrinths until the Plane/current-state pilot produces at least one useful test handoff or prevents one real ownership mistake. The endpoint-runtime trial is a candidate labyrinth only, not accepted expansion.
 
 ## Recent Reports
 
@@ -199,4 +249,12 @@ Last updated: 2026-05-25 during Flux.build L5X parity implementation.
 - `architecture/mine/flux_mine_exploration.md` - 2026-05-25 PLC source graph implementation; hello_world L5X/L5K task/program/routine/rung structure now parses and L5X persists through Mine.
 - `architecture/mine/flux_mine_exploration.md` - 2026-05-25 RLL instruction reference implementation; hello_world bounded instruction/tag references now parse and persist through Mine.
 - `architecture/mine/flux_mine_exploration.md` - 2026-05-25 Flux.build L5X parity implementation; generated L5X parses back through Flux.mine with matching hello_world canonical counts.
+- `architecture/mine/flux_mine_exploration.md` - 2026-05-25 Flux.build L5K parity implementation; generated L5K parses back through Flux.mine with matching hello_world canonical counts.
+- `architecture/mine/flux_mine_exploration.md` - 2026-05-25 Deep.plc bounded runtime implementation; persisted Mine hello_world rows execute finite hello/world pulse assertions through `flux_deep.rll`.
+- `architecture/mine/flux_mine_exploration.md` - 2026-05-25 direct OpenPLC compiler integration; checked-in hello_world ST compiles through a local non-Docker OpenPLC v3 MatIEC checkout.
+- `architecture/mine/flux_mine_exploration.md` - 2026-05-25 OpenPLC harness variable inspection; OpenPLC-generated C exposes and cycles `hello_world` under a finite scan harness.
+- `architecture/deep_plicker.md` - 2026-05-26 superseded misspelled deep.plicker architecture scope.
+- `architecture/deep_plickir.md` - 2026-05-26 deep.plickir architecture scope; plickir is the Deep.plc-owned PLC IR protocol for deterministic RLL-to-IEC semantics.
+- `architecture/deep_plickir.md` - 2026-05-26 hello_world IR implementation; real L5X sample now lifts into deterministic plickir IR.
+- `architecture/deep_plickir.md` - 2026-05-26 OpenPLC ladder artifact investigation; runtime accepts ST, editor ladder format likely PLCopen XML and requires confirmation.
 - `architecture/schematics_architecture.md` - 2026-05-25 Deep.schematics work scope; first slice is an isolated `schematics` schema and a compiled 480 VAC motor-starter / 24 VDC control fixture.

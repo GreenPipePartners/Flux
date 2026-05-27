@@ -8,6 +8,7 @@ class BuildRun(models.Model):
         IGNITION_TAGS = "ignition_tags", "Ignition Tags"
         HMI_SYMBOLIC_MAP = "hmi_symbolic_map", "HMI Symbolic Map"
         LOGIX_L5X = "logix_l5x", "Logix L5X"
+        LOGIX_L5K = "logix_l5k", "Logix L5K"
 
     class Status(models.TextChoices):
         RUNNING = "running", "Running"

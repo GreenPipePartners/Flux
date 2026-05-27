@@ -1,0 +1,93 @@
+{
+  "custom": {},
+  "params": {},
+  "props": {
+    "defaultSize": {
+      "height": 360,
+      "width": 640
+    }
+  },
+  "root": {
+    "children": [
+      {
+        "meta": {
+          "name": "hello_world_label"
+        },
+        "position": {
+          "height": 50,
+          "width": 157,
+          "x": 18,
+          "y": 24
+        },
+        "propConfig": {
+          "props.text": {
+            "binding": {
+              "config": {
+                "fallbackDelay": 2.5,
+                "mode": "direct",
+                "tagPath": "[hello_plc]hello_world"
+              },
+              "type": "tag"
+            }
+          }
+        },
+        "type": "ia.display.label"
+      },
+      {
+        "meta": {
+          "name": "foo_bar_label"
+        },
+        "position": {
+          "height": 50,
+          "width": 157,
+          "x": 18,
+          "y": 94
+        },
+        "propConfig": {
+          "props.text": {
+            "binding": {
+              "config": {
+                "fallbackDelay": 2.5,
+                "mode": "direct",
+                "tagPath": "[hello_plc]foo_bar"
+              },
+              "type": "tag"
+            }
+          }
+        },
+        "type": "ia.display.label"
+      },
+      {
+        "meta": {
+          "name": "baz_bob_label"
+        },
+        "position": {
+          "height": 50,
+          "width": 157,
+          "x": 18,
+          "y": 164
+        },
+        "propConfig": {
+          "props.text": {
+            "binding": {
+              "config": {
+                "fallbackDelay": 2.5,
+                "mode": "direct",
+                "tagPath": "[hello_plc]baz_bob"
+              },
+              "type": "tag"
+            }
+          }
+        },
+        "type": "ia.display.label"
+      }
+    ],
+    "meta": {
+      "name": "hello_world_kit_perspective_screen"
+    },
+    "props": {
+      "mode": "percent"
+    },
+    "type": "ia.container.coord"
+  }
+}

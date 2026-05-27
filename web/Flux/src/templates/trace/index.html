@@ -1,5 +1,5 @@
 {% extends "flux/base.html" %}
-{% load static nav_extras %}
+{% load static flux_extras %}
 
 {% block title %}Flux Chart{% endblock %}
 
@@ -31,7 +31,7 @@
               <div><p class="eyebrow">Flux.chart.paths</p><h2>Available Flux.chart Paths</h2></div>
               <span class="status-pill">{{ trace_path_total }} paths</span>
             </div>
-            <p class="muted">Current Flux.chart surfaces and configured chart profiles. This list is paginated to keep stress imports scan-friendly while preserving the rotating Navigation Wells surface.</p>
+            <p class="muted">Current Flux.chart surfaces and configured chart profiles. This list is paginated to keep large imports scan-friendly without restoring retired navigation surfaces.</p>
             <div class="stale-list">{% for item in trace_paths %}<div class="stale-row"><div><strong>{{ item.label }}</strong><small>{{ item.path }} · {{ item.detail }}</small><small>{{ item.description }}</small></div><a href="{{ item.path }}">Open</a></div>{% endfor %}</div>
             {% include "flux/partials/pagination_controls.html" with page_obj=trace_path_page page_param="paths_page" target_id="chart-comp-surface" select_id="chart-comp-surface" label="Flux.chart path pages" item_label="paths" %}
           </section>

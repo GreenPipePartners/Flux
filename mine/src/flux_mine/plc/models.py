@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 
-INSTRUCTION_RE = re.compile(r"\b(?P<mnemonic>XIO|XIC|TON|OTL|OTU|COP)\s*\((?P<operands>[^()]*)\)")
+INSTRUCTION_RE = re.compile(r"\b(?P<mnemonic>XIO|XIC|TON|OTL|OTU|COP|JSR)\s*\((?P<operands>[^()]*)\)")
 TAG_OPERAND_RE = re.compile(r"^(?P<base>[A-Za-z_][A-Za-z0-9_]*)(?P<member>(?:\.|\[).*)?$")
 
 REFERENCE_ROLES: dict[str, tuple[str, ...]] = {
@@ -16,6 +16,7 @@ REFERENCE_ROLES: dict[str, tuple[str, ...]] = {
     "OTL": ("write",),
     "OTU": ("write",),
     "COP": ("source", "destination", "count"),
+    "JSR": ("routine", "count"),
 }
 
 
@@ -279,7 +280,7 @@ def parse_instruction_tag_reference(
     base_tag = match.group("base")
     member_path = (match.group("member") or "").lstrip(".")
     role = reference_role(mnemonic, operand_index)
-    if role == "count":
+    if role in {"count", "routine"}:
         return None
     return PlcInstructionTagReference(
         original=cleaned,

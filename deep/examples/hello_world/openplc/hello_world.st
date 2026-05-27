@@ -1,30 +1,33 @@
-PROGRAM hello_world
+PROGRAM MainProgram
 VAR
-  cycle_timer : TON;
-  timer_enable : BOOL := TRUE;
-  cycle_count : DINT := 0;
-  display_text : STRING := 'world';
+  hello : STRING := 'hello';
+  world : STRING := 'world';
+  hello_world : STRING := '';
+  world_latch : BOOL := FALSE;
+  hello_TON : TON;
+  world_TON : TON;
 END_VAR
 
-cycle_timer(IN := timer_enable, PT := T#1s);
+hello_TON(IN := NOT world_latch, PT := T#1s);
+IF hello_TON.Q THEN
+  world_latch := TRUE;
+END_IF;
 
-IF cycle_timer.Q THEN
-  timer_enable := FALSE;
-  cycle_count := cycle_count + 1;
+world_TON(IN := world_latch, PT := T#1s);
+IF world_TON.Q THEN
+  world_latch := FALSE;
+END_IF;
 
-  IF (cycle_count MOD 2) = 1 THEN
-    display_text := 'hello';
-  ELSE
-    display_text := 'world';
-  END_IF;
+IF NOT world_latch THEN
+  hello_world := hello;
 ELSE
-  timer_enable := TRUE;
+  hello_world := world;
 END_IF;
 END_PROGRAM
 
 CONFIGURATION Config0
 RESOURCE Res0 ON PLC
-TASK Main(INTERVAL := T#50ms, PRIORITY := 0);
-PROGRAM MainInstance WITH Main : hello_world;
+TASK Main(INTERVAL := T#100ms, PRIORITY := 0);
+PROGRAM MainInstance WITH Main : MainProgram;
 END_RESOURCE
 END_CONFIGURATION

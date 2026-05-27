@@ -1,4 +1,4 @@
-{% load nav_extras %}
+{% load flux_extras %}
 {% if simserver_mode %}{% firstof simserver_mode as resolved_simserver_mode %}{% elif request.GET.card == "simserver" %}{% firstof request.GET.mode "detail" as resolved_simserver_mode %}{% else %}{% firstof "detail" as resolved_simserver_mode %}{% endif %}
 {% firstof comp_surface_target "simserver-comp-card" as simserver_target_id %}
 <article

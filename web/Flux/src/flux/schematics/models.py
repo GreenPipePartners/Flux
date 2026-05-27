@@ -130,6 +130,33 @@ class RoleTerminalTemplate(models.Model):
         ordering = ["role_template", "sort_order", "terminal_template__key"]
 
 
+class RoleContinuityTemplate(models.Model):
+    role_template = models.ForeignKey(RoleTemplate, on_delete=models.CASCADE, related_name="continuity_templates")
+    from_terminal_template = models.ForeignKey(
+        TerminalTemplate,
+        on_delete=models.CASCADE,
+        related_name="source_continuity_templates",
+    )
+    to_terminal_template = models.ForeignKey(
+        TerminalTemplate,
+        on_delete=models.CASCADE,
+        related_name="target_continuity_templates",
+    )
+    condition_key = models.CharField(max_length=120, blank=True)
+    continuity_kind = models.CharField(max_length=80, default="conductive")
+    sort_order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        db_table = '"schematics"."role_continuity_template"'
+        constraints = [
+            models.UniqueConstraint(
+                fields=["role_template", "from_terminal_template", "to_terminal_template", "condition_key"],
+                name="unique_sch_role_continuity_tmpl",
+            )
+        ]
+        ordering = ["role_template", "sort_order", "from_terminal_template__key", "to_terminal_template__key"]
+
+
 class InternalRelationTemplate(models.Model):
     component_template = models.ForeignKey(ComponentTemplate, on_delete=models.CASCADE, related_name="relation_templates")
     key = models.CharField(max_length=120)
@@ -211,6 +238,26 @@ class RoleTerminal(models.Model):
         ordering = ["role", "sort_order", "terminal__key"]
 
 
+class RoleContinuity(models.Model):
+    role = models.ForeignKey(Role, on_delete=models.CASCADE, related_name="continuities")
+    template = models.ForeignKey(RoleContinuityTemplate, on_delete=models.PROTECT, related_name="continuities")
+    from_terminal = models.ForeignKey(Terminal, on_delete=models.CASCADE, related_name="source_continuities")
+    to_terminal = models.ForeignKey(Terminal, on_delete=models.CASCADE, related_name="target_continuities")
+    condition_key = models.CharField(max_length=120, blank=True)
+    continuity_kind = models.CharField(max_length=80, default="conductive")
+    sort_order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        db_table = '"schematics"."role_continuity"'
+        constraints = [
+            models.UniqueConstraint(
+                fields=["role", "from_terminal", "to_terminal", "condition_key"],
+                name="unique_sch_role_continuity",
+            )
+        ]
+        ordering = ["role", "sort_order", "from_terminal__key", "to_terminal__key"]
+
+
 class InternalRelation(models.Model):
     component = models.ForeignKey(Component, on_delete=models.CASCADE, related_name="internal_relations")
     template = models.ForeignKey(InternalRelationTemplate, on_delete=models.PROTECT, related_name="relations")
@@ -226,6 +273,143 @@ class InternalRelation(models.Model):
         db_table = '"schematics"."internal_relation"'
         constraints = [models.UniqueConstraint(fields=["component", "key"], name="unique_sch_relation")]
         ordering = ["component", "key"]
+
+
+class FieldInstrument(models.Model):
+    system = models.ForeignKey(SchematicSystem, on_delete=models.CASCADE, related_name="field_instruments")
+    reference = models.CharField(max_length=80)
+    name = models.CharField(max_length=180, blank=True)
+    instrument_kind = models.CharField(max_length=80)
+    process_variable = models.CharField(max_length=80, blank=True)
+    signal_kind = models.CharField(max_length=80, blank=True)
+    component = models.ForeignKey(
+        Component,
+        on_delete=models.SET_NULL,
+        related_name="field_instruments",
+        blank=True,
+        null=True,
+    )
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = '"schematics"."field_instrument"'
+        constraints = [models.UniqueConstraint(fields=["system", "reference"], name="unique_sch_field_instrument_ref")]
+        ordering = ["system", "reference"]
+        indexes = [
+            models.Index(fields=["instrument_kind"], name="sch_field_inst_kind_idx"),
+            models.Index(fields=["process_variable"], name="sch_field_inst_pv_idx"),
+            models.Index(fields=["signal_kind"], name="sch_field_inst_signal_idx"),
+        ]
+
+    def __str__(self) -> str:
+        return self.reference
+
+
+class IOPoint(models.Model):
+    class Direction(models.TextChoices):
+        INPUT = "input", "Input"
+        OUTPUT = "output", "Output"
+        BIDIRECTIONAL = "bidirectional", "Bidirectional"
+
+    system = models.ForeignKey(SchematicSystem, on_delete=models.CASCADE, related_name="io_points")
+    reference = models.CharField(max_length=100)
+    name = models.CharField(max_length=180, blank=True)
+    io_kind = models.CharField(max_length=80)
+    direction = models.CharField(max_length=20, choices=Direction.choices)
+    signal_kind = models.CharField(max_length=80, blank=True)
+    logical_name = models.CharField(max_length=180, blank=True)
+    hardware_address = models.CharField(max_length=180, blank=True)
+    field_instrument = models.ForeignKey(
+        FieldInstrument,
+        on_delete=models.SET_NULL,
+        related_name="io_points",
+        blank=True,
+        null=True,
+    )
+    component = models.ForeignKey(
+        Component,
+        on_delete=models.SET_NULL,
+        related_name="io_points",
+        blank=True,
+        null=True,
+    )
+    terminal = models.ForeignKey(
+        Terminal,
+        on_delete=models.SET_NULL,
+        related_name="io_points",
+        blank=True,
+        null=True,
+    )
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = '"schematics"."io_point"'
+        constraints = [models.UniqueConstraint(fields=["system", "reference"], name="unique_sch_io_point_ref")]
+        ordering = ["system", "reference"]
+        indexes = [
+            models.Index(fields=["direction"], name="sch_io_point_dir_idx"),
+            models.Index(fields=["io_kind"], name="sch_io_point_kind_idx"),
+            models.Index(fields=["signal_kind"], name="sch_io_point_signal_idx"),
+        ]
+
+    def __str__(self) -> str:
+        return self.reference
+
+
+class Drive(models.Model):
+    class DriveKind(models.TextChoices):
+        VFD = "vfd", "VFD"
+        SERVO = "servo", "Servo"
+        DC = "dc_drive", "DC drive"
+        SOFT_STARTER = "soft_starter", "Soft starter"
+
+    system = models.ForeignKey(SchematicSystem, on_delete=models.CASCADE, related_name="drives")
+    reference = models.CharField(max_length=80)
+    name = models.CharField(max_length=180, blank=True)
+    drive_kind = models.CharField(max_length=40, choices=DriveKind.choices)
+    component = models.ForeignKey(
+        Component,
+        on_delete=models.SET_NULL,
+        related_name="drives",
+        blank=True,
+        null=True,
+    )
+    driven_component = models.ForeignKey(
+        Component,
+        on_delete=models.SET_NULL,
+        related_name="driven_by_drives",
+        blank=True,
+        null=True,
+    )
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = '"schematics"."drive"'
+        constraints = [models.UniqueConstraint(fields=["system", "reference"], name="unique_sch_drive_ref")]
+        ordering = ["system", "reference"]
+        indexes = [models.Index(fields=["drive_kind"], name="sch_drive_kind_idx")]
+
+    def __str__(self) -> str:
+        return self.reference
+
+
+class DriveIOPoint(models.Model):
+    drive = models.ForeignKey(Drive, on_delete=models.CASCADE, related_name="io_links")
+    io_point = models.ForeignKey(IOPoint, on_delete=models.CASCADE, related_name="drive_links")
+    function_key = models.CharField(max_length=100)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+    metadata = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        db_table = '"schematics"."drive_io_point"'
+        constraints = [models.UniqueConstraint(fields=["drive", "io_point", "function_key"], name="unique_sch_drive_io_point")]
+        ordering = ["drive", "sort_order", "function_key"]
 
 
 class Source(models.Model):
@@ -260,6 +444,22 @@ class SourcePotential(models.Model):
         db_table = '"schematics"."source_potential"'
         constraints = [models.UniqueConstraint(fields=["source", "key"], name="unique_sch_source_potential")]
         ordering = ["source", "sort_order", "key"]
+
+
+class SourceTerminal(models.Model):
+    source = models.ForeignKey(Source, on_delete=models.CASCADE, related_name="terminals")
+    source_potential = models.ForeignKey(SourcePotential, on_delete=models.PROTECT, related_name="terminals")
+    key = models.CharField(max_length=40)
+    label = models.CharField(max_length=120, blank=True)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        db_table = '"schematics"."source_terminal"'
+        constraints = [models.UniqueConstraint(fields=["source", "key"], name="unique_sch_source_terminal")]
+        ordering = ["source", "sort_order", "key"]
+
+    def __str__(self) -> str:
+        return f"{self.source.name}.{self.key}"
 
 
 class Circuit(models.Model):
@@ -333,6 +533,36 @@ class Connection(models.Model):
         indexes = [models.Index(fields=["circuit", "connection_kind"], name="sch_connection_kind_idx")]
 
 
+class NetTerminal(models.Model):
+    circuit = models.ForeignKey(Circuit, on_delete=models.CASCADE, related_name="net_terminals")
+    net = models.ForeignKey(Net, on_delete=models.CASCADE, related_name="terminals")
+    terminal = models.ForeignKey(Terminal, on_delete=models.CASCADE, related_name="net_memberships")
+    connection_kind = models.CharField(max_length=80, default="conductor")
+    condition_key = models.CharField(max_length=120, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        db_table = '"schematics"."net_terminal"'
+        constraints = [models.UniqueConstraint(fields=["circuit", "net", "terminal"], name="unique_sch_net_terminal")]
+        ordering = ["circuit", "net", "terminal__component__reference", "terminal__key"]
+        indexes = [models.Index(fields=["circuit", "connection_kind"], name="sch_net_terminal_kind_idx")]
+
+
+class SourceConnection(models.Model):
+    circuit = models.ForeignKey(Circuit, on_delete=models.CASCADE, related_name="source_connections")
+    net = models.ForeignKey(Net, on_delete=models.CASCADE, related_name="source_connections", blank=True, null=True)
+    source_terminal = models.ForeignKey(SourceTerminal, on_delete=models.CASCADE, related_name="connections")
+    connection_kind = models.CharField(max_length=80, default="source_conductor")
+    condition_key = models.CharField(max_length=120, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        db_table = '"schematics"."source_connection"'
+        constraints = [models.UniqueConstraint(fields=["circuit", "net", "source_terminal"], name="unique_sch_source_connection")]
+        ordering = ["circuit", "source_terminal__sort_order", "source_terminal__key"]
+        indexes = [models.Index(fields=["circuit", "connection_kind"], name="sch_source_conn_kind_idx")]
+
+
 class CompileRun(models.Model):
     class Status(models.TextChoices):
         RUNNING = "running", "Running"
@@ -388,7 +618,7 @@ class TerminalPotentialBinding(models.Model):
         db_table = '"schematics"."terminal_potential_binding"'
         constraints = [
             models.UniqueConstraint(
-                fields=["compile_run", "terminal", "role", "circuit_potential", "condition_key"],
+                fields=["compile_run", "terminal", "role", "circuit_potential", "condition_key", "binding_kind"],
                 name="unique_sch_terminal_binding",
             )
         ]

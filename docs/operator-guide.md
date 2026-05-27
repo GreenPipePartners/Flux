@@ -249,23 +249,17 @@ Run one generic cache sync:
 uv run python web/Flux/manage.py flux_charts_worker --once
 ```
 
-Run one navigation-well live cycle for the first ten seeded wells:
-
-```bash
-uv run python web/Flux/manage.py flux_charts_worker --once --nav-well-live --nav-well-limit 10
-```
-
 Run continuously every minute:
 
 ```bash
-uv run python web/Flux/manage.py flux_charts_worker --nav-well-live --nav-well-limit 10 --interval 60
+uv run python web/Flux/manage.py flux_charts_worker --interval 60
 ```
 
 The dedicated Trace worker performs service/process work. Trace views should only read local Plane sample payloads.
 
 ## QuestDB Trace Data Plane
 
-Navigation-well Trace uses QuestDB as its high-volume HTTP payload data plane. Postgres `plane.sample` remains the control-plane source/export staging area; browser payloads are served from QuestDB when available.
+Flux.chart can export local `plane.sample` rows into QuestDB as its high-volume HTTP payload data plane. Postgres `plane.sample` remains the control-plane source/export staging area; browser payloads are served from QuestDB when available.
 
 Start QuestDB directly:
 
@@ -275,16 +269,10 @@ scripts/questdb-start.sh
 
 The scripts download QuestDB `9.3.5` into `.runtime/questdb-dist` when missing and store data under `.runtime/questdb-data`. Override with `QUESTDB_VERSION`, `FLUX_QUESTDB_DIST`, or `FLUX_QUESTDB_DATA` if needed.
 
-Export current nav-well Plane sample rows into QuestDB:
+Export current enabled chart Plane sample rows into QuestDB:
 
 ```bash
-uv run python web/Flux/manage.py sync_charts_questdb --limit 10 --replace
-```
-
-The active nav-well payload endpoint is:
-
-```text
-http://localhost:8000/chart/wells/payload/?set=1&window_minutes=10080&step_minutes=7
+uv run python web/Flux/manage.py sync_charts_questdb --replace
 ```
 
 Known good output ends with:

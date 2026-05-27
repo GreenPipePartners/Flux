@@ -13,26 +13,17 @@ It renders from recorded runtime samples and local rolling cache data rather tha
 
 See `charts-architecture.md` for JavaScript and performance boundaries.
 
-## Navigation-Well Stress Surface
+## Large Chart Sets
 
-The large navigation-well trial is intentionally a single chart page, not thousands of dashboard links.
-
-Open:
-
-```text
-http://localhost:8000/chart/wells/
-```
-
-The page cycles between seeded wells with Previous/Next controls and a source selector. Each selected well resolves to one `TraceProfile` with eight visible `TraceSignal` rows.
+Large imported chart sets should use the paginated Chart index and aggregate dashboard links rather than one dashboard link per profile.
 
 Source data is preserved by:
 
-- `web/Flux/navigation.db` for navigation well options.
-- `seed_nav_well_charts` / `seed_nav_well_trace` for creating `TraceProfile`, `TraceSignal`, and `RuntimeTag(category=TRACE_STRESS)` rows.
-- `plane.sample` as local rolling-history cache.
+- `TraceProfile` and `TraceSignal` for chart membership and presentation.
+- `plane.sample` as the local rolling-history cache.
 - `sync_charts_questdb` for exporting local Plane sample rows into QuestDB for high-scale serving.
 
-Do not delete stress `TraceProfile` or `RuntimeTag` rows just to simplify the interface. Hide, aggregate, paginate, or search them at the dashboard/navigation layer.
+Do not delete stress `TraceProfile` or `RuntimeTag` rows just to simplify the interface. Hide, aggregate, paginate, or search them at the Chart/dashboard layer.
 
 ## Import Chart CSV
 

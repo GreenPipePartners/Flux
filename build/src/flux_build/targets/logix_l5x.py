@@ -141,6 +141,8 @@ def append_tag_data(parent: ET.Element, payload: dict[str, Any]) -> None:
     data_node = ET.SubElement(parent, "Data", attrs)
     if payload.get("text"):
         data_node.text = str(payload["text"])
+    for child_xml in payload.get("children", []):
+        data_node.append(ET.fromstring(str(child_xml)))
 
 
 def append_programs(parent: ET.Element, programs: tuple[PlcProgram, ...]) -> None:

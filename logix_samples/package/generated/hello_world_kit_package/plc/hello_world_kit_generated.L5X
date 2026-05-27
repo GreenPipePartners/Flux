@@ -1,0 +1,214 @@
+<?xml version='1.0' encoding='utf-8'?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetName="hello_world_kit" TargetType="Controller" ContainsContext="false" Owner="Flux.build" ExportDate="Tue May 26 21:31:20 2026" ExportOptions="NoRawData L5KData DecoratedData">
+  <Controller Name="hello_world_kit" ProcessorType="1756-L71" MajorRev="37" MinorRev="0" Use="Target">
+    <DataTypes />
+    <AddOnInstructionDefinitions />
+    <Tags />
+    <Programs>
+      <Program Name="MainProgram" MainRoutineName="MainRoutine" Disabled="false" UseAsFolder="false">
+        <Tags>
+          <Tag TagType="Base" DataType="STRING" Constant="false" ExternalAccess="Read/Write" Name="hello">
+            <Data Format="L5K">[5,'hello$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00'
+				]</Data>
+            <Data Length="5" Format="String">'hello'</Data>
+          </Tag>
+          <Tag TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write" Name="hello_latch">
+            <Data Format="L5K">0</Data>
+            <Data Format="Decorated">
+              <DataValue DataType="BOOL" Radix="Decimal" Value="0" />
+            </Data>
+          </Tag>
+          <Tag TagType="Base" DataType="TIMER" Constant="false" ExternalAccess="Read/Write" Name="hello_TON">
+            <Data Format="L5K">[0,1000,0]</Data>
+            <Data Format="Decorated">
+              <Structure DataType="TIMER">
+                <DataValueMember Name="PRE" DataType="DINT" Radix="Decimal" Value="1000" />
+                <DataValueMember Name="ACC" DataType="DINT" Radix="Decimal" Value="0" />
+                <DataValueMember Name="EN" DataType="BOOL" Value="0" />
+                <DataValueMember Name="TT" DataType="BOOL" Value="0" />
+                <DataValueMember Name="DN" DataType="BOOL" Value="0" />
+              </Structure>
+            </Data>
+          </Tag>
+          <Tag TagType="Base" DataType="STRING" Constant="false" ExternalAccess="Read/Write" Name="world">
+            <Data Format="L5K">[5,'world$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00'
+				]</Data>
+            <Data Length="5" Format="String">'world'</Data>
+          </Tag>
+          <Tag TagType="Base" DataType="TIMER" Constant="false" ExternalAccess="Read/Write" Name="world_TON">
+            <Data Format="L5K">[0,1000,0]</Data>
+            <Data Format="Decorated">
+              <Structure DataType="TIMER">
+                <DataValueMember Name="PRE" DataType="DINT" Radix="Decimal" Value="1000" />
+                <DataValueMember Name="ACC" DataType="DINT" Radix="Decimal" Value="0" />
+                <DataValueMember Name="EN" DataType="BOOL" Value="0" />
+                <DataValueMember Name="TT" DataType="BOOL" Value="0" />
+                <DataValueMember Name="DN" DataType="BOOL" Value="0" />
+              </Structure>
+            </Data>
+          </Tag>
+          <Tag TagType="Base" DataType="STRING" Constant="false" ExternalAccess="Read/Write" Name="hello_world">
+            <Data Format="L5K">[0,'$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00'
+				]</Data>
+            <Data Length="0" Format="String">''</Data>
+          </Tag>
+          <Tag TagType="Base" DataType="STRING" Constant="false" ExternalAccess="Read/Write" Name="foo">
+            <Data Format="L5K">[3,'foo$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00'
+				]</Data>
+            <Data Length="3" Format="String">'foo'</Data>
+          </Tag>
+          <Tag TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write" Name="foo_latch">
+            <Data Format="L5K">0</Data>
+            <Data Format="Decorated">
+              <DataValue DataType="BOOL" Radix="Decimal" Value="0" />
+            </Data>
+          </Tag>
+          <Tag TagType="Base" DataType="TIMER" Constant="false" ExternalAccess="Read/Write" Name="foo_TON">
+            <Data Format="L5K">[0,1000,0]</Data>
+            <Data Format="Decorated">
+              <Structure DataType="TIMER">
+                <DataValueMember Name="PRE" DataType="DINT" Radix="Decimal" Value="1000" />
+                <DataValueMember Name="ACC" DataType="DINT" Radix="Decimal" Value="0" />
+                <DataValueMember Name="EN" DataType="BOOL" Value="0" />
+                <DataValueMember Name="TT" DataType="BOOL" Value="0" />
+                <DataValueMember Name="DN" DataType="BOOL" Value="0" />
+              </Structure>
+            </Data>
+          </Tag>
+          <Tag TagType="Base" DataType="STRING" Constant="false" ExternalAccess="Read/Write" Name="bar">
+            <Data Format="L5K">[3,'bar$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00'
+				]</Data>
+            <Data Length="3" Format="String">'bar'</Data>
+          </Tag>
+          <Tag TagType="Base" DataType="TIMER" Constant="false" ExternalAccess="Read/Write" Name="bar_TON">
+            <Data Format="L5K">[0,1000,0]</Data>
+            <Data Format="Decorated">
+              <Structure DataType="TIMER">
+                <DataValueMember Name="PRE" DataType="DINT" Radix="Decimal" Value="1000" />
+                <DataValueMember Name="ACC" DataType="DINT" Radix="Decimal" Value="0" />
+                <DataValueMember Name="EN" DataType="BOOL" Value="0" />
+                <DataValueMember Name="TT" DataType="BOOL" Value="0" />
+                <DataValueMember Name="DN" DataType="BOOL" Value="0" />
+              </Structure>
+            </Data>
+          </Tag>
+          <Tag TagType="Base" DataType="STRING" Constant="false" ExternalAccess="Read/Write" Name="foo_bar">
+            <Data Format="L5K">[0,'$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00'
+				]</Data>
+            <Data Length="0" Format="String">''</Data>
+          </Tag>
+          <Tag TagType="Base" DataType="STRING" Constant="false" ExternalAccess="Read/Write" Name="baz">
+            <Data Format="L5K">[3,'baz$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00'
+				]</Data>
+            <Data Length="3" Format="String">'baz'</Data>
+          </Tag>
+          <Tag TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write" Name="baz_latch">
+            <Data Format="L5K">0</Data>
+            <Data Format="Decorated">
+              <DataValue DataType="BOOL" Radix="Decimal" Value="0" />
+            </Data>
+          </Tag>
+          <Tag TagType="Base" DataType="TIMER" Constant="false" ExternalAccess="Read/Write" Name="baz_TON">
+            <Data Format="L5K">[0,1000,0]</Data>
+            <Data Format="Decorated">
+              <Structure DataType="TIMER">
+                <DataValueMember Name="PRE" DataType="DINT" Radix="Decimal" Value="1000" />
+                <DataValueMember Name="ACC" DataType="DINT" Radix="Decimal" Value="0" />
+                <DataValueMember Name="EN" DataType="BOOL" Value="0" />
+                <DataValueMember Name="TT" DataType="BOOL" Value="0" />
+                <DataValueMember Name="DN" DataType="BOOL" Value="0" />
+              </Structure>
+            </Data>
+          </Tag>
+          <Tag TagType="Base" DataType="STRING" Constant="false" ExternalAccess="Read/Write" Name="bob">
+            <Data Format="L5K">[3,'bob$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00'
+				]</Data>
+            <Data Length="3" Format="String">'bob'</Data>
+          </Tag>
+          <Tag TagType="Base" DataType="TIMER" Constant="false" ExternalAccess="Read/Write" Name="bob_TON">
+            <Data Format="L5K">[0,1000,0]</Data>
+            <Data Format="Decorated">
+              <Structure DataType="TIMER">
+                <DataValueMember Name="PRE" DataType="DINT" Radix="Decimal" Value="1000" />
+                <DataValueMember Name="ACC" DataType="DINT" Radix="Decimal" Value="0" />
+                <DataValueMember Name="EN" DataType="BOOL" Value="0" />
+                <DataValueMember Name="TT" DataType="BOOL" Value="0" />
+                <DataValueMember Name="DN" DataType="BOOL" Value="0" />
+              </Structure>
+            </Data>
+          </Tag>
+          <Tag TagType="Base" DataType="STRING" Constant="false" ExternalAccess="Read/Write" Name="baz_bob">
+            <Data Format="L5K">[0,'$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00$00'
+				]</Data>
+            <Data Length="0" Format="String">''</Data>
+          </Tag>
+        </Tags>
+        <Routines>
+          <Routine Name="MainRoutine" Type="RLL">
+            <RLLContent>
+              <Rung Number="0" Type="N">
+                <Text>JSR(hello_world_cycle,0);</Text>
+              </Rung>
+              <Rung Number="1" Type="N">
+                <Text>XIO(foo_latch)TON(foo_TON,?,?);</Text>
+              </Rung>
+              <Rung Number="2" Type="N">
+                <Text>XIC(foo_TON.DN)OTL(foo_latch);</Text>
+              </Rung>
+              <Rung Number="3" Type="N">
+                <Text>XIC(foo_latch)TON(bar_TON,?,?);</Text>
+              </Rung>
+              <Rung Number="4" Type="N">
+                <Text>XIC(bar_TON.DN)OTU(foo_latch);</Text>
+              </Rung>
+              <Rung Number="5" Type="N">
+                <Text>[XIO(foo_latch) COP(foo,foo_bar,1) ,XIC(foo_latch) COP(bar,foo_bar,1) ];</Text>
+              </Rung>
+              <Rung Number="6" Type="N">
+                <Text>XIO(baz_latch)TON(baz_TON,?,?);</Text>
+              </Rung>
+              <Rung Number="7" Type="N">
+                <Text>XIC(baz_TON.DN)OTL(baz_latch);</Text>
+              </Rung>
+              <Rung Number="8" Type="N">
+                <Text>XIC(baz_latch)TON(bob_TON,?,?);</Text>
+              </Rung>
+              <Rung Number="9" Type="N">
+                <Text>XIC(bob_TON.DN)OTU(baz_latch);</Text>
+              </Rung>
+              <Rung Number="10" Type="N">
+                <Text>[XIO(baz_latch) COP(baz,baz_bob,1) ,XIC(baz_latch) COP(bob,baz_bob,1) ];</Text>
+              </Rung>
+            </RLLContent>
+          </Routine>
+          <Routine Name="hello_world_cycle" Type="RLL">
+            <RLLContent>
+              <Rung Number="0" Type="N">
+                <Text>XIO(hello_latch)TON(hello_TON,?,?);</Text>
+              </Rung>
+              <Rung Number="1" Type="N">
+                <Text>XIC(hello_TON.DN)OTL(hello_latch);</Text>
+              </Rung>
+              <Rung Number="2" Type="N">
+                <Text>XIC(hello_latch)TON(world_TON,?,?);</Text>
+              </Rung>
+              <Rung Number="3" Type="N">
+                <Text>XIC(world_TON.DN)OTU(hello_latch);</Text>
+              </Rung>
+              <Rung Number="4" Type="N">
+                <Text>[XIO(hello_latch) COP(hello,hello_world,1) ,XIC(hello_latch) COP(world,hello_world,1) ];</Text>
+              </Rung>
+            </RLLContent>
+          </Routine>
+        </Routines>
+      </Program>
+    </Programs>
+    <Tasks>
+      <Task Name="MainTask" Type="CONTINUOUS" Rate="10" Priority="10" Watchdog="500">
+        <ScheduledPrograms>
+          <ScheduledProgram Name="MainProgram" />
+        </ScheduledPrograms>
+      </Task>
+    </Tasks>
+  </Controller>
+</RSLogix5000Content>

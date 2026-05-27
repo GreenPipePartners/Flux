@@ -9,15 +9,15 @@
   "observed_tags": [
     {
       "data_type": "STRING",
-      "name": "DisplayText",
+      "name": "hello_world",
       "values": [
         "hello",
         "world"
       ]
     },
     {
-      "data_type": "DINT",
-      "name": "CycleCount"
+      "data_type": "BOOL",
+      "name": "world_latch"
     }
   ],
   "openplc_entrypoint": "openplc/hello_world.st",

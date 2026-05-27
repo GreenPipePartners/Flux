@@ -6,12 +6,14 @@ from decimal import Decimal, ROUND_DOWN
 from math import ceil
 from typing import Any
 
+import psycopg
 from django.conf import settings
 from django.utils import timezone
 
 from flux.base.runtime import RuntimeTag
 from flux.base.runtime_extremes import rolling_midnight_extremes
 from flux.plane.models import Series, WindowStat
+from flux.plane.questdb_samples import questdb_window_stats_by_series
 from flux.serve.status import runtime_read_status
 
 from .models import LiveScope
@@ -127,6 +129,7 @@ def scope_cards(scope_slug: str, *, now=None) -> list[LiveCard]:
         if point_def.enabled
     ]
     series_ids = [point_def.series_id for point_def in point_defs if point_def.series_id]
+    questdb_stats_by_series = questdb_window_stats_for_series(series_ids, now=now)
     series_by_id = {
         series.id: series
         for series in Series.objects.select_related("base_tag", "latest")
@@ -157,7 +160,15 @@ def scope_cards(scope_slug: str, *, now=None) -> list[LiveCard]:
                 continue
             series = series_by_id.get(point_def.series_id) if point_def.series_id else None
             if series is not None and getattr(series, "latest", None) is not None:
-                points.append(live_point_from_plane(point_def, series, now=now, stale_after_seconds=stale_after_seconds))
+                points.append(
+                    live_point_from_plane(
+                        point_def,
+                        series,
+                        now=now,
+                        stale_after_seconds=stale_after_seconds,
+                        questdb_stats=questdb_stats_by_series.get(series.id),
+                    )
+                )
             else:
                 tag = tags_by_full_path.get(point_def.full_path)
                 points.append(
@@ -173,12 +184,13 @@ def scope_cards(scope_slug: str, *, now=None) -> list[LiveCard]:
     return cards
 
 
-def live_point_from_plane(point_def, series: Series, *, now, stale_after_seconds) -> LivePoint:
+def live_point_from_plane(point_def, series: Series, *, now, stale_after_seconds, questdb_stats=None) -> LivePoint:
     latest = getattr(series, "latest", None)
+    current_value = latest.value if latest else None
     return LivePoint(
         label=point_def.label,
-        value=latest.value if latest else None,
-        display_value=format_live_value(latest.value if latest else None),
+        value=current_value,
+        display_value=format_live_value(current_value),
         units="",
         quality=latest.quality_code if latest else "Missing",
         read_at=latest.read_at if latest else None,
@@ -189,7 +201,9 @@ def live_point_from_plane(point_def, series: Series, *, now, stale_after_seconds
         next_read_label=plane_next_read_label(series, latest, now),
         refresh_interval_centiseconds=plane_refresh_interval_centiseconds(series),
         countdown_percent=plane_countdown_percent(series, latest, now),
-        history=plane_historical_extremes(series.window_stats.all(), current_value=latest.value if latest else None),
+        history=plane_historical_extremes(questdb_stats.values(), current_value=current_value)
+        if questdb_stats
+        else plane_historical_extremes(series.window_stats.all(), current_value=current_value),
     )
 
 
@@ -327,7 +341,14 @@ def historical_extremes(values_by_days: dict[int, Any], *, current_value: Any) -
     ]
 
 
-def plane_historical_extremes(stats: list[WindowStat], *, current_value: Any) -> list[HistoricalExtreme]:
+def questdb_window_stats_for_series(series_ids: list[int], *, now):
+    try:
+        return questdb_window_stats_by_series(series_ids, now=now)
+    except (psycopg.Error, OSError):
+        return {}
+
+
+def plane_historical_extremes(stats, *, current_value: Any) -> list[HistoricalExtreme]:
     labels = {
         WindowStat.Window.TODAY: "24h",
         WindowStat.Window.ROLLING_7D: "7d",

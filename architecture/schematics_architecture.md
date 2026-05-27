@@ -639,3 +639,238 @@ Still intentionally not implemented:
 - browser editing
 
 Next slice should deepen the compiler around net continuity and required-terminal validation before any UI work.
+
+## Compiler Hardening - 2026-05-25
+
+Second Build slice completed without schema changes.
+
+Implemented:
+
+- source/circuit system ownership validation
+- source/circuit potential set validation
+- required role-terminal validation against component role templates
+- connection/net validation for missing potential-bearing nets
+- connection/net circuit mismatch validation
+- connection endpoint validation that rejects terminals not participating in the circuit role set
+- net potential mismatch validation when a terminal interface is wired to the wrong circuit potential
+- net-resolved terminal potential bindings, separate from role interface bindings
+- conditional switched downstream bindings:
+  - motor downstream terminals after starter main contacts carry `coil.energized`
+  - starter coil `A1` net binding through the NO button carries `button.pressed`
+- regression coverage proving a direct 24 VDC control terminal connection into the 480 VAC circuit is rejected as electrical topology, while starter coil-to-contact behavior remains a behavioral internal relation
+
+Verification:
+
+- `uv run ruff check web/Flux/src/flux/schematics`
+- `uv run python web/Flux/manage.py test flux.schematics --noinput`
+- `uv run python web/Flux/manage.py makemigrations schematics --check --dry-run`
+- `uv run python web/Flux/manage.py check`
+- `uv run python web/Flux/manage.py migrate --check`
+
+Test count for `flux.schematics`: 8 tests.
+
+Next recommended slice:
+
+- add an internal continuity model for component roles instead of relying only on role metadata
+- validate continuity pairs against declared terminals and potential interfaces
+- produce a read-only diagnostic/projection payload from compiler output before adding any Comp Surface UI
+
+## Role Continuity and Diagnostic Projection - 2026-05-25
+
+Third Build slice completed with schema-isolated continuity tables.
+
+Implemented:
+
+- first-class role continuity templates in `schematics.role_continuity_template`
+- first-class component instance continuity rows in `schematics.role_continuity`
+- terminal binding uniqueness now includes `binding_kind`, so interface and net-resolved bindings can coexist when they describe the same terminal/potential/condition from different compiler evidence
+- component catalog specs now declare continuity pairs explicitly instead of hiding them in role metadata
+- fixture instantiation now materializes role continuity rows from role continuity templates
+- compiler validates continuity pairs against role terminals and terminal potential interfaces
+- compiler emits `continuity_terminal_not_in_role`, `continuity_terminal_component_mismatch`, and `continuity_potential_mismatch` findings
+- terminal interface conditions for switched load/output terminals now come from role continuity rows
+- source-output terminal conditions use `source_condition` metadata, keeping source establishment separate from electrical continuity
+- read-only diagnostic projection added in `flux.schematics.projections.compile_run_diagnostic_payload()` for future UI/reporting work
+
+Verification:
+
+- `uv run ruff check web/Flux/src/flux/schematics`
+- `uv run python web/Flux/manage.py test flux.schematics --noinput`
+- `uv run python web/Flux/manage.py makemigrations schematics --check --dry-run`
+- `uv run python web/Flux/manage.py check`
+- `uv run python web/Flux/manage.py migrate schematics --noinput`
+- `uv run python web/Flux/manage.py migrate --check`
+- local table check confirmed `schematics.role_continuity_template` and `schematics.role_continuity` exist while `public.schematics_rolecontinuity` does not
+
+Test count for `flux.schematics`: 10 tests.
+
+Next recommended slice:
+
+- add source terminal modeling so plant/source conductors can be represented explicitly instead of implied by circuit potentials
+- add a read-only non-UI command or management report that builds, compiles, and prints the basic motor starter diagnostic payload
+- only after that, consider the first read-only Comp Surface
+
+## Source Boundary and Diagnostic Command - 2026-05-25
+
+Fourth Build slice completed with explicit source-boundary schema.
+
+Implemented:
+
+- source terminals in `schematics.source_terminal`
+- explicit source-to-net connections in `schematics.source_connection`
+- motor starter fixture now materializes source terminals for every source potential
+- circuit net creation now creates source connections for each circuit potential
+- compiler validates:
+  - source terminals match source potentials
+  - source connections use terminals from the circuit source
+  - source connections use potential-bearing nets
+  - source connection nets belong to the same circuit
+  - source terminal potential matches the connected circuit net potential
+  - every circuit potential has an explicit source connection
+- diagnostic projection now includes source terminals and per-circuit source connections
+- management command added:
+  - `uv run python web/Flux/manage.py schematics_motor_starter_report`
+  - `uv run python web/Flux/manage.py schematics_motor_starter_report --json`
+
+Verification:
+
+- `uv run ruff check web/Flux/src/flux/schematics`
+- `uv run python web/Flux/manage.py test flux.schematics --noinput`
+- `uv run python web/Flux/manage.py makemigrations schematics --check --dry-run`
+- `uv run python web/Flux/manage.py check`
+- `uv run python web/Flux/manage.py migrate schematics --noinput`
+- `uv run python web/Flux/manage.py migrate --check`
+- `uv run python web/Flux/manage.py schematics_motor_starter_report --json`
+- local table check confirmed `schematics.source_terminal` and `schematics.source_connection` exist while `public.schematics_sourceterminal` does not
+
+Test count for `flux.schematics`: 14 tests.
+
+Next recommended slice:
+
+- add a read-only Comp Surface only after deciding the first operator-facing schematic page shape
+- keep editing/configuration out of UI until the diagnostic projection is stable across at least one more fixture
+- likely next model fixture: add overload contact/overload power role to the motor starter assembly
+
+## Segmented Nets and Path Reasoning - 2026-05-25
+
+Fifth Build slice corrected the topology model and added first reasoning over the schematic graph.
+
+Architectural correction:
+
+- A potential label such as `L1` is not the same thing as one continuous net.
+- Switched devices divide a circuit into net segments that share a potential label only when continuity conditions are satisfied.
+- The motor starter fixture now models source/load-side segments around the disconnect, starter, and start button instead of treating `L1`, `L2`, `L3`, and `+24V` as single nets across switched devices.
+
+Implemented:
+
+- terminal-to-net membership in `schematics.net_terminal`
+- segmented power nets such as:
+  - `L1_source`
+  - `L1_after_disconnect`
+  - `L1_motor`
+- segmented control nets such as:
+  - `+24V_source`
+  - `+24V_after_button`
+- compiler net bindings now come from terminal-to-net memberships, not only terminal-to-terminal conductor rows
+- conductor rows remain as explicit terminal-to-terminal wiring evidence inside a net segment
+- source connections now feed source-side net segments rather than a whole potential label
+- bounded path reasoning in `flux.schematics.reasoning`
+- first explanation query: `explain_component_energization(system, component_reference)`
+- reasoning walks source terminals, source connections, net memberships, and role continuity edges with explicit condition accumulation
+
+Behavior now proven by tests:
+
+- `MOT1.T1` receives `L1` through `L1_source -> DS1.L1 -> DS1.T1 -> M1.L1 -> M1.T1 -> MOT1.T1`
+- the accumulated motor power conditions include:
+  - `handle.closed`
+  - `coil.energized`
+- `M1.A1` receives `+24V` through `+24V_source -> PB1.IN -> PB1.OUT -> M1.A1`
+- the accumulated starter coil control conditions include:
+  - `input_power.valid`
+  - `button.pressed`
+
+Verification:
+
+- `uv run ruff check web/Flux/src/flux/schematics`
+- `uv run python web/Flux/manage.py test flux.schematics --noinput`
+- `uv run python web/Flux/manage.py makemigrations schematics --check --dry-run`
+- `uv run python web/Flux/manage.py check`
+- `uv run python web/Flux/manage.py migrate schematics --noinput`
+- `uv run python web/Flux/manage.py migrate --check`
+- `uv run python web/Flux/manage.py schematics_motor_starter_report --json`
+
+Test count for `flux.schematics`: 16 tests.
+
+Next recommended slice:
+
+- teach the reasoning layer to expand abstract conditions such as `coil.energized` by linking them back to the control-side terminal traces
+- then add overload contact/power role as the next fixture complexity step
+
+## Field Instrument, I/O Point, and Drive Primitives - 2026-05-26
+
+Sixth Build slice extended the schematics kernel with three new primitive families while keeping them separate from components and circuits.
+
+New primitives:
+
+- `FieldInstrument` - field/process-facing object such as a pressure transmitter, level switch, flow meter, temperature element, or solenoid.
+- `IOPoint` - controller-boundary object such as an analog input, digital output, remote I/O channel, or marshalling endpoint.
+- `Drive` - controlled power/actuation object such as a VFD, servo drive, DC drive, or soft starter.
+
+Implemented schema-isolated tables:
+
+- `schematics.field_instrument`
+- `schematics.io_point`
+- `schematics.drive`
+- `schematics.drive_io_point`
+
+Kernel boundary decision:
+
+- Field instruments do not collapse into I/O points.
+- I/O points do not collapse into field instruments.
+- Drives do not collapse into motors, starters, or I/O points.
+- All three primitives may optionally link to schematic components/terminals later, but their identity is independent.
+
+Fixture additions:
+
+- `PT-101` as a pressure transmitter field instrument.
+- `AI-101` as the analog input point reading `PT-101`.
+- `VFD-201` as a VFD primitive example, intentionally not wired into the existing starter/motor topology yet.
+- VFD I/O points:
+  - `DO-201-RUN` / `run_command`
+  - `AO-201-SPD` / `speed_reference`
+  - `DI-201-RUN` / `running_status`
+
+Compiler additions:
+
+- Kernel primitive validation checks same-system ownership for linked field instruments, I/O points, drives, components, and terminals.
+- I/O point terminal mapping validation rejects terminal/component mismatches.
+- Compile summaries now include primitive counts:
+  - `field_instruments`
+  - `io_points`
+  - `drives`
+
+Projection/report additions:
+
+- Diagnostic payload now includes `field_instruments`, `io_points`, and `drives` sections.
+- Drive payload includes linked I/O functions so a drive command/status surface can be seen without confusing it with the drive itself.
+
+Verification:
+
+- `uv run ruff check web/Flux/src/flux/schematics`
+- `uv run python web/Flux/manage.py test flux.schematics --noinput`
+- `uv run python web/Flux/manage.py makemigrations schematics --check --dry-run`
+- `uv run python web/Flux/manage.py check`
+- `uv run python web/Flux/manage.py migrate schematics --noinput`
+- `uv run python web/Flux/manage.py migrate --check`
+- `uv run python web/Flux/manage.py schematics_motor_starter_report --json`
+- local table check confirmed `schematics.field_instrument`, `schematics.io_point`, `schematics.drive`, and `schematics.drive_io_point` exist while `public.schematics_iopoint` does not
+
+Test count for `flux.schematics`: 17 tests.
+
+Next recommended slice:
+
+- interactively review whether these primitive names/fields feel right before deepening them
+- then choose one concrete next fixture:
+  - 4-20 mA transmitter loop from field instrument to AI point
+  - VFD-to-motor drive topology
+  - overload contact/power-role starter refinement

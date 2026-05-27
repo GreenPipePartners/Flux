@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from copy import deepcopy
+from dataclasses import replace
 import json
 import unittest
 from io import StringIO
@@ -8,7 +10,10 @@ from tempfile import TemporaryDirectory
 
 from django.core.management import call_command
 from django.test import TestCase
-from flux_mine.plc.l5x import parse_l5x_text
+from flux_build.targets.logix_l5x import build_logix_l5x
+from flux_mine.plc.l5k import parse_l5k_text
+from flux_mine.plc.l5x import parse_l5x_file, parse_l5x_text
+from flux_mine.plc.models import PlcProject, PlcRoutine, PlcRung, PlcTag, parse_rll_instructions
 
 from flux.cell.models import Cell, Point, Source, Visual
 from flux.mine.models import HmiTagReferenceFact, MineRun
@@ -107,14 +112,15 @@ class BuildPersistenceTests(TestCase):
     def test_flux_build_logix_l5x_writes_parse_back_artifact_from_hello_world(self) -> None:
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            source = repo_root() / "logix_samples" / "hello_world.L5X"
-            output = root / "artifacts" / "hello_world.generated.L5X"
+            source = write_hello_world_foobar_source(root)
+            output = root / "artifacts" / "hello_world_generated.L5X"
 
             call_command("flux_mine_source", str(source), stdout=StringIO())
             mine_run = MineRun.objects.get()
             call_command("flux_build_logix_l5x", mine_run.id, "--output", str(output), stdout=StringIO())
 
             generated_project = parse_l5x_text(output.read_text(encoding="utf-8"), source_path=str(output))
+            generated_text = output.read_text(encoding="utf-8")
 
         build_run = BuildRun.objects.get()
         self.assertEqual(build_run.status, BuildRun.Status.COMPLETE)
@@ -123,10 +129,10 @@ class BuildPersistenceTests(TestCase):
         self.assertEqual(build_run.summary["controller_count"], 1)
         self.assertEqual(build_run.summary["program_count"], 1)
         self.assertEqual(build_run.summary["task_count"], 1)
-        self.assertEqual(build_run.summary["routine_count"], 1)
-        self.assertEqual(build_run.summary["rung_count"], 5)
-        self.assertEqual(build_run.summary["instruction_count"], 12)
-        self.assertEqual(build_run.summary["tag_reference_count"], 14)
+        self.assertEqual(build_run.summary["routine_count"], 2)
+        self.assertEqual(build_run.summary["rung_count"], 11)
+        self.assertEqual(build_run.summary["instruction_count"], 25)
+        self.assertEqual(build_run.summary["tag_reference_count"], 28)
         self.assertTrue(build_run.summary["round_trip"]["counts_match"])
 
         controller = generated_project.controller_named("hello_world")
@@ -136,15 +142,89 @@ class BuildPersistenceTests(TestCase):
         self.assertIsNotNone(program)
         assert program is not None
         self.assertEqual(program.main_routine_name, "MainRoutine")
-        self.assertEqual(len(program.tags), 6)
+        self.assertEqual(len(program.tags), 12)
         self.assertEqual(controller.task_named("MainTask").scheduled_programs, ("MainProgram",))
-        routine = program.routines[0]
-        self.assertEqual(len(routine.rungs), 5)
+        routines = {routine.name: routine for routine in program.routines}
+        self.assertEqual(set(routines), {"MainRoutine", "foobar"})
+        routine = routines["MainRoutine"]
+        self.assertEqual(len(routine.rungs), 6)
         instructions = [instruction for rung in routine.rungs for instruction in rung.instructions]
         references = [reference for instruction in instructions for reference in instruction.tag_references]
-        self.assertEqual(len(instructions), 12)
+        self.assertEqual(len(instructions), 13)
         self.assertEqual(len(references), 14)
         self.assertEqual(routine.rungs[4].text, "[XIO(world_latch) COP(hello,hello_world,1) ,XIC(world_latch) COP(world,hello_world,1) ];")
+        self.assertEqual(routine.rungs[5].text, "JSR(foobar,0);")
+        foobar = routines["foobar"]
+        self.assertEqual(len(foobar.rungs), 5)
+        self.assertEqual(foobar.rungs[4].text, "[XIO(bar_latch) COP(foo,foo_bar,1) ,XIC(bar_latch) COP(bar,foo_bar,1) ];")
+        foobar_instructions = [instruction for rung in foobar.rungs for instruction in rung.instructions]
+        foobar_references = [reference for instruction in foobar_instructions for reference in instruction.tag_references]
+        self.assertEqual(len(foobar_instructions), 12)
+        self.assertEqual(len(foobar_references), 14)
+        self.assertIn('<Structure DataType="TIMER">', generated_text)
+        self.assertIn('<DataValueMember Name="PRE" DataType="DINT" Radix="Decimal" Value="1000"', generated_text)
+        self.assertIn('<DataValue DataType="BOOL" Radix="Decimal" Value="0"', generated_text)
+        self.assertIn('<Routine Name="foobar" Type="RLL">', generated_text)
+        self.assertIn('JSR(foobar,0);', generated_text)
+        self.assertIn('XIO(bar_latch)TON(foo_TON,?,?);', generated_text)
+        self.assertIn("<Data Format=\"String\" Length=\"3\">'foo'</Data>", generated_text)
+        self.assertIn("<Data Format=\"String\" Length=\"3\">'bar'</Data>", generated_text)
+
+    def test_flux_build_logix_l5k_writes_parse_back_artifact_from_hello_world(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source = write_hello_world_foobar_source(root)
+            output = root / "artifacts" / "hello_world_generated.L5K"
+
+            call_command("flux_mine_source", str(source), stdout=StringIO())
+            mine_run = MineRun.objects.get()
+            call_command("flux_build_logix_l5k", mine_run.id, "--output", str(output), stdout=StringIO())
+
+            generated_project = parse_l5k_text(output.read_text(encoding="utf-8"), source_path=str(output))
+
+        build_run = BuildRun.objects.get()
+        self.assertEqual(build_run.status, BuildRun.Status.COMPLETE)
+        self.assertEqual(build_run.target, BuildRun.Target.LOGIX_L5K)
+        self.assertEqual(BuildArtifact.objects.get().kind, "logix_l5k")
+        self.assertEqual(build_run.summary["controller_count"], 1)
+        self.assertEqual(build_run.summary["program_count"], 1)
+        self.assertEqual(build_run.summary["task_count"], 1)
+        self.assertEqual(build_run.summary["routine_count"], 2)
+        self.assertEqual(build_run.summary["rung_count"], 11)
+        self.assertEqual(build_run.summary["instruction_count"], 25)
+        self.assertEqual(build_run.summary["tag_reference_count"], 28)
+        self.assertTrue(build_run.summary["round_trip"]["counts_match"])
+
+        controller = generated_project.controller_named("hello_world")
+        self.assertIsNotNone(controller)
+        assert controller is not None
+        program = controller.program_named("MainProgram")
+        self.assertIsNotNone(program)
+        assert program is not None
+        self.assertEqual(program.main_routine_name, "MainRoutine")
+        self.assertEqual(len(program.tags), 12)
+        task = controller.task_named("MainTask")
+        self.assertIsNotNone(task)
+        assert task is not None
+        self.assertEqual(task.scheduled_programs, ("MainProgram",))
+        routines = {routine.name: routine for routine in program.routines}
+        self.assertEqual(set(routines), {"MainRoutine", "foobar"})
+        routine = routines["MainRoutine"]
+        instructions = [instruction for rung in routine.rungs for instruction in rung.instructions]
+        references = [reference for instruction in instructions for reference in instruction.tag_references]
+        self.assertEqual(len(instructions), 13)
+        self.assertEqual(len(references), 14)
+        self.assertEqual(
+            routine.rungs[4].text,
+            "[XIO(world_latch) COP(hello,hello_world,1) ,XIC(world_latch) COP(world,hello_world,1) ]",
+        )
+        self.assertEqual(routine.rungs[5].text, "JSR(foobar,0)")
+        foobar = routines["foobar"]
+        self.assertEqual(foobar.rungs[4].text, "[XIO(bar_latch) COP(foo,foo_bar,1) ,XIC(bar_latch) COP(bar,foo_bar,1) ]")
+        foobar_instructions = [instruction for rung in foobar.rungs for instruction in rung.instructions]
+        foobar_references = [reference for instruction in foobar_instructions for reference in instruction.tag_references]
+        self.assertEqual(len(foobar_instructions), 12)
+        self.assertEqual(len(foobar_references), 14)
 
     def test_build_hmi_map_webform_uses_selected_components(self) -> None:
         with TemporaryDirectory() as temp_dir:
@@ -329,3 +409,90 @@ class BuildPersistenceTests(TestCase):
 
 def repo_root() -> Path:
     return Path(__file__).resolve().parents[5]
+
+
+def write_hello_world_foobar_source(root: Path) -> Path:
+    source = root / "hello_world_foobar.source.L5X"
+    source.write_bytes(build_logix_l5x(hello_world_with_foobar_project()))
+    return source
+
+
+def hello_world_with_foobar_project() -> PlcProject:
+    project = parse_l5x_file(repo_root() / "logix_samples" / "hello_world.L5X")
+    controller = project.controllers[0]
+    program = controller.programs[0]
+    tag_by_name = {tag.name: tag for tag in program.tags}
+    foobar_tags = (
+        renamed_string_tag(tag_by_name["hello"], name="foo", value="foo"),
+        renamed_tag(tag_by_name["hello_TON"], name="foo_TON"),
+        renamed_string_tag(tag_by_name["hello_world"], name="foo_bar", value=""),
+        renamed_string_tag(tag_by_name["world"], name="bar", value="bar"),
+        renamed_tag(tag_by_name["world_latch"], name="bar_latch"),
+        renamed_tag(tag_by_name["world_TON"], name="bar_TON"),
+    )
+    expanded_program = replace(
+        program,
+        tags=program.tags + foobar_tags,
+        routines=(main_routine_with_foobar_jsr(program.routines[0]), foobar_routine()),
+    )
+    expanded_controller = replace(controller, programs=(expanded_program,))
+    return replace(project, controllers=(expanded_controller,))
+
+
+def main_routine_with_foobar_jsr(routine: PlcRoutine) -> PlcRoutine:
+    jsr_text = "JSR(foobar,0);"
+    jsr_rung = PlcRung(
+        number=max((rung.number for rung in routine.rungs), default=-1) + 1,
+        rung_type="N",
+        text=jsr_text,
+        instructions=parse_rll_instructions(jsr_text),
+        raw={"Number": str(len(routine.rungs)), "Type": "N"},
+    )
+    return replace(routine, rungs=routine.rungs + (jsr_rung,))
+
+
+def foobar_routine() -> PlcRoutine:
+    rung_texts = (
+        "XIO(bar_latch)TON(foo_TON,?,?);",
+        "XIC(foo_TON.DN)OTL(bar_latch);",
+        "XIC(bar_latch)TON(bar_TON,?,?);",
+        "XIC(bar_TON.DN)OTU(bar_latch);",
+        "[XIO(bar_latch) COP(foo,foo_bar,1) ,XIC(bar_latch) COP(bar,foo_bar,1) ];",
+    )
+    return PlcRoutine(
+        name="foobar",
+        routine_type="RLL",
+        rungs=tuple(
+            PlcRung(
+                number=number,
+                rung_type="N",
+                text=text,
+                instructions=parse_rll_instructions(text),
+                raw={"Number": str(number), "Type": "N"},
+            )
+            for number, text in enumerate(rung_texts)
+        ),
+        raw={"Name": "foobar", "Type": "RLL"},
+    )
+
+
+def renamed_tag(tag: PlcTag, *, name: str) -> PlcTag:
+    raw = deepcopy(tag.raw)
+    raw["Name"] = name
+    return replace(tag, name=name, raw=raw)
+
+
+def renamed_string_tag(tag: PlcTag, *, name: str, value: str) -> PlcTag:
+    raw = deepcopy(tag.raw)
+    raw["Name"] = name
+    for payload in raw.get("data", []):
+        if payload.get("format") == "L5K":
+            payload["text"] = string_l5k_payload(value)
+        elif payload.get("format") == "String":
+            payload["text"] = f"'{value}'"
+            payload.setdefault("attributes", {})["Length"] = str(len(value))
+    return replace(tag, name=name, raw=raw)
+
+
+def string_l5k_payload(value: str) -> str:
+    return f"[{len(value)},'{value}{'$00' * (82 - len(value))}'\n\t\t]"

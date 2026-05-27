@@ -65,7 +65,7 @@ class Command(BaseCommand):
             "dsn": os.getenv("QUESTDB_DSN", "postgresql://admin:quest@localhost:8812/qdb"),
             "plane_samples": 0,
             "latest_timestamp": None,
-            "nav_well_profiles": TraceProfile.objects.filter(key__startswith="nav-well-").count(),
+            "chart_profiles": TraceProfile.objects.filter(enabled=True).count(),
             "error": "",
         }
         try:

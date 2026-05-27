@@ -13,7 +13,7 @@ Flux.chart is a first-class operating space, not an appended chart UI. Its job i
 - `plane.sample` is the local rolling-history cache for fast chart reads.
 - `TraceCacheCursor` tracks historian sync progress.
 - `flux.chart.cache` owns cache read/sync behavior.
-- `flux.chart.providers.*` owns demo/provider process logic such as navigation-well seeding and Ignition provisioning.
+- `flux.chart.providers.*` owns optional demo/provider process logic and Ignition provisioning, but request paths must stay process agnostic.
 - `flux.serve` owns worker orchestration for keeping cache current.
 - uPlot owns canvas rendering.
 - uPlot assets are vendored under `static/flux/vendor/uplot/` so Charts works offline.
@@ -43,58 +43,25 @@ flux.serve worker -> Fluxy/Ignition historian -> idempotent plane.sample upsert
 
 This separation is intentional. Local chart reads should be fast even when Ignition is slow, expired, or temporarily unavailable.
 
-## Navigation Wells Demo
+## Retired Navigation-Well Trial
 
-The current navigation-well chart page is a demo provider over the generic Charts architecture, not core Charts domain logic.
+The navigation-well stress page and advanced navigation provider have been retired. Keep any imported stress `TraceProfile`, `TraceSignal`, `RuntimeTag(category=TRACE_STRESS)`, and `plane.sample` rows as ordinary chart data unless a deliberate data-retention cleanup is planned.
 
-Open:
+Retired surfaces and commands include:
 
-```text
-http://localhost:8000/chart/wells/
-```
-
-Behavior:
-
-- One template page.
-- Previous/Next Well buttons cycle data sources.
-- Left/right arrow keys also cycle data sources.
-- Each selected well resolves to one `TraceProfile`.
-- Each well profile has exactly eight `TraceSignal` rows.
-- The chart reads local `plane.sample` rows only.
-
-Seed the first ten navigation wells through the real Ignition-backed path:
-
-```bash
-uv run python web/Flux/manage.py seed_nav_well_charts --limit 10 --configure-ignition --inject-history --update-live --sync-cache
-```
-
-Run one live/update/cache cycle:
-
-```bash
-uv run python web/Flux/manage.py flux_worker --once --nav-well-live --nav-well-limit 10
-```
-
-Run continuously every minute:
-
-```bash
-uv run python web/Flux/manage.py flux_worker --nav-well-live --nav-well-limit 10 --interval 60
-```
-
-The real path for this demo is:
-
-```text
-/nav/ well options -> 8 chart tags per well -> Ignition memory tags -> Ignition historian -> Fluxy historian query -> plane.sample -> /chart/wells/
-```
+- `/chart/wells/`, `/chart/wells/embed/`, and `/chart/wells/payload/`
+- `seed_nav_well_charts`
+- `seed_nav_well_trace`
+- `flux_worker --nav-well-live`
 
 ## Large Chart Sets
 
-Large chart sets must use a bounded navigation surface.
+Large chart sets must use a bounded chart surface.
 
 The dashboard may show counts and aggregate entry points, but it should not render one link per enabled `TraceProfile` when hundreds or thousands of profiles are enabled. Use:
 
-- one single-page cycling surface for homogeneous stress families, such as `/chart/wells/`
-- a paginated or searchable profile index for operator-created profiles
-- explicit route summaries in dashboard readiness cards
+- a paginated or searchable profile index for operator-created or imported profiles
+- aggregate route summaries in dashboard readiness cards
 
 Preserve stress rows and source data. Clean the UI by filtering, grouping, pagination, or category-aware route summaries, not by truncating `TraceProfile`, `TraceSignal`, `RuntimeTag`, or `plane.sample` records.
 
@@ -103,18 +70,17 @@ Preserve stress rows and source data. Clean the UI by filtering, grouping, pagin
 Flux.chart has two read models in current use:
 
 - `plane.sample` in Flux Postgres is the durable local rolling-history cache and control-plane staging area.
-- QuestDB `plane_samples` is the high-volume serving/export plane for stress surfaces such as navigation wells.
+- QuestDB `plane_samples` is the high-volume serving/export plane for Plane series.
 
-Current gap: generic chart profiles can read from local `plane.sample`, while navigation wells prefer QuestDB payloads. If QuestDB is empty, seeded profiles can still exist but the large stress payload may be empty until Plane sample rows are exported.
+Current gap: generic chart profiles can read from local `plane.sample`; QuestDB export is still an explicit operator/worker step for high-volume serving.
 
-Operational restore path for nav-well stress data:
+Export current enabled chart Plane sample rows into QuestDB:
 
 ```bash
-uv run python web/Flux/manage.py seed_nav_well_charts --limit 10 --local-bootstrap-cache
-uv run python web/Flux/manage.py sync_charts_questdb --limit 10 --replace
+uv run python web/Flux/manage.py sync_charts_questdb --replace
 ```
 
-Use `--limit` for a fast smoke test, then remove it only when the single-page navigation and data-plane performance are acceptable.
+Use `--limit` for a fast smoke test before exporting a large profile set.
 
 ## JavaScript Modules
 
@@ -172,7 +138,7 @@ The tests are skipped by default because they require a browser runtime.
 
 ## Removed Spikes
 
-The earlier oilfield-specific trial was removed. Its useful lessons are now carried by the process-agnostic Chart architecture and the navigation-well provider:
+The earlier oilfield-specific trial was removed. Its useful lessons are now carried by the process-agnostic Chart architecture:
 
 - eight dense one-minute signals are a good trial payload shape
 - Fluxy/Ignition should be isolated from page read paths by local rolling cache
