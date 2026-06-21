@@ -6,7 +6,7 @@ from flux.build.services import default_hmi_demo_sqlite_path, seed_hmi_demo_buil
 
 
 class Command(BaseCommand):
-    help = "Seed Flux.build with the verified FactoryTalk SQLite recovery sample."
+    help = "Seed Flux.build with the verified FactoryTalk SQLite demo sample."
 
     def add_arguments(self, parser):
         parser.add_argument("--sqlite-path", default=str(default_hmi_demo_sqlite_path()))

@@ -364,7 +364,7 @@ class BuildPersistenceTests(TestCase):
     @unittest.skipUnless(
         default_hmi_demo_sqlite_path().exists(), "HMI demo SQLite sample is not available"
     )
-    def test_HMI demo_sqlite_imports_verified_recovery_facts(self) -> None:
+    def test_hmi_demo_sqlite_imports_verified_recovery_facts(self) -> None:
         run = mine_factorytalk_sqlite_export(
             default_hmi_demo_sqlite_path(),
             label="HMI demo test sample",
@@ -398,7 +398,7 @@ class BuildPersistenceTests(TestCase):
         self.assertEqual(build_run.summary["screen_count"], 2)
         self.assertEqual(build_run.summary["component_count"], 58)
         self.assertEqual(BuildArtifact.objects.filter(run=build_run).count(), 3)
-        self.assertContains(response, "Recovered HMI demo HMI Shape")
+        self.assertContains(response, "Recovered HMI Demo Shape")
         self.assertContains(response, "Demo HMI SQLite sample")
         self.assertContains(response, "A1 SERVER STATUS.xml")
         self.assertContains(response, "Physical Screen Map")

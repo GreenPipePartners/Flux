@@ -328,7 +328,7 @@ def test_build_hmi_map_run_wraps_django_command(monkeypatch):
     assert calls[0][1] == flux.WEB_DIR
 
 
-def test_build_seed_HMI demo_wraps_django_command(monkeypatch):
+def test_build_seed_hmi_demo_wraps_django_command(monkeypatch):
     flux = load_flux_cli()
     calls = []
 

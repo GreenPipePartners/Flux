@@ -511,7 +511,7 @@ def seed_hmi_demo_build_sample(
 ) -> BuildRun:
     source_path = Path(sqlite_path) if sqlite_path is not None else default_hmi_demo_sqlite_path()
     if not source_path.exists():
-        raise FileNotFoundError(f"HMI demo SQLite sample not found: {source_path}")
+        raise FileNotFoundError(f"HMI SQLite demo sample not found: {source_path}")
     if replace:
         sample_runs = MineRun.objects.filter(label=SAMPLE_HMI_DEMO_LABEL, source_path=str(source_path))
         BuildRun.objects.filter(mine_run__in=sample_runs).delete()

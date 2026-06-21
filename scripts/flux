@@ -72,7 +72,7 @@ Migration mining/build:
   flux build ignition-tags-run ID Generate Ignition tag provider JSON from a mine run
   flux build hmi-map SOURCE      Generate symbolic HMI map artifacts from an HMI source
   flux build hmi-map-run ID      Generate symbolic HMI map artifacts from a mine run
-  flux build seed-hmi-demo          Seed the verified HMI demo SQLite build sample
+  flux build seed-hmi-demo       Seed the verified HMI SQLite demo sample
   flux cell seed-demo            Seed a sample cell backed by cached runtime/trace data
   flux cell import DIR           Import a Flux.cell CSV bundle
   flux cell export KEY           Export Flux.cell Live/Trace CSV views
@@ -529,7 +529,7 @@ def build_hmi_map_run(args: argparse.Namespace) -> int:
     )
 
 
-def build_seed_HMI demo(args: argparse.Namespace) -> int:
+def build_seed_hmi_demo(args: argparse.Namespace) -> int:
     command = [
         "seed_build_hmi_demo",
         "--sqlite-path",
@@ -689,7 +689,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--output-dir", required=True, help="Directory for generated HMI map artifacts"
     )
     build_seed = build_subparsers.add_parser(
-        "seed-hmi-demo", help="Seed the verified HMI demo SQLite build sample"
+        "seed-hmi-demo", help="Seed the verified HMI SQLite demo sample"
     )
     build_seed.add_argument(
         "--sqlite-path",
@@ -861,7 +861,7 @@ def main(argv: list[str] | None = None) -> int:
         if build_command == "hmi-map-run":
             return build_hmi_map_run(args)
         if build_command == "seed-hmi-demo":
-            return build_seed_HMI demo(args)
+            return build_seed_hmi_demo(args)
     if command == "cell":
         cell_command = args.cell_command or "import"
         if cell_command == "seed-demo":

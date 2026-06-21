@@ -41,10 +41,10 @@ pki/
 # Local/generated project data
 tag_data/
 dev_tag_builder/out/
-local_source_exports/
 tags02.json
 sim/field-config*.json
 
 # Imported migration/reference projects kept local until ported into Flux
+local_source_exports/
 local_hmi_sqlite_export/
 local_l5k_tag_generator/

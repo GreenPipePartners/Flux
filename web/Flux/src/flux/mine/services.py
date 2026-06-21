@@ -55,7 +55,7 @@ def mine_factorytalk_sqlite_export(
     label: str = "",
     max_display_screens: int | None = 8,
 ) -> MineRun:
-    """Persist the verified FactoryTalk recovery SQLite as Flux.mine facts."""
+    """Persist a verified FactoryTalk recovery SQLite export as Flux.mine facts."""
     sqlite_path = Path(path)
     if not sqlite_path.exists():
         raise FileNotFoundError(f"FactoryTalk recovery SQLite not found: {sqlite_path}")
