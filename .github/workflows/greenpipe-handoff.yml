@@ -72,9 +72,9 @@ jobs:
           set -euo pipefail
           {
             printf '## GreenPipe handoff\n\n'
-            printf '- Flux version: `%s`\n' "${{ steps.version.outputs.version }}"
-            printf '- Artifact name: `greenpipe-handoff`\n'
-            printf '- Website signing workflow input `source_run_id`: `%s`\n\n' "${GITHUB_RUN_ID}"
+            printf -- '- Flux version: `%s`\n' "${{ steps.version.outputs.version }}"
+            printf -- '- Artifact name: `greenpipe-handoff`\n'
+            printf -- '- Website signing workflow input `source_run_id`: `%s`\n\n' "${GITHUB_RUN_ID}"
             printf '### Release files\n\n```text\n'
             find ".runtime/greenpipe-handoff/release/flux/${{ steps.version.outputs.version }}" -maxdepth 1 -type f -printf '%f\n' | sort
             printf '```\n'
