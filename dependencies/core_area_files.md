@@ -26,7 +26,7 @@ Dependency Steward owns dependency inventory, version-watch, update impact, remo
 | Project | Manifest | Lock | Notes |
 | --- | --- | --- | --- |
 | Flux web/Django | `web/Flux/pyproject.toml` | `web/Flux/uv.lock` | Main Django app, docs tooling, browser e2e tooling, local workspace packages. |
-| Fluxy | `fluxy/pyproject.toml` | `fluxy/uv.lock` | Ignition/WebDev client; optional `sqlalchemy` and `mcp` extras; `ty` and Ruff dev tools. Pyright is intentionally removed. |
+| Fluxy | PyPI `fluxy-ign` entry in root `pyproject.toml` | root `uv.lock` | Ignition/WebDev client consumed as a package dependency. Fluxy source/tests are not vendored in this repository. |
 | Flux.Deep | `deep/pyproject.toml` | `deep/uv.lock` | Isolated OpenPLC/L5X experiment package; no runtime external dependencies. |
 | Flux.build | `build/pyproject.toml` | `build/uv.lock` | Local core package; runtime dependency on local Flux.mine. |
 | Flux.mine | `mine/pyproject.toml` | `mine/uv.lock` | Local core package; no runtime external dependencies. |

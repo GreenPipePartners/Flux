@@ -100,9 +100,9 @@ Recommendation: **completed; ty is authoritative**.
 
 ### Local usage surface
 
-- Dev/tooling only in `fluxy`.
-- `fluxy/pyproject.toml` now declares `ty>=0.0.39` and configures `[tool.ty.*]` for Linux/Python 3.12 with `src/fluxy` as the checked source.
-- Release docs and GitHub workflow now use `uv run ty check src/fluxy`.
+- Upstream `fluxy-ign` ownership only. Flux no longer vendors Fluxy source/dev tooling.
+- Flux release builds consume the PyPI package through root `pyproject.toml` / `uv.lock`.
+- Fluxy package-local type checks belong in the upstream package project.
 - Pyright dependency, config, docs, workflow check, and `.pyright/` ignore are removed.
 
 ### Source evidence

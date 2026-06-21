@@ -11,7 +11,7 @@ This run used local manifests/locks, package-manager commands where permitted, r
 | Source | Notes |
 | --- | --- |
 | `web/Flux/pyproject.toml`, `web/Flux/uv.lock` | Web runtime/dev dependency declarations and lock evidence. |
-| `fluxy/pyproject.toml`, `fluxy/uv.lock` | Fluxy runtime, optional extras, and dev tool declarations. |
+| root `pyproject.toml`, root `uv.lock` | PyPI `fluxy-ign` runtime dependency declaration and lock evidence. |
 | `deep/pyproject.toml`, `build/pyproject.toml`, `mine/pyproject.toml`, `sim/pyproject.toml` and locks | Local package dependency posture. |
 | `field/Flux.FieldAgent/Flux.FieldAgent.csproj` | NuGet package declarations. |
 | `.opencode/package.json`, `.opencode/package-lock.json` | Tool-local npm dependency declaration and lock evidence. |

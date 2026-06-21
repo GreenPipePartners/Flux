@@ -4,7 +4,7 @@ Retrieval date: 2026-05-24
 
 ## Repository Evidence Inspected
 
-- Manifests/locks: `web/Flux/pyproject.toml`, `web/Flux/uv.lock`, `fluxy/pyproject.toml`, `fluxy/uv.lock`, `build/pyproject.toml`, `mine/pyproject.toml`, `sim/pyproject.toml`, `deep/pyproject.toml`, `.opencode/package.json`, `.opencode/package-lock.json`.
+- Manifests/locks: root `pyproject.toml`/`uv.lock`, `web/Flux/pyproject.toml`, `web/Flux/uv.lock`, `build/pyproject.toml`, `mine/pyproject.toml`, `sim/pyproject.toml`, `deep/pyproject.toml`, `.opencode/package.json`, `.opencode/package-lock.json`.
 - Runtime/config files: `web/Flux/src/flux/settings.py`, `web/Flux/src/flux/urls.py`, `web/Flux/src/flux/asgi.py`, `web/Flux/src/templates/flux/base.html`, `web/Flux/src/static/flux/vendor/README.md`, `web/Flux/.env.example`, `fluxy/src/fluxy/mcp/server.py`, docs under `docs/` mentioning Ignition, QuestDB, PostgreSQL, Fluxy, and Playwright.
 - Searches performed with repository grep/glob for: Django settings, admin routes, CSRF/auth decorators, mutating views, QuestDB DSNs, PostgreSQL/QuestDB/Ignition references, htmx CDN usage, dependency manifests, `idna`, `starlette`, MCP, and Starlette request URL/path usage.
 

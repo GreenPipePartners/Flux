@@ -65,14 +65,14 @@ Manifests, lock files, package groups, runtimes, and source feeds reviewed:
 - **Required tests:** Install/update Playwright browsers in the web env, then run e2e suites from `test/manifest.toml` including dashboard/live/sim/mine/build/cell/trace browser tests.
 - **Confidence:** Medium.
 
-### Completed: ty `0.0.35` -> `0.0.39` replaces Pyright in Fluxy
+### Upstream: Fluxy type checker ownership
 
-- **Recommendation:** **done**. `ty` is now Fluxy's authoritative type checker; Pyright is removed from Fluxy dependencies, config, docs, and CI.
-- **Current evidence:** `fluxy/pyproject.toml` declares `ty>=0.0.39` and `[tool.ty.*]` config; `uv tree --depth 1 --outdated` reports `ty v0.0.39`; no Pyright appears in the direct dependency tree.
+- **Recommendation:** Track through upstream `fluxy-ign`. Flux no longer vendors Fluxy source/dev tooling.
+- **Current evidence:** root `pyproject.toml` consumes PyPI `fluxy-ign`; root `uv.lock` resolves package/runtime dependencies from PyPI.
 - **Source evidence:** PyPI ty 0.0.39 JSON, retrieved 2026-05-24, reports version 0.0.39, Python `>=3.8`, upload time 2026-05-22, and states ty uses `0.0.x` beta versioning where breaking diagnostic/type-system changes may occur between any two versions.
 - **Flux value:** Types are valuable for Fluxy, and ty now owns that responsibility without Pyright overlap.
 - **Risk:** Medium for future developer friction because ty is still beta. This is now accepted architectural direction, not a blocker.
-- **Verification:** `uv run ty check src/fluxy` passed after fixing the missing `TagTransport.browse()` protocol declaration.
+- **Verification:** upstream package verification is outside this repository.
 - **Confidence:** Medium.
 
 ### Hold with note: Django 6 and Python 3.13+/multiprocessing performance

@@ -1,4 +1,0 @@
-[submodule "fluxy"]
-	path = fluxy
-	url = https://github.com/Bobby-Miller/Fluxy.git
-	branch = sim

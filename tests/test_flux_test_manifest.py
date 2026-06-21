@@ -140,9 +140,6 @@ def test_repo_manifest_loads_required_first_pass_suites():
         "sim-profile",
         "closed-loop",
         "unit-root",
-        "unit-fluxy",
-        "integration-fluxy",
-        "integration-fluxy-postgres",
         "unit-sim",
         "integration-sim",
         "unit-web",
@@ -159,7 +156,7 @@ def test_main_lists_named_profiles(capsys):
     assert status == 0
     assert "fast: django-check" in output
     assert "web: django-check" in output
-    assert "live: integration-fluxy" in output
+    assert "live: integration-sim" in output
     assert "audit: django-check" in output
 
 
@@ -173,8 +170,8 @@ def test_main_profile_selects_suite_bundle_without_running(capsys):
     assert "Profiles: fast" in output
     assert "[DEFINED] django-check" in output
     assert "[DEFINED] unit-root" in output
-    assert "[DEFINED] unit-fluxy" in output
-    assert "integration-fluxy" not in output
+    assert "[DEFINED] unit-sim" in output
+    assert "integration-sim" not in output
 
 
 def test_main_profile_json_reports_selected_suites(capsys):

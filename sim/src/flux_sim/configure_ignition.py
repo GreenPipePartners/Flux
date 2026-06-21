@@ -38,7 +38,7 @@ def main() -> None:
     try:
         import fluxy
     except ImportError as exc:
-        raise SystemExit("fluxy is required. Run with `uv run --with ../fluxy ...` from /sim.") from exc
+        raise SystemExit("fluxy is required. Run with `uv run --with fluxy-ign ...`.") from exc
 
     field_config = json.loads(Path(args.field_config).read_text(encoding="utf-8"))
     if not args.flat:

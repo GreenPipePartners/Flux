@@ -18,11 +18,11 @@ Threat Watch owns dependency-scoped cybersecurity intelligence for Flux. Scope i
 
 ## Recurring Repository Evidence
 
-- Python manifests and locks: `web/Flux/pyproject.toml`, `web/Flux/uv.lock`, `fluxy/pyproject.toml`, `fluxy/uv.lock`, `build/`, `mine/`, `sim/`, `deep/` manifests and locks.
+- Python manifests and locks: root `pyproject.toml`/`uv.lock`, `web/Flux/pyproject.toml`, `web/Flux/uv.lock`, and local `build/`, `mine/`, `sim/`, `deep/` manifests and locks. Fluxy is consumed through PyPI `fluxy-ign`.
 - Django runtime files: `web/Flux/src/flux/settings.py`, `web/Flux/src/flux/urls.py`, `web/Flux/src/flux/asgi.py`, `web/Flux/src/flux/wsgi.py`, app `urls.py`/`views.py`, templates, and static vendor files.
 - Tooling manifests: `.opencode/package.json`, `.opencode/package-lock.json`.
 - Agent permission config: `.opencode/agents/threat-watch.md` controls Threat-Watch shell access; restart OpenCode after editing it because agent config is not hot-reloaded.
-- Deployment/runtime docs: `docs/operator-guide.md`, `docs/ignition-dev-cell.md`, `docs/flux-architecture.md`, `README.md`, `fluxy/docs/`.
+- Deployment/runtime docs: `docs/operator-guide.md`, `docs/ignition-dev-cell.md`, `docs/flux-architecture.md`, `README.md`.
 
 ## Recurring Public Sources
 

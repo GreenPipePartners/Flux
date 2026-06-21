@@ -101,7 +101,7 @@ Use that file with `flux-sim-configure-ignition`:
 
 ```bash
 cd sim
-uv run --with ../fluxy flux-sim-configure-ignition \
+uv run --with fluxy-ign flux-sim-configure-ignition \
   field-config.sim.json \
   --base-url http://localhost:8088/system/webdev/flux \
   --token "$FLUXY_TOKEN" \

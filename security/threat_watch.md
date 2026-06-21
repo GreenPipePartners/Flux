@@ -10,8 +10,8 @@ Reviewed Flux's Python/Django web app, Fluxy Ignition client, local packages, op
 
 The two Python package findings are now remediated in the repository locks and local synced environments:
 
-1. **Remediated in repo: `idna` upgraded from 3.14 to 3.16.** `web/Flux/pyproject.toml` and `fluxy/pyproject.toml` now require `idna>=3.15`; both locks resolve `idna==3.16`; synced local runtimes import `idna.__version__ == 3.16`; `pip-audit` now reports no known vulnerabilities for the synced web and Fluxy environments.
-2. **Remediated in repo: optional Fluxy MCP Starlette upgraded from 1.0.0 to 1.1.0.** `fluxy[ mcp ]` now requires `starlette>=1.0.1`; the Fluxy lock resolves `starlette==1.1.0`; synced local runtime imports Starlette 1.1.0; `pip-audit` now reports no known vulnerabilities for the synced Fluxy all-extra environment.
+1. **Remediated in repo: `idna` upgraded from 3.14 to 3.16.** `web/Flux/pyproject.toml` and root `fluxy-ign` lock evidence resolve `idna==3.16`; synced local runtimes import `idna.__version__ == 3.16`; `pip-audit` now reports no known vulnerabilities for the synced web environment.
+2. **Upstream-owned: optional Fluxy MCP Starlette remediation.** Flux now consumes PyPI `fluxy-ign`; Fluxy optional extras and their security posture are owned by the upstream package project, not vendored in this repository.
 3. **Remaining external boundary: PostgreSQL client/libpq.** `psycopg-binary==3.3.4` still reports bundled libpq `18.0`, and local `psql` is `18.3`; PostgreSQL's 2026-05-14 security release fixes client and server issues in 18.4/17.10/16.14/15.18/14.23. `uv lock --upgrade-package psycopg --upgrade-package psycopg-binary` found no newer psycopg package in this resolver state, so this remains an OS/client-package or future-wheel update boundary.
 4. **No direct CISA KEV match promoted.** The CISA KEV catalog version checked was 2026.05.22. High-profile KEV products observed in the feed do not match Flux dependencies; Laravel Ignition remains unrelated to Inductive Automation Ignition.
 5. **Django remains current in this repo.** Runtime check confirmed Django `5.2.14`, and `web/Flux/pyproject.toml` requires `django>=5.2.14,<6.0`.
@@ -26,8 +26,8 @@ See `security/dependency_exposure.md` for the full inventory. Highest-confidence
 ### GitHub/OSV GHSA-65pc-fj4g-8rjx / CVE-2026-45409 — idna remediated in repo lock
 
 - **Sources:** GitHub Advisory Database, https://github.com/advisories/GHSA-65pc-fj4g-8rjx; OSV, https://osv.dev/vulnerability/CVE-2026-45409; upstream GitHub advisory, https://github.com/kjd/idna/security/advisories/GHSA-65pc-fj4g-8rjx; PyPI idna release page, https://pypi.org/project/idna/; all retrieved 2026-05-24.
-- **Original local evidence:** `web/Flux/uv.lock` and `fluxy/uv.lock` locked `idna==3.14`; `pip-audit 2.10.0` found CVE-2026-45409 in both the web exported requirements and Fluxy all-extra requirements.
-- **Remediation evidence:** `web/Flux/pyproject.toml` and `fluxy/pyproject.toml` now require `idna>=3.15`; `web/Flux/uv.lock` and `fluxy/uv.lock` now resolve `idna==3.16`; synced runtime import checks returned 3.16; `pip-audit --path ...site-packages` reported no known vulnerabilities for both synced environments.
+- **Original local evidence:** prior web/Fluxy locks included `idna==3.14`; `pip-audit 2.10.0` found CVE-2026-45409 in those exported requirements.
+- **Remediation evidence:** `web/Flux/pyproject.toml` and root `uv.lock` now resolve `idna==3.16`; synced runtime import checks returned 3.16; Flux consumes Fluxy through PyPI `fluxy-ign`.
 - **Affected range / fixed version:** `idna <3.15`; fixed in 3.15. PyPI shows 3.16 available as of 2026-05-22.
 - **Severity:** GitHub reviewed advisory, Moderate; CVSS v4 score 6.9; CWE-1333 in OSV/GitHub database data.
 - **Exploitation status:** not promoted as CISA KEV during this review.
@@ -37,13 +37,13 @@ See `security/dependency_exposure.md` for the full inventory. Highest-confidence
 ### Starlette GHSA-86qp-5c8j-p5mr / CVE-2026-48710 / PYSEC-2026-161 — optional Fluxy MCP remediated in repo lock
 
 - **Sources:** Starlette GitHub security advisory, https://github.com/Kludex/starlette/security/advisories/GHSA-86qp-5c8j-p5mr; OSV PYSEC-2026-161, https://osv.dev/vulnerability/PYSEC-2026-161; X41 advisory X41-2026-002, https://www.x41-dsec.de/lab/advisories/x41-2026-002-starlette/; PyPI Starlette release page, https://pypi.org/project/starlette/; all retrieved 2026-05-24.
-- **Original local evidence:** `fluxy/uv.lock` locked `starlette==1.0.0`; `fluxy/pyproject.toml` exposes optional `mcp` extra; `uv tree --locked --all-groups` showed `mcp==1.27.1 -> starlette==1.0.0`; `pip-audit 2.10.0` found `PYSEC-2026-161` in the Fluxy all-extra requirements. `fluxy/src/fluxy/mcp/server.py` imports `FastMCP` only when the optional MCP support is installed and run.
-- **Remediation evidence:** Fluxy `mcp` extra now includes `starlette>=1.0.1`; `fluxy/uv.lock` resolves `starlette==1.1.0`; synced runtime import checks returned Starlette 1.1.0; `pip-audit --path ...site-packages` reported no known vulnerabilities for the synced Fluxy all-extra environment.
+- **Original local evidence:** the previously vendored Fluxy optional MCP environment locked `starlette==1.0.0`; `pip-audit 2.10.0` found `PYSEC-2026-161` in the Fluxy all-extra requirements.
+- **Current ownership:** Fluxy source and optional extras are no longer vendored here. Track this through the upstream PyPI `fluxy-ign` project if MCP is installed separately.
 - **Affected range / fixed version:** Starlette `<=1.0.0`; fixed in 1.0.1. PyPI shows 1.1.0 available as of 2026-05-23.
 - **Severity:** GitHub advisory Moderate, CVSS v3.1 6.5; X41 rates High, CVSS 7.0.
 - **Issue class:** invalid HTTP `Host` header can poison `request.url.path`, potentially bypassing middleware/endpoints that make security decisions from reconstructed URL paths rather than the raw request path.
 - **Exploitation status:** not promoted as CISA KEV during this review.
-- **Exposure status:** **remediated in current repo lock and synced local Fluxy all-extra environment**. Deployed/installed MCP environments still need to install the updated `fluxy[mcp]` metadata/lock.
+- **Exposure status:** **external to this repository** unless a deployment separately installs Fluxy MCP extras.
 - **Mitigation:** deploy the updated Fluxy package/lock; keep MCP local-only unless explicitly authenticated; reject invalid `Host` headers at any reverse proxy; avoid security checks based on `request.url.path` in Starlette/ASGI middleware.
 
 ### PostgreSQL May 2026 security release — local client affected; deployed server needs evidence

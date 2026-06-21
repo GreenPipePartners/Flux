@@ -38,7 +38,6 @@ package = false
 flux-build = { path = "build", editable = true }
 flux-deep = { path = "deep", editable = true }
 flux-mine = { path = "mine", editable = true }
-fluxy-ign = { path = "fluxy", editable = true }
 flux-sim = { path = "sim", editable = true }
 
 [tool.ruff]

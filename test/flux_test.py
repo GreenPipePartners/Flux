@@ -34,7 +34,6 @@ PROFILE_SUITES = {
         "unit-mine",
         "unit-build",
         "unit-sim",
-        "unit-fluxy",
     ),
     "web": (
         "django-check",
@@ -47,8 +46,6 @@ PROFILE_SUITES = {
     ),
     "e2e": ("e2e-mine-build",),
     "live": (
-        "integration-fluxy",
-        "integration-fluxy-postgres",
         "integration-sim",
         "integration-web",
         "closed-loop",
@@ -59,7 +56,6 @@ PROFILE_SUITES = {
         "unit-mine",
         "unit-build",
         "unit-sim",
-        "unit-fluxy",
         "unit-web",
         "fluxolot-fishtank",
         "live-csv",
@@ -67,8 +63,6 @@ PROFILE_SUITES = {
         "sampling",
         "unit-cell",
         "e2e-mine-build",
-        "integration-fluxy",
-        "integration-fluxy-postgres",
         "integration-sim",
         "integration-web",
         "closed-loop",

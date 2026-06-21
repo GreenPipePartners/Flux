@@ -16,7 +16,7 @@ Last updated: 2026-05-24 after strict live skip-barrier cleanup.
 - `tests/` — top-level Python tests for CLI, test manifest behavior, and static performance guardrails.
 - `web/Flux/src/**/tests.py` — Django app unit and integration-style tests.
 - `web/Flux/src/**/test_e2e_playwright.py` — Playwright/browser tests gated by `FLUX_PLAYWRIGHT=1`.
-- `mine/tests`, `build/tests`, `sim/tests`, `fluxy/tests`, `deep/tests` — package-local pytest suites.
+- `mine/tests`, `build/tests`, `sim/tests`, `deep/tests` — package-local pytest suites. Fluxy coverage is owned by the PyPI `fluxy-ign` package, not this repository.
 
 ## Daily/Broad Commands
 

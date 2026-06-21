@@ -7,7 +7,7 @@ Last updated: 2026-05-24
 Inventory sources inspected:
 
 - `web/Flux/pyproject.toml`, `web/Flux/uv.lock`, and `uv tree --depth 1 --outdated` / `uv pip list` from `web/Flux`.
-- `fluxy/pyproject.toml`, `fluxy/uv.lock`, and `uv tree --depth 1 --outdated` / `uv pip list` from `fluxy`.
+- root `pyproject.toml` / `uv.lock` evidence for PyPI `fluxy-ign`.
 - `deep/pyproject.toml`, `build/pyproject.toml`, `mine/pyproject.toml`, `sim/pyproject.toml`, their locks, and `uv tree --depth 1 --outdated` / `uv pip list` from each project.
 - `field/Flux.FieldAgent/Flux.FieldAgent.csproj`.
 - `.opencode/package.json` and `.opencode/package-lock.json`.
@@ -28,7 +28,7 @@ Version confidence legend: **high** = manifest and lock/environment agree; **med
 | `flux-build` | local editable path `../../build` | 0.1.0 | Flux.build | Web build app imports `flux_build` in `flux/build/services.py` and `flux/build/views.py`. | High |
 | `flux-mine` | local editable path `../../mine` | 0.1.0 | Flux.mine | Web mine/build apps import `flux_mine` parsers/models in `flux/mine/services.py` and `flux/build/services.py`. | High |
 | `flux-sim` | local editable path `../../sim` | 0.1.0 | Flux.sim | Declared local simulator package; web app has extensive `flux.sim` app and simulator workflows. | High |
-| `fluxy-ign` | local editable path `../../fluxy` | 0.1.0 | Flux.bridge / Ignition integration | `dashboard/services.py` and multiple management commands instantiate/import `fluxy.Fluxy`. | High |
+| `fluxy-ign` | PyPI package | 0.1.0 | Flux.bridge / Ignition integration | `dashboard/services.py` and multiple management commands instantiate/import `fluxy.Fluxy`. | High |
 | `gunicorn` | `>=26.0.0` | 26.0.0 | Linux web serving | Production/trace server path; Linux-only deployment posture. | High |
 | `orjson` | `>=3.11.9` | 3.11.9 | Flux.charts / JSON performance | Imported in `flux/charts/control.py`, `views.py`, and `questdb_data_plane.py` for payload parse/dump performance. | High |
 | `psycopg[binary]` | `>=3.2` | 3.3.4 (`psycopg`, `psycopg-binary`) | Flux.charts / QuestDB PostgreSQL wire path | `flux/charts/questdb_data_plane.py` imports `psycopg`, opens QuestDB connection, catches `psycopg.Error`. | High |
@@ -51,25 +51,14 @@ Version confidence legend: **high** = manifest and lock/environment agree; **med
 | --- | ---: | --- | --- | --- |
 | `waitress` | 3.0.2 | Removed with `uv pip uninstall waitress`; final `uv pip list` for `web/Flux` no longer includes it; absent from manifest and lock. | Not a Flux dependency. | Keep absent; do not reintroduce Windows/Waitress runtime support. |
 
-## Fluxy (`fluxy`)
+## Fluxy (`fluxy-ign` PyPI package)
 
-### Runtime and optional dependencies
-
-| Dependency | Manifest spec | Detected version | Owner / area | Local purpose and direct evidence | Confidence |
-| --- | --- | ---: | --- | --- | --- |
-| `httpx` | `>=0.27` | 0.28.1 | Fluxy HTTP client | Imported in `fluxy/core.py`, `fluxy/client/core.py`, and `fluxy/check_ignition_dev.py` for Ignition/WebDev HTTP calls. | High |
-| `sqlalchemy` | optional extra `sqlalchemy>=2.0` | 2.0.49 in lock/tree; present in current fluxy env | Optional Fluxy plugin | `fluxy/plugins/sqlalchemy.py` imports `sqlalchemy.text` lazily and reports `source="sqlalchemy"`. | Medium |
-| `mcp` | optional extra `mcp>=1.0` | 1.27.1 in lock/tree; not observed in `uv pip list` output | Optional MCP server | `fluxy/mcp/server.py` lazily imports `mcp.server.fastmcp.FastMCP` and exits with install guidance if missing. | Medium |
-
-### Dev/test/tooling dependencies
+Flux consumes Fluxy through the PyPI `fluxy-ign` dependency. Fluxy source, optional extras, release tooling, and package-local tests are owned by the upstream `fluxy-ign` project and are not vendored here.
 
 | Dependency | Manifest spec | Detected version | Owner / area | Local purpose and direct evidence | Confidence |
 | --- | --- | ---: | --- | --- | --- |
-| `pytest` | `>=8.0` | 9.0.3 | Tests | Fluxy pytest config and `test/manifest.toml` Fluxy suites. | High |
-| `ruff` | `>=0.15.14` | 0.15.14 | Lint/format | `[tool.ruff]` in `fluxy/pyproject.toml`; `uv run ruff check src tests` passed after update. | High |
-| `ty` | `>=0.0.39` | 0.0.39 | Authoritative Fluxy type checker | `[tool.ty.*]` config in `fluxy/pyproject.toml`; release docs and CI use `uv run ty check src/fluxy`; `uv run ty check src/fluxy` passed after adding the missing Tag transport protocol method. | High |
-
-Pyright was intentionally removed from Fluxy on 2026-05-24. It should not be counted as a Fluxy dependency unless the type-checking architecture is explicitly reversed.
+| `fluxy-ign` | PyPI package | 0.1.0 | Flux.bridge / Ignition integration | Root `uv.lock` resolves the wheel/sdist from PyPI; Flux imports `fluxy.Fluxy` in bridge and simulator workflows. | High |
+| `httpx` | transitive via `fluxy-ign` | 0.28.1 | Fluxy HTTP client | Root `uv.lock` resolves `httpx` through `fluxy-ign`. | High |
 
 ## Flux.Deep (`deep`)
 

@@ -29,7 +29,7 @@ This log records durable dependency decisions. Newest entries should append unde
 
 - **Decision:** Superseded by DEP-2026-05-24-009. `ty` is now the explicit Fluxy static-check gate and Pyright is removed.
 - **Reason:** User selected ty as the replacement for Pyright.
-- **Evidence:** `fluxy/pyproject.toml`, docs, workflow, and `uv.lock` now reflect ty-only type checking.
+- **Evidence:** superseded by upstream `fluxy-ign`; Flux no longer vendors Fluxy source/dev tooling.
 - **Review trigger:** Revisit only if ty fails to cover required checks or the user explicitly reverses the decision.
 
 ### DEP-2026-05-24-005: Patch FieldAgent NuGet only with dotnet/build evidence
@@ -50,7 +50,7 @@ This log records durable dependency decisions. Newest entries should append unde
 
 - **Decision:** `mcp` and `sqlalchemy` should remain optional Fluxy extras and should not be pulled into web/runtime by default.
 - **Reason:** They have local lazy-import/plugin jobs but increase transitive surface when installed.
-- **Evidence:** `fluxy/pyproject.toml` optional extras and lazy imports in `fluxy/mcp/server.py` and `fluxy/plugins/sqlalchemy.py`.
+- **Evidence:** upstream `fluxy-ign` owns optional extras. Flux should not install those extras in web/runtime unless a first-class integration owns them.
 - **Review trigger:** Revisit if MCP or SQLAlchemy integration becomes first-class Flux runtime.
 
 ### DEP-2026-05-24-008: opencode plugin is tool-only watch
@@ -64,7 +64,7 @@ This log records durable dependency decisions. Newest entries should append unde
 
 - **Decision:** `ty` is Fluxy's authoritative type checker. Pyright is removed from Fluxy dependencies, config, docs, workflow checks, and ignore rules.
 - **Reason:** User explicitly chose ty over Pyright; one type-checker owner is cleaner than split authority.
-- **Evidence:** `fluxy/pyproject.toml` now declares `ty>=0.0.39` and `[tool.ty.*]`; `uv tree --depth 1 --outdated` shows ty 0.0.39 and no Pyright; `uv run ty check src/fluxy` passed.
+- **Evidence:** superseded by upstream `fluxy-ign`; Flux no longer vendors Fluxy source/dev tooling.
 - **Review trigger:** Revisit only if ty fails to cover required checks or the user explicitly reverses the decision.
 
 ### DEP-2026-05-24-010: Waitress removed and forbidden as Flux runtime

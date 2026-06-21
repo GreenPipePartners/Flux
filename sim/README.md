@@ -12,13 +12,13 @@ Prerequisites:
 - `FLUXY_BASE_URL` pointed at that gateway, usually `http://localhost:8088/system/webdev/flux`.
 - `FLUXY_TOKEN` if the WebDev bridge requires one.
 - .NET SDK available for `field/Flux.FieldAgent`.
-- `fluxy` available to `/sim`, easiest with `uv run --with ../fluxy ...`.
+- `fluxy` import available from the PyPI `fluxy-ign` package, easiest with `uv run --with fluxy-ign ...`.
 
 Prepare the standalone sim DB and FieldAgent config:
 
 ```bash
 cd sim
-uv run --with ../fluxy flux-sim-prepare-online \
+uv run --with fluxy-ign flux-sim-prepare-online \
   ../tags02.json \
   --provider ACM02 \
   --database flux-sim.db \
@@ -41,7 +41,7 @@ Configure the Ignition development gateway through Fluxy:
 
 ```bash
 cd sim
-uv run --with ../fluxy flux-sim-configure-ignition \
+uv run --with fluxy-ign flux-sim-configure-ignition \
   field-config.sim.json \
   --base-url http://localhost:8088/system/webdev/flux \
   --tag-provider default \
@@ -57,7 +57,7 @@ Use `--flat` to restore the earlier behavior that writes generated OPC tags dire
 For a limited tree-preserving trial, merge the first 100 simulated OPC leaves and their required ancestors/types:
 
 ```bash
-uv run --with ../fluxy flux-sim-configure-ignition \
+uv run --with fluxy-ign flux-sim-configure-ignition \
   field-config.sim.json \
   --base-url http://localhost:8088/system/webdev/flux \
   --tag-provider default \
@@ -110,7 +110,7 @@ Configure Ignition from the selected UI paths:
 
 ```bash
 cd ../../sim
-uv run --with ../fluxy flux-sim-configure-ignition \
+uv run --with fluxy-ign flux-sim-configure-ignition \
   field-config.sim.json \
   --base-url http://localhost:8088/system/webdev/flux \
   --token "$FLUXY_TOKEN" \
@@ -148,7 +148,7 @@ The preserved-tree integration test exercises the full add/read/delete/read life
 cd sim
 FLUX_SIM_IGNITION_INTEGRATION=1 \
 FLUXY_TOKEN=fluxy-auth-integration-token \
-uv run --with ../fluxy pytest tests/test_integration_preserved_tree_ignition.py
+uv run --with fluxy-ign pytest tests/test_integration_preserved_tree_ignition.py
 ```
 
 The test:
@@ -169,7 +169,7 @@ FLUX_SIM_IGNITION_INTEGRATION=1 \
 FLUXY_BASE_URL=http://localhost:8088/system/webdev/flux \
 FLUX_SIM_FIELD_ENDPOINT_URL=opc.tcp://localhost:4840/flux/sim \
 FLUX_SIM_OPC_SERVER="Flux Sim ACM02" \
-uv run --with ../fluxy pytest tests/test_integration_sim_to_ignition.py
+uv run --with fluxy-ign pytest tests/test_integration_sim_to_ignition.py
 ```
 
 The smoke test creates a small Ignition-side folder, configures OPC tags that point at FieldAgent, reads values, confirms they change, then cleans up.

@@ -32,7 +32,6 @@ def main(argv: Optional[list[str]] = None) -> int:
         temp_dir = Path(temp_name)
         source_dir = temp_dir / ("flux-%s" % version)
         export_head(source_dir)
-        overlay_submodules(source_dir, temp_dir)
         patch_site_url(source_dir / "mkdocs.yml", "https://greenpipe.partners/docs/flux/%s/" % version)
 
         source_archive = release_dir / ("flux-%s.tar.zst" % version)
@@ -89,34 +88,6 @@ def export_head(destination: Path) -> None:
     archive = destination.parent / "head.tar"
     run(["git", "archive", "--format=tar", "--output", str(archive), "HEAD"])
     run(["tar", "-xf", str(archive), "-C", str(destination)])
-
-
-def overlay_submodules(destination: Path, temp_dir: Path) -> None:
-    for path, commit in gitlinks():
-        source = REPO_ROOT / path
-        if not source.exists():
-            raise SystemExit("submodule %s is missing; run git submodule update --init" % path)
-        subprocess.run(["git", "-C", str(source), "cat-file", "-e", "%s^{commit}" % commit], check=True)
-        target = destination / path
-        if target.exists():
-            if target.is_dir():
-                shutil.rmtree(target)
-            else:
-                target.unlink()
-        target.mkdir(parents=True)
-        archive = temp_dir / (path.replace("/", "_") + ".tar")
-        run(["git", "-C", str(source), "archive", "--format=tar", "--output", str(archive), commit])
-        run(["tar", "-xf", str(archive), "-C", str(target)])
-
-
-def gitlinks() -> list[tuple[str, str]]:
-    links = []
-    for line in capture(["git", "ls-tree", "HEAD"]).splitlines():
-        metadata, path = line.split("\t", 1)
-        mode, _kind, commit = metadata.split()
-        if mode == "160000":
-            links.append((path, commit))
-    return links
 
 
 def patch_site_url(config_path: Path, site_url: str) -> None:

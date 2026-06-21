@@ -103,39 +103,6 @@ cleanup_expectations = "No external cleanup expected."
 destructive_scope = "none"
 
 [[suite]]
-name = "unit-fluxy"
-description = "Existing Fluxy non-integration tests."
-command = ["uv", "run", "--project", "fluxy", "pytest", "fluxy/tests", "-m", "not integration"]
-cwd = "."
-required_env = []
-timeout_seconds = 180
-external_services = []
-cleanup_expectations = "No external cleanup expected."
-destructive_scope = "none"
-
-[[suite]]
-name = "integration-fluxy"
-description = "Existing Fluxy live Ignition integration tests."
-command = ["uv", "run", "pytest", "tests", "-m", "integration", "--ignore=tests/test_integration_postgres_db.py"]
-cwd = "fluxy"
-required_env = ["FLUXY_BASE_URL", "FLUXY_TOKEN"]
-timeout_seconds = 600
-external_services = ["ignition", "fluxy-webdev"]
-cleanup_expectations = "Integration tests should create disposable Ignition resources and clean them up."
-destructive_scope = "disposable-ignition-resources"
-
-[[suite]]
-name = "integration-fluxy-postgres"
-description = "Fluxy live PostgreSQL datasource integration tests."
-command = ["uv", "run", "pytest", "tests/test_integration_postgres_db.py", "-m", "integration"]
-cwd = "fluxy"
-required_env = ["FLUXY_BASE_URL", "FLUXY_TOKEN", "FLUXY_POSTGRES_ENABLED"]
-timeout_seconds = 300
-external_services = ["ignition", "fluxy-webdev", "postgres"]
-cleanup_expectations = "Tests create and remove disposable PostgreSQL datasource resources and schema rows."
-destructive_scope = "disposable-postgres-and-ignition-resources"
-
-[[suite]]
 name = "unit-sim"
 description = "Existing Flux simulator non-integration tests."
 command = ["uv", "run", "--project", "sim", "pytest", "sim/tests", "-m", "not integration"]
