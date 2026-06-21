@@ -1,0 +1,18 @@
+[Unit]
+Description=Flux FieldAgent Supervisor
+After=network-online.target postgresql.service flux-web.service
+Wants=network-online.target postgresql.service
+PartOf=flux.target
+
+[Service]
+User=@@USER@@
+Group=@@GROUP@@
+WorkingDirectory=@@WEB_DIR@@
+EnvironmentFile=@@ENV_FILE@@
+Environment=PYTHONPATH=@@WEB_SRC_DIR@@:@@APP_DIR@@
+ExecStart=@@VENV_DIR@@/bin/python manage.py flux_field_supervisor --runtime-dir @@FIELD_RUNTIME_DIR@@ --project-path @@APP_DIR@@/field/Flux.FieldAgent/Flux.FieldAgent.csproj --base-port @@FIELD_AGENT_BASE_PORT@@ --host @@FIELD_AGENT_HOST@@
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=flux.target

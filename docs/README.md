@@ -6,6 +6,9 @@ Start here:
 
 - `docs/index.md`: MkDocs landing page for the local docs site.
 - `docs/operator-guide.md`: local `flux` CLI, background service, dashboard, and health workflow.
+- `docs/native-installer.md`: native Ubuntu/RHEL installer stages and systemd layout.
+- `docs/deployment-contract.md`: GreenPipe install entrypoint, release artifact URLs, and manifest boundary.
+- `docs/greenpipe-website-contract.md`: concise website integration contract for install and MkDocs publishing.
 - `docs/flux-architecture.md`: high-level system boundaries and ownership.
 - `docs/ignition-dev-cell.md`: managed local Ignition dev-cell commands.
 - `docs/deep-openplc.md`: isolated Flux.Deep OpenPLC emulation workspace.

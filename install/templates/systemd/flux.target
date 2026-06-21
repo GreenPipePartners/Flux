@@ -1,0 +1,7 @@
+[Unit]
+Description=Flux Platform
+Wants=flux-questdb.service flux-web.service flux-serve-monitor.service flux-sim-worker.service flux-field-supervisor.service flux-trace-worker.service flux-sampling-worker.service
+After=network-online.target postgresql.service
+
+[Install]
+WantedBy=multi-user.target

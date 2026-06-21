@@ -1,0 +1,18 @@
+[Unit]
+Description=Flux Trace Worker
+After=network-online.target postgresql.service flux-web.service flux-questdb.service
+Wants=network-online.target postgresql.service flux-questdb.service
+PartOf=flux.target
+
+[Service]
+User=@@USER@@
+Group=@@GROUP@@
+WorkingDirectory=@@WEB_DIR@@
+EnvironmentFile=@@ENV_FILE@@
+Environment=PYTHONPATH=@@WEB_SRC_DIR@@:@@APP_DIR@@
+ExecStart=@@VENV_DIR@@/bin/python manage.py flux_trace_worker
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=flux.target

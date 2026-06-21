@@ -1,0 +1,18 @@
+[Unit]
+Description=Flux Sim Worker
+After=network-online.target postgresql.service flux-web.service
+Wants=network-online.target postgresql.service
+PartOf=flux.target
+
+[Service]
+User=@@USER@@
+Group=@@GROUP@@
+WorkingDirectory=@@WEB_DIR@@
+EnvironmentFile=@@ENV_FILE@@
+Environment=PYTHONPATH=@@WEB_SRC_DIR@@:@@APP_DIR@@
+ExecStart=@@VENV_DIR@@/bin/python manage.py flux_sim_worker
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=flux.target

@@ -34,6 +34,9 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Operator Guide: operator-guide.md
+  - Native Installer: native-installer.md
+  - Deployment Contract: deployment-contract.md
+  - GreenPipe Website Contract: greenpipe-website-contract.md
   - Architecture:
       - Master Design: Master Design.md
       - System Boundaries: flux-architecture.md

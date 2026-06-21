@@ -57,6 +57,23 @@ Observed states:
 # Flux.bridge
 Flux.bridge supplies Ignition/Fluxy connectivity
 
+# Flux.deploy
+Flux.deploy is the transfer boundary for installing Flux onto novel Ubuntu/RHEL hosts.
+
+1) GreenPipe is the deployment control plane.
+   - Public bootstrap entrypoint: `https://greenpipe.partners/install`.
+   - GreenPipe publishes typed install intent, one-time claim tokens, status collection, and immutable release metadata.
+   - GreenPipe must not act as a general remote shell for arbitrary root commands.
+2) Flux release artifacts are immutable and versioned.
+   - Current artifact root: `https://greenpipe.partners/release/flux/0.1.0/`.
+   - Current source bundle: `https://greenpipe.partners/release/flux/0.1.0/flux-0.1.0.tar.zst`.
+   - Current deploy runner: `https://greenpipe.partners/release/flux/0.1.0/flux-deploy.py`.
+   - Checksum/signature files live beside the source bundle.
+3) Target hosts own execution.
+   - The deploy runner downloads, verifies, and unpacks the release artifact.
+   - The target host executes `install/flux_installer.py` locally.
+   - Ubuntu/RHEL distro handling, system packages, uv sync, Postgres, systemd, migrations, bootstrap, and start are installer responsibilities.
+
 # Flux.opt
 Flux.opt plans optimized block reads and cadence for ingestion. Also performs optimization for visualization to improve data display. Flux.opt does not own UI rendering, but can aid gathering UI data packets
 

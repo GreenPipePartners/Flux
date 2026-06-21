@@ -1,0 +1,19 @@
+[Unit]
+Description=Flux QuestDB Trace Data Plane
+After=network-online.target
+Wants=network-online.target
+PartOf=flux.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=@@USER@@
+Group=@@GROUP@@
+WorkingDirectory=@@APP_DIR@@
+EnvironmentFile=@@ENV_FILE@@
+ExecStart=@@APP_DIR@@/scripts/questdb-start.sh
+ExecStop=/usr/bin/env bash -lc 'if [ -x @@QUESTDB_DIST_DIR@@/questdb.sh ]; then @@QUESTDB_DIST_DIR@@/questdb.sh stop -d @@QUESTDB_DATA_DIR@@; fi'
+TimeoutStartSec=120
+
+[Install]
+WantedBy=flux.target
