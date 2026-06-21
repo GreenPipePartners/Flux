@@ -90,6 +90,18 @@ Event payload:
 }
 ```
 
+## GitHub Artifact Handoff
+
+Flux publishes unsigned handoff artifacts through `.github/workflows/greenpipe-handoff.yml`.
+
+```text
+Workflow name: Build GreenPipe handoff
+Artifact name: greenpipe-handoff
+Default version: 0.1.0
+```
+
+The website signing workflow should use this Flux workflow run ID as `source_run_id`, download artifact `greenpipe-handoff`, verify `.sha256` files, sign each checksummed release file, and publish the signed bundle.
+
 ## MkDocs Interface
 
 Flux docs are static MkDocs output. The website should mount the built site, not rewrite the docs at request time.

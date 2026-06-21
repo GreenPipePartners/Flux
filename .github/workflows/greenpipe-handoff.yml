@@ -1,0 +1,90 @@
+name: Build GreenPipe handoff
+
+on:
+  workflow_dispatch:
+    inputs:
+      flux_version:
+        description: Flux release version to package
+        required: true
+        default: 0.1.0
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    name: Build Flux release handoff
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out Flux
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install archive tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y zstd
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Resolve release version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            version="${{ inputs.flux_version }}"
+          else
+            version="${GITHUB_REF_NAME#v}"
+          fi
+          printf 'version=%s\n' "${version}" >> "${GITHUB_OUTPUT}"
+
+      - name: Build GreenPipe handoff
+        shell: bash
+        run: python3 scripts/build_greenpipe_release.py --version "${{ steps.version.outputs.version }}"
+
+      - name: Verify handoff checksums
+        shell: bash
+        working-directory: .runtime/greenpipe-handoff/release/flux/${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          for checksum_file in *.sha256; do
+            sha256sum -c "${checksum_file}"
+          done
+
+      - name: Verify deploy runner plan
+        shell: bash
+        working-directory: .runtime/greenpipe-handoff/release/flux/${{ steps.version.outputs.version }}
+        run: python3 flux-deploy.py plan --manifest manifest.example.json
+
+      - name: Summarize handoff
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            printf '## GreenPipe handoff\n\n'
+            printf '- Flux version: `%s`\n' "${{ steps.version.outputs.version }}"
+            printf '- Artifact name: `greenpipe-handoff`\n'
+            printf '- Website signing workflow input `source_run_id`: `%s`\n\n' "${GITHUB_RUN_ID}"
+            printf '### Release files\n\n```text\n'
+            find ".runtime/greenpipe-handoff/release/flux/${{ steps.version.outputs.version }}" -maxdepth 1 -type f -printf '%f\n' | sort
+            printf '```\n'
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload GreenPipe handoff
+        uses: actions/upload-artifact@v4
+        with:
+          name: greenpipe-handoff
+          if-no-files-found: error
+          retention-days: 30
+          path: .runtime/greenpipe-handoff/
