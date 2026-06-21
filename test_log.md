@@ -217,7 +217,7 @@ Use this file to preserve why tests exist, what cases they cover, and what conte
   - User asked Tester to use activation privileges and complete Ignition/live testing after the prior trial-expired blocker.
 - Maintenance notes:
   - Use `uv run python test/runner.py activate-ignition --execute` before live retries when Fluxy reports HTTP 402 `Trial Expired`.
-  - Preserve `integration-fluxy` `cwd = "fluxy"` unless tests stop depending on package-relative defaults.
+  - Historical Fluxy package-local suites were removed when Flux switched to PyPI `fluxy-ign` instead of vendoring Fluxy source.
   - Add runner detection for all-skipped or zero-test live suites; current green statuses for `integration-sim` and
     `integration-web` are not meaningful coverage.
 
