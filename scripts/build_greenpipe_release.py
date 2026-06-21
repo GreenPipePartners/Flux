@@ -212,30 +212,36 @@ def write_manifest_examples(release_dir: Path, version: str, source_sha256: str,
 
 
 def manifest_yaml(version: str, source_sha256: str, *, signed: bool) -> str:
-    signature_line = "    signature_url: https://greenpipe.partners/release/flux/{version}/flux-{version}.tar.zst.sig\n".format(version=version) if signed else ""
-    return """apiVersion: flux.greenpipe.partners/v1
-kind: FluxInstall
-metadata:
-  deployment_id: dep_123
-  site: preview
-spec:
-  release:
-    version: {version}
-    artifact_url: https://greenpipe.partners/release/flux/{version}/flux-{version}.tar.zst
-    sha256: {source_sha256}
-    checksum_url: https://greenpipe.partners/release/flux/{version}/flux-{version}.tar.zst.sha256
-{signature_line}
-  target:
-    allowed_hosts: localhost,127.0.0.1
-    web_bind: 0.0.0.0:8000
-  database:
-    mode: local
-  services:
-    enable: true
-    start: true
-    web_workers: 8
-    web_threads: 2
-""".format(version=version, source_sha256=source_sha256, signature_line=signature_line.rstrip())
+    lines = [
+        "apiVersion: flux.greenpipe.partners/v1",
+        "kind: FluxInstall",
+        "metadata:",
+        "  deployment_id: dep_123",
+        "  site: preview",
+        "spec:",
+        "  release:",
+        "    version: %s" % version,
+        "    artifact_url: https://greenpipe.partners/release/flux/%s/flux-%s.tar.zst" % (version, version),
+        "    sha256: %s" % source_sha256,
+        "    checksum_url: https://greenpipe.partners/release/flux/%s/flux-%s.tar.zst.sha256" % (version, version),
+    ]
+    if signed:
+        lines.append("    signature_url: https://greenpipe.partners/release/flux/%s/flux-%s.tar.zst.sig" % (version, version))
+    lines.extend(
+        [
+            "  target:",
+            "    allowed_hosts: localhost,127.0.0.1",
+            "    web_bind: 0.0.0.0:8000",
+            "  database:",
+            "    mode: local",
+            "  services:",
+            "    enable: true",
+            "    start: true",
+            "    web_workers: 8",
+            "    web_threads: 2",
+        ]
+    )
+    return "\n".join(lines) + "\n"
 
 
 def write_handoff_readme(output: Path, version: str, commit: str, signed: bool) -> None:
