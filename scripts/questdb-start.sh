@@ -8,9 +8,10 @@ QUESTDB_DIST="${FLUX_QUESTDB_DIST:-$RUNTIME_DIR/questdb-dist}"
 QUESTDB_DATA="${FLUX_QUESTDB_DATA:-$RUNTIME_DIR/questdb-data}"
 QUESTDB_PORT="${QUESTDB_PORT:-8812}"
 QUESTDB_HTTP_PORT="${QUESTDB_HTTP_PORT:-9000}"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
 
 port_open() {
-  python - "$QUESTDB_PORT" <<'PY'
+  "$PYTHON_BIN" - "$QUESTDB_PORT" <<'PY'
 import socket
 import sys
 

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import getpass
 import os
 import secrets
 import shlex
@@ -9,7 +10,7 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, unquote, urlsplit
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -366,6 +367,22 @@ class EnvStage(InstallerStage):
         runner.run(["chmod", "640", str(cfg.env_file)])
 
 
+class StaticAssetsStage(InstallerStage):
+    name = "static-assets"
+    description = "Collect Django static assets for production web serving."
+
+    def run(self, cfg: InstallerConfig, distro: Distro, runner: CommandRunner) -> None:
+        manage = shlex.quote(str(cfg.manage_py))
+        python = shlex.quote(str(cfg.venv_dir / "bin" / "python"))
+        env_file = shlex.quote(str(cfg.env_file))
+        app_dir = shlex.quote(str(cfg.app_dir))
+        command = (
+            "set -a; . {env_file}; set +a; cd {app_dir}; "
+            "{python} {manage} collectstatic --noinput"
+        ).format(env_file=env_file, app_dir=app_dir, python=python, manage=manage)
+        runner.run(["runuser", "-u", cfg.user, "--", "bash", "-lc", command])
+
+
 class SystemdStage(InstallerStage):
     name = "systemd"
     description = "Render Flux systemd units for web, workers, FieldAgent, and QuestDB."
@@ -458,6 +475,7 @@ STAGES: tuple[InstallerStage, ...] = (
     PythonEnvironmentStage(),
     PostgresStage(),
     EnvStage(),
+    StaticAssetsStage(),
     SystemdStage(),
     DatabaseStage(),
     EnableStage(),
@@ -483,19 +501,17 @@ def detect_distro() -> Distro:
 def default_config(args: argparse.Namespace) -> InstallerConfig:
     source_dir = args.source_dir.resolve()
     app_dir = args.app_dir
-    db_password = args.db_password or secrets.token_urlsafe(24)
-    database_url = args.database_url or "postgres://%s:%s@localhost:5432/%s" % (
-        quote(args.db_user),
-        quote(db_password),
-        quote(args.db_name),
-    )
+    env_file = args.config_dir / "flux.env"
+    existing_env = {} if args.force_env else read_env_values(env_file)
+    database_url, db_password, skip_postgres_setup = resolve_database_config(args, existing_env)
+    django_secret_key = args.django_secret_key or existing_env.get("DJANGO_SECRET_KEY") or secrets.token_urlsafe(48)
     return InstallerConfig(
         source_dir=source_dir,
         app_dir=app_dir,
         web_dir=app_dir / "web" / "Flux",
         venv_dir=args.venv_dir,
         config_dir=args.config_dir,
-        env_file=args.config_dir / "flux.env",
+        env_file=env_file,
         data_dir=args.data_dir,
         log_dir=args.log_dir,
         vendor_dir=args.vendor_dir,
@@ -509,7 +525,7 @@ def default_config(args: argparse.Namespace) -> InstallerConfig:
         db_user=args.db_user,
         db_password=db_password,
         database_url=database_url,
-        django_secret_key=args.django_secret_key or secrets.token_urlsafe(48),
+        django_secret_key=django_secret_key,
         allowed_hosts=args.allowed_hosts,
         csrf_trusted_origins=args.csrf_trusted_origins,
         web_bind=args.web_bind,
@@ -518,10 +534,100 @@ def default_config(args: argparse.Namespace) -> InstallerConfig:
         field_agent_host=args.field_agent_host,
         field_agent_base_port=args.field_agent_base_port,
         skip_system_packages=args.skip_system_packages,
-        skip_postgres_setup=args.skip_postgres_setup or bool(args.database_url),
+        skip_postgres_setup=args.skip_postgres_setup or skip_postgres_setup,
         force_env=args.force_env,
         enable=not args.no_enable,
         start=args.start,
+    )
+
+
+def resolve_database_config(args: argparse.Namespace, existing_env: dict[str, str]) -> tuple[str, str, bool]:
+    if args.database_url:
+        return args.database_url, database_url_password(args.database_url), True
+
+    existing_database_url = existing_env.get("DATABASE_URL", "")
+    if existing_database_url:
+        existing_password = database_url_password(existing_database_url)
+        if args.db_password and existing_password and args.db_password != existing_password:
+            raise SystemExit(
+                "--db-password does not match the existing %s; use --force-env to replace it"
+                % (args.config_dir / "flux.env")
+            )
+        if is_local_database_url(existing_database_url, db_user=args.db_user, db_name=args.db_name):
+            if not existing_password:
+                raise SystemExit(
+                    "existing local DATABASE_URL in %s does not include a password; use --force-env with --db-password"
+                    % (args.config_dir / "flux.env")
+                )
+            return existing_database_url, existing_password, False
+        return existing_database_url, existing_password, True
+
+    db_password = args.db_password or prompt_local_db_password(args) or secrets.token_urlsafe(24)
+    return local_database_url(args.db_user, db_password, args.db_name), db_password, False
+
+
+def read_env_values(path: Path) -> dict[str, str]:
+    if not path.exists():
+        return {}
+    values = {}
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[len("export ") :].strip()
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        values[key.strip()] = strip_env_value(value.strip())
+    return values
+
+
+def strip_env_value(value: str) -> str:
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+        return value[1:-1]
+    return value
+
+
+def database_url_password(database_url: str) -> str:
+    return unquote(urlsplit(database_url).password or "")
+
+
+def is_local_database_url(database_url: str, *, db_user: str, db_name: str) -> bool:
+    parsed = urlsplit(database_url)
+    if parsed.scheme not in {"postgres", "postgresql"}:
+        return False
+    hostname = parsed.hostname or ""
+    username = unquote(parsed.username or "")
+    path_name = unquote(parsed.path.lstrip("/"))
+    return hostname in {"localhost", "127.0.0.1", "::1"} and username == db_user and path_name == db_name
+
+
+def prompt_local_db_password(args: argparse.Namespace) -> str:
+    if not should_prompt_db_password(args):
+        return ""
+    first = getpass.getpass("Local Postgres password for Flux database user (leave blank to generate): ")
+    if not first:
+        return ""
+    second = getpass.getpass("Confirm local Postgres password: ")
+    if first != second:
+        raise SystemExit("local Postgres passwords did not match")
+    return first
+
+
+def should_prompt_db_password(args: argparse.Namespace) -> bool:
+    if args.dry_run or args.no_prompt_db_password:
+        return False
+    if hasattr(os, "geteuid") and os.geteuid() != 0:
+        return False
+    return os.isatty(0)
+
+
+def local_database_url(db_user: str, db_password: str, db_name: str) -> str:
+    return "postgres://%s:%s@localhost:5432/%s" % (
+        quote(db_user, safe=""),
+        quote(db_password, safe=""),
+        quote(db_name, safe=""),
     )
 
 
@@ -566,6 +672,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--db-name", default="flux")
     parser.add_argument("--db-user", default="flux")
     parser.add_argument("--db-password", default="", help="Local Postgres password. Generated when omitted.")
+    parser.add_argument(
+        "--no-prompt-db-password",
+        action="store_true",
+        help="Generate the local Postgres password instead of prompting on interactive installs.",
+    )
     parser.add_argument("--database-url", default="", help="External Postgres URL. Skips local Postgres role/db setup.")
     parser.add_argument("--django-secret-key", default="", help="Generated when omitted.")
     parser.add_argument("--allowed-hosts", default="localhost,127.0.0.1")

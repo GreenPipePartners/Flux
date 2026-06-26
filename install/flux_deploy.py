@@ -84,10 +84,11 @@ def apply(args: argparse.Namespace) -> int:
     download_dir.mkdir(parents=True, exist_ok=True)
 
     emit(args, "manifest", "ok", "loaded FluxInstall manifest")
+    sudo_command = None
     if args.dry_run:
         emit(args, "preflight", "ok", "dry-run selected; host mutations limited to installer dry-run")
     else:
-        ensure_unpack_tools(args)
+        sudo_command = ensure_unpack_tools(args)
 
     artifact = args.artifact or download_artifact(args, release, download_dir)
     verify_sha256(artifact, release["sha256"])
@@ -103,7 +104,13 @@ def apply(args: argparse.Namespace) -> int:
 
     command = build_installer_args(manifest, dry_run=args.dry_run)
     emit(args, "installer", "running", "running native installer")
-    subprocess.run(command, cwd=str(source_dir), check=True)
+    run_native_installer(
+        args,
+        command,
+        cwd=source_dir,
+        dry_run=args.dry_run,
+        sudo_command=sudo_command,
+    )
     emit(args, "installer", "ok", "native installer completed")
     return 0
 
@@ -202,21 +209,76 @@ def verify_signature(args: argparse.Namespace, release: Dict[str, Any], artifact
     emit(args, "signature", "ok", "verified release signature")
 
 
-def ensure_unpack_tools(args: argparse.Namespace) -> None:
+def ensure_unpack_tools(args: argparse.Namespace) -> Optional[str]:
     if shutil.which("tar") and shutil.which("zstd"):
-        return
-    if hasattr(os, "geteuid") and os.geteuid() != 0:
-        raise DeployError("tar and zstd are required; rerun with sudo so bootstrap dependencies can be installed")
+        return None
+    sudo_command = None
+    if needs_elevation(dry_run=False):
+        sudo_command = request_sudo(args)
     distro = detect_distro_family()
     emit(args, "bootstrap-packages", "running", "installing tar/zstd bootstrap dependencies")
     if distro == "apt":
-        subprocess.run(["apt-get", "update"], check=True)
-        subprocess.run(["apt-get", "install", "-y", "tar", "zstd", "ca-certificates"], check=True)
+        run_privileged_subprocess(["apt-get", "update"], sudo_command=sudo_command)
+        run_privileged_subprocess(
+            ["apt-get", "install", "-y", "tar", "zstd", "ca-certificates"],
+            sudo_command=sudo_command,
+        )
     elif distro == "dnf":
         manager = shutil.which("dnf") or shutil.which("yum") or "dnf"
-        subprocess.run([manager, "install", "-y", "tar", "zstd", "ca-certificates"], check=True)
+        run_privileged_subprocess(
+            [manager, "install", "-y", "tar", "zstd", "ca-certificates"],
+            sudo_command=sudo_command,
+        )
     else:
         raise DeployError("unsupported distro for bootstrap dependency install")
+    return sudo_command
+
+
+def needs_elevation(*, dry_run: bool) -> bool:
+    return not dry_run and hasattr(os, "geteuid") and os.geteuid() != 0
+
+
+def request_sudo(args: argparse.Namespace) -> str:
+    sudo_command = shutil.which("sudo")
+    if not sudo_command:
+        raise DeployError("Flux install requires root but sudo is not installed; re-run with sudo")
+    emit(args, "elevation", "running", "Flux install requires root; requesting sudo credentials")
+    try:
+        run_subprocess([sudo_command, "-v"])
+    except DeployError as exc:
+        raise DeployError("sudo elevation failed; re-run with sudo or fix sudo access") from exc
+    emit(args, "elevation", "ok", "sudo credentials accepted")
+    return sudo_command
+
+
+def run_privileged_subprocess(command: list[str], *, sudo_command: Optional[str]) -> None:
+    run_subprocess(privileged_command(command, sudo_command=sudo_command))
+
+
+def run_native_installer(
+    args: argparse.Namespace,
+    command: list[str],
+    *,
+    cwd: Path,
+    dry_run: bool,
+    sudo_command: Optional[str] = None,
+) -> None:
+    if needs_elevation(dry_run=dry_run):
+        sudo_command = sudo_command or request_sudo(args)
+    run_subprocess(privileged_command(command, sudo_command=sudo_command), cwd=cwd)
+
+
+def privileged_command(command: list[str], *, sudo_command: Optional[str]) -> list[str]:
+    if not sudo_command:
+        return command
+    return [sudo_command, *command]
+
+
+def run_subprocess(command: list[str], *, cwd: Optional[Path] = None) -> None:
+    try:
+        subprocess.run(command, cwd=str(cwd) if cwd else None, check=True)
+    except subprocess.CalledProcessError as exc:
+        raise DeployError("command failed with exit code %s: %s" % (exc.returncode, command)) from exc
 
 
 def detect_distro_family() -> str:

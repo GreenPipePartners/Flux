@@ -13,6 +13,9 @@ from typing import Optional
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = REPO_ROOT / ".runtime" / "greenpipe-handoff"
+RELEASE_REQUIRED_PATHS = (
+    Path("web/Flux/src/flux/base/management/commands/flux_bootstrap.py"),
+)
 
 
 def main(argv: Optional[list[str]] = None) -> int:
@@ -33,6 +36,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         source_dir = temp_dir / ("flux-%s" % version)
         export_head(source_dir)
         patch_site_url(source_dir / "mkdocs.yml", "https://greenpipe.partners/docs/flux/%s/" % version)
+        validate_release_tree(source_dir)
 
         source_archive = release_dir / ("flux-%s.tar.zst" % version)
         archive_directory(source_archive, source_dir.parent, source_dir.name, commit_ts)
@@ -105,6 +109,12 @@ def patch_site_url(config_path: Path, site_url: str) -> None:
     config_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def validate_release_tree(source_dir: Path) -> None:
+    missing = [str(path) for path in RELEASE_REQUIRED_PATHS if not (source_dir / path).is_file()]
+    if missing:
+        raise SystemExit("release source tree is missing required files: %s" % ", ".join(missing))
+
+
 def archive_directory(archive_path: Path, cwd: Path, directory_name: str, commit_ts: str) -> None:
     run(
         [
@@ -162,6 +172,7 @@ def write_manifest_examples(release_dir: Path, version: str, source_sha256: str,
         "artifact_url": "https://greenpipe.partners/release/flux/%s/flux-%s.tar.zst" % (version, version),
         "sha256": source_sha256,
         "checksum_url": "https://greenpipe.partners/release/flux/%s/flux-%s.tar.zst.sha256" % (version, version),
+        "public_key_url": "https://greenpipe.partners/release/flux/flux-release.pub",
     }
     if signed:
         release["signature_url"] = "https://greenpipe.partners/release/flux/%s/flux-%s.tar.zst.sig" % (version, version)
@@ -195,6 +206,7 @@ def manifest_yaml(version: str, source_sha256: str, *, signed: bool) -> str:
         "    artifact_url: https://greenpipe.partners/release/flux/%s/flux-%s.tar.zst" % (version, version),
         "    sha256: %s" % source_sha256,
         "    checksum_url: https://greenpipe.partners/release/flux/%s/flux-%s.tar.zst.sha256" % (version, version),
+        "    public_key_url: https://greenpipe.partners/release/flux/flux-release.pub",
     ]
     if signed:
         lines.append("    signature_url: https://greenpipe.partners/release/flux/%s/flux-%s.tar.zst.sig" % (version, version))

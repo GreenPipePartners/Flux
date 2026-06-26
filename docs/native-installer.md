@@ -76,6 +76,7 @@ Current stages:
 - `python`: run `uv sync --frozen --no-dev` into `/opt/flux/venv`
 - `postgres`: initialize local Postgres and create Flux DB/role
 - `env`: render `/etc/flux/flux.env`
+- `static-assets`: run `collectstatic --noinput`
 - `systemd`: render Flux systemd units
 - `database`: run `migrate` and `flux_bootstrap`
 - `enable`: enable systemd services
@@ -96,6 +97,8 @@ Local default:
 ```text
 postgres://flux:<generated-password>@localhost:5432/flux
 ```
+
+On a fresh interactive local install, the installer prompts for the Flux Postgres password. Press Enter to generate one. On rerun, an existing `/etc/flux/flux.env` is authoritative: the installer reuses its `DATABASE_URL` and updates the local Postgres role to match it. Use `--force-env` only when intentionally replacing the rendered environment file and database credentials.
 
 External Postgres:
 
